@@ -534,10 +534,26 @@ class Odeme extends BaseController
      */
     public function bildirim(int $mukellefId)
     {
+        $veri = $this->bildirimVerisi($mukellefId);
+
+        if ($veri === null) {
+            return redirect()->to(site_url('odeme'))->with('hata', 'Mükellef bulunamadı.');
+        }
+
+        return view('odeme/bildirim', $veri);
+    }
+
+    /**
+     * Bildirim ekranı ve e-posta için ortak veriyi kurar.
+     *
+     * @return array|null null = mükellef yok / yetki yok
+     */
+    protected function bildirimVerisi(int $mukellefId): ?array
+    {
         $mukellef = (new MukellefModel())->find($mukellefId);
 
         if ($mukellef === null || ! $this->mukellefeErisebilirMi($mukellef)) {
-            return redirect()->to(site_url('odeme'))->with('hata', 'Mükellef bulunamadı.');
+            return null;
         }
 
         $filtre                = $this->filtreAl();
@@ -552,14 +568,111 @@ class Odeme extends BaseController
 
         $ucret = (float) ($mukellef['muhasebe_ucreti'] ?? 0);
 
-        return view('odeme/bildirim', [
-            'grup'        => $sonuc['gruplar'][0] ?? null,
-            'filtre'      => $filtre,
-            'mukellef'    => $mukellef,
-            'ucretDahil'  => $ucretDahil && $ucret > 0,
-            'ucret'       => $ucret,
-            'ucretVar'    => $ucret > 0,
-        ]);
+        return [
+            'grup'       => $sonuc['gruplar'][0] ?? null,
+            'filtre'     => $filtre,
+            'mukellef'   => $mukellef,
+            'ucretDahil' => $ucretDahil && $ucret > 0,
+            'ucret'      => $ucret,
+            'ucretVar'   => $ucret > 0,
+        ];
+    }
+
+    /**
+     * Ödeme bildirimini mükellef kartındaki e-posta adresine gönderir.
+     *
+     * POST ile çağrılır (CSRF korumalı). ?ucret=1 -> muhasebe ücreti dahil.
+     * Ayarlar:
+     *   mail_etkin            = 1 olmalı
+     *   mail_gonderici_eposta = boşsa app/Config/Email.php fromEmail kullanılır
+     *   mail_konu             = {donem} ve {unvan} yer tutucuları destekler
+     */
+    public function bildirimMail(int $mukellefId)
+    {
+        $veri = $this->bildirimVerisi($mukellefId);
+
+        if ($veri === null) {
+            return redirect()->to(site_url('odeme'))->with('hata', 'Mükellef bulunamadı.');
+        }
+
+        $mukellef = $veri['mukellef'];
+        $donem    = (! empty($veri['filtre']['ay']) ? ayAdi((int) $veri['filtre']['ay']) . ' ' : '')
+                  . ($veri['filtre']['yil'] ?? '');
+
+        $ayar = (new AyarModel())->tumu();
+
+        // ---- 1) Ayar kapalı mı? ----
+        if ((int) ($ayar['mail_etkin'] ?? 0) !== 1) {
+            return redirect()->back()
+                ->with('hata', 'E-posta gönderimi kapalı. Tanımlar → Ayarlar → "mail_etkin" ayarını açın.');
+        }
+
+        // ---- 2) Alıcı e-postası ----
+        $hedef = trim((string) ($mukellef['eposta'] ?? ''));
+
+        if ($hedef === '' || ! filter_var($hedef, FILTER_VALIDATE_EMAIL)) {
+            return redirect()->back()
+                ->with('hata', "Mükellef kartında geçerli bir e-posta tanımlı değil. "
+                    . 'Mükellef kartından e-posta adresi girin.');
+        }
+
+        // ---- 3) Gönderen bilgisi ----
+        $emailConfig = config('Email');
+
+        $gondericiEposta = trim((string) ($ayar['mail_gonderici_eposta'] ?? ''));
+        if ($gondericiEposta === '') {
+            $gondericiEposta = $emailConfig->fromEmail;
+        }
+
+        $gondericiAd = trim((string) ($ayar['mail_gonderici_ad'] ?? ''));
+        if ($gondericiAd === '') {
+            $gondericiAd = trim((string) ($ayar['firma_adi'] ?? ''));
+        }
+        if ($gondericiAd === '') {
+            $gondericiAd = $emailConfig->fromName;
+        }
+
+        if ($gondericiEposta === '' || ! filter_var($gondericiEposta, FILTER_VALIDATE_EMAIL)) {
+            return redirect()->back()
+                ->with('hata', 'Gönderici e-posta adresi tanımlı değil. Tanımlar → Ayarlar → '
+                    . '"mail_gonderici_eposta" alanını doldurun (veya app/Config/Email.php fromEmail).');
+        }
+
+        // ---- 4) Konu ----
+        $konuSablon = trim((string) ($ayar['mail_konu'] ?? ''));
+        if ($konuSablon === '') {
+            $konuSablon = 'Ödeme Bildirimi — {donem}';
+        }
+        $konu = str_replace(
+            ['{donem}', '{unvan}'],
+            [$donem, $mukellef['unvan'] ?? ''],
+            $konuSablon
+        );
+
+        // ---- 5) İçerik (bildirim_mail.php görünümünü dizeye çevir) ----
+        $veri['firmaAdi'] = trim((string) ($ayar['firma_adi'] ?? ''));
+        $govde = view('odeme/bildirim_mail', $veri);
+
+        // ---- 6) Gönder ----
+        $email = \Config\Services::email();
+
+        $email->setFrom($gondericiEposta, $gondericiAd);
+        $email->setTo($hedef);
+        $email->setSubject($konu);
+        $email->setMessage($govde);
+        $email->setMailType('html');
+
+        if ($email->send()) {
+            return redirect()->back()
+                ->with('basari', "Ödeme bildirimi gönderildi: {$hedef} ({$donem})");
+        }
+
+        // Hata ayrıntısı: son hata dizesini kısaca göster (geliştirme kolaylığı)
+        $hata = (string) ($email->printDebugger(['headers', 'subject']) ?: 'Bilinmeyen e-posta hatası.');
+        $hata = trim(preg_replace('/\s+/', ' ', strip_tags($hata)));
+
+        return redirect()->back()
+            ->with('hata', 'E-posta gönderilemedi: ' . $hata);
     }
 
     // =================================================================

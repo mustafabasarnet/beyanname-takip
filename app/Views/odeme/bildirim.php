@@ -22,6 +22,16 @@ $mid = $grup['mukellef']['id'] ?? ($mukellef['id'] ?? 0);
 $bosDurum = ($grup === null && empty($ucretDahil));
 ?>
 
+<!-- ===== İşlem sonucu mesajları (e-posta gönderimi vb.) ===== -->
+<?php if (session()->getFlashdata('basari')): ?>
+  <div class="uyari basari" style="margin-bottom:14px"><span class="ik">✓</span>
+    <div><?= esc(session()->getFlashdata('basari')) ?></div></div>
+<?php endif; ?>
+<?php if (session()->getFlashdata('hata')): ?>
+  <div class="uyari hata" style="margin-bottom:14px"><span class="ik">✕</span>
+    <div><?= esc(session()->getFlashdata('hata')) ?></div></div>
+<?php endif; ?>
+
 <!-- ===== Yazdırmada gizlenen seçenek çubuğu (her durumda görünür) ===== -->
 <div class="secenek-bar">
   <b style="font-size:13px">Bildirim Seçenekleri:</b>
@@ -38,6 +48,29 @@ $bosDurum = ($grup === null && empty($ucretDahil));
       <a href="<?= site_url('mukellefler/duzenle/' . $mid) ?>" target="_blank">Mükellef kartından girin</a>.
     </span>
   <?php endif; ?>
+
+  <?php
+  $mailAdres = trim((string) ($mukellef['eposta'] ?? ''));
+  $donemQs   = http_build_query(array_filter([
+      'yil'   => $filtre['yil'] ?? null,
+      'ay'    => $filtre['ay'] ?? null,
+      'ucret' => ! empty($ucretDahil) ? '1' : null,
+  ], static fn ($v) => $v !== null && $v !== ''));
+  ?>
+
+  <form method="post" style="margin:0;display:inline-flex;align-items:center;gap:8px"
+        action="<?= site_url('odeme/bildirim-mail/' . $mid . ($donemQs !== '' ? '?' . $donemQs : '')) ?>">
+    <?= csrf_field() ?>
+    <button type="submit" class="btn kucuk">📧 Mail Gönder</button>
+    <?php if ($mailAdres !== ''): ?>
+      <span class="kucuk-yazi">📧 <?= esc($mailAdres) ?></span>
+    <?php else: ?>
+      <span class="kucuk-yazi" style="color:#b45309">
+        E-posta tanımlı değil —
+        <a href="<?= site_url('mukellefler/duzenle/' . $mid) ?>" target="_blank">Mükellef kartından ekleyin</a>
+      </span>
+    <?php endif; ?>
+  </form>
 
   <button type="button" class="btn kucuk" onclick="window.print()" style="margin-left:auto">🖨️ Yazdır</button>
 </div>
