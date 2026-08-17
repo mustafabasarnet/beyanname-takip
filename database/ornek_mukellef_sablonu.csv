@@ -1,0 +1,4 @@
+﻿Kod;Ünvan;Tip;VKN;TCKN;Vergi Dairesi;Defter Tipi;İşe Başlama;Takip Başlangıcı;Terk Tarihi;Beyannameler;Genç Girişimci;GG Başlangıç Yılı;Muhasebe Ücreti;Telefon;E-posta;Yetkili Kişi;Faaliyet Konusu;NACE Kodu;SGK Sicil;Adres;Notlar
+M001;ÖRNEK İNŞAAT SANAYİ LTD. ŞTİ.;Tüzel;1234567890;;Nevşehir;Bilanço;01.01.2020;;;KDV1_A,MUHSGK_A,KURUMLAR,KURUM_GECICI;Hayır;;5.000,00;0384 000 00 00;ornek@firma.com;Ahmet Yılmaz;İnşaat;4120;1234567890123;Merkez / Nevşehir;
+M002;AYŞE DEMİR;Gerçek;;12345678901;Ürgüp;İşletme;15.03.2024;01.01.2026;;KDV1_A,MUHSGK_A,YILLIK_GV,GELIR_GECICI;Evet;2024;2.500,00;;;;Kuaför;9602;;;Genç girişimci teşviki var
+M003;MEHMET KAYA;Gerçek;;98765432109;Avanos;Serbest Meslek;01.06.2018;;31.12.2026;KDV1_A,MUHSGK_A,YILLIK_GV,GELIR_GECICI;Hayır;;;;;;Mali müşavirlik;6920;;;Yıl sonunda terk edecek

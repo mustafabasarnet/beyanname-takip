@@ -1,0 +1,5 @@
+# Ana dizine gelen istekleri public klasorune yonlendirir (paylasimli hosting icin)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(?!public/)([\s\S]*)$ public/$1 [L,NC]
+</IfModule>

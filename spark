@@ -1,0 +1,24 @@
+#!/usr/bin/env php
+<?php
+
+use CodeIgniter\Boot;
+use Config\Paths;
+
+define('SPARKED', true);
+
+$minPhpVersion = '8.1';
+if (version_compare(PHP_VERSION, $minPhpVersion, '<')) {
+    echo sprintf('Bu uygulama en az PHP v%s gerektirir. Mevcut: v%s', $minPhpVersion, PHP_VERSION) . PHP_EOL;
+    exit(1);
+}
+
+if (! is_file(__DIR__ . '/vendor/autoload.php')) {
+    echo 'Önce "composer install" komutunu çalıştırın.' . PHP_EOL;
+    exit(1);
+}
+
+require __DIR__ . '/app/Config/Paths.php';
+$paths = new Paths();
+require rtrim($paths->systemDirectory, '\\/ ') . DIRECTORY_SEPARATOR . 'Boot.php';
+
+exit(Boot::bootSpark($paths));
