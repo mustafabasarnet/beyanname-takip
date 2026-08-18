@@ -223,4 +223,135 @@ class KullaniciModel extends Model
         return $this->update($id, ['sifre' => password_hash($yeniSifre, PASSWORD_DEFAULT)]);
     }
 
+    // =================================================================
+    //  "BENİ HATIRLA" — kalıcı oturum çerezi
+    //
+    //  Güvenlik ilkeleri:
+    //   • Çerezde ham rastgele token saklanır; veritabanına yalnızca
+    //     SHA-256 karşılığı yazılır (DB sızdırılsa çerez işe yaramaz).
+    //   • Her otomatik girişte token YENİLENİR (eski çerez geçersizleşir).
+    //   • Çıkışta token ve çerez silinir.
+    // =================================================================
+
+    /**
+     * Yeni bir "beni hatırla" tokeni üretir, hash'ini DB'ye kaydeder
+     * ve ham tokeni döndürür (bu değer çereze yazılır).
+     *
+     * @return string ham token
+     */
+    public function hatirlaTokeniOlustur(int $kullaniciId, int $gun): string
+    {
+        $simdi = date('Y-m-d H:i:s');
+
+        // Kullanıcının süresi dolmuş eski kayıtlarını temizle (birikme olmasın)
+        $this->db->table('hatirlanan_oturumlar')
+            ->where('kullanici_id', $kullaniciId)
+            ->where('son_kullanma <', $simdi)
+            ->delete();
+
+        $token = bin2hex(random_bytes(32));
+
+        $this->db->table('hatirlanan_oturumlar')->insert([
+            'kullanici_id' => $kullaniciId,
+            'token_hash'   => hash('sha256', $token),
+            'ip'           => service('request')->getIPAddress() ?: null,
+            'user_agent'   => service('request')->getUserAgent()->getAgentString() ?: null,
+            'son_kullanma' => date('Y-m-d H:i:s', time() + $gun * 86400),
+            'olusturulma'  => $simdi,
+            'updated_at'   => $simdi,
+        ]);
+
+        return $token;
+    }
+
+    /**
+     * Çerezin doğrulama karşılığını arar. Token geçerliyse ve kullanıcı
+     * aktifse kullanıcı kaydını döndürür; aksi halde null.
+     *
+     * @return array|null ['id'=>.., 'ad_soyad'=>.., ...]
+     */
+    public function hatirlaTokeniDogrula(string $token): ?array
+    {
+        $row = $this->db->table('hatirlanan_oturumlar')
+            ->where('token_hash', hash('sha256', $token))
+            ->where('son_kullanma >', date('Y-m-d H:i:s'))
+            ->get()
+            ->getRowArray();
+
+        if ($row === null) {
+            // Süresi dolmuş veya geçersiz çerez: kalıcı kaydı temizle
+            $this->db->table('hatirlanan_oturumlar')
+                ->where('token_hash', hash('sha256', $token))
+                ->delete();
+
+            return null;
+        }
+
+        $user = $this->find((int) $row['kullanici_id']);
+
+        if ($user === null || (int) $user['aktif'] !== 1) {
+            // Kullanıcı silinmiş/pasifse kalıcı kaydı temizle
+            $this->db->table('hatirlanan_oturumlar')->where('id', (int) $row['id'])->delete();
+
+            return null;
+        }
+
+        return $user;
+    }
+
+    /**
+     * Eski tokeni geçersiz kılıp yerine yenisini üretir (rotasyon).
+     * Eski token bulunamazsa null döner.
+     *
+     * @return string|null yeni ham token
+     */
+    public function hatirlaTokeniYenile(string $eskiToken, int $gun): ?string
+    {
+        $row = $this->db->table('hatirlanan_oturumlar')
+            ->where('token_hash', hash('sha256', $eskiToken))
+            ->get()
+            ->getRowArray();
+
+        if ($row === null) {
+            return null;
+        }
+
+        $this->db->table('hatirlanan_oturumlar')->where('id', (int) $row['id'])->delete();
+
+        return $this->hatirlaTokeniOlustur((int) $row['kullanici_id'], $gun);
+    }
+
+    /**
+     * Çerezi ve DB karşılığını siler (çıkışta çağrılır).
+     */
+    public function hatirlaTokeniSil(string $token): void
+    {
+        $this->db->table('hatirlanan_oturumlar')
+            ->where('token_hash', hash('sha256', $token))
+            ->delete();
+    }
+
+    /**
+     * Çerezi doğrulayıp oturumu yeniden kuran yardımcı.
+     *
+     * @param array $oturumVerisi girisYap ile aynı oturum alanları
+     *
+     * @return string|null başarılıysa YENİ token (çereze yazılır), değilse null
+     */
+    public function hatirlaIleGiris(string $token, array $oturumVerisi): ?string
+    {
+        $user = $this->hatirlaTokeniDogrula($token);
+
+        if ($user === null) {
+            return null;
+        }
+
+        session()->set($oturumVerisi);
+        $this->update((int) $user['id'], ['son_giris' => date('Y-m-d H:i:s')]);
+
+        $gun = (int) (new AyarModel())->oku('hatirla_sure_gun', 30);
+
+        return $this->hatirlaTokeniYenile($token, $gun);
+    }
+
 }
