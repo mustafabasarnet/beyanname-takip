@@ -14,13 +14,21 @@ $acik  = static fn ($k, $v = 0) => (int) ($a[$k]['deger'] ?? $v) === 1;
 $bilinen = [
     'cumartesi_tatil', 'pazar_tatil', 'arife_tatil_sayilsin', 'mali_tatil_uygula',
     'otomatik_donem_uret', 'firma_adi', 'uyari_gun_sayisi',
-    'evrak_donem_kaydirma', 'evrak_sayfa_adedi',
+    'evrak_donem_kaydirma', 'evrak_sayfa_adedi', 'evrak_muaf_etiket',
     'damga_otomatik_ekle', 'bildirim_ucret_varsayilan',
     'gg_istisna_donem', 'karsit_uyari_gun',
     'edefter_aylik_ay_sonra', 'edefter_ucaylik_ay_sonra',
     'edefter_gun_gercek', 'edefter_gun_tuzel',
     'edefter_aralik_gercek_ay', 'edefter_aralik_tuzel_ay',
     'edefter_otomatik_uret', 'edefter_uyari_gun',
+    // Ajanda
+    'ajanda_panel_gun', 'ajanda_giris_uyari', 'ajanda_ek_boyut',
+    // Makbuz Takip
+    'makbuz_stopaj_oran', 'makbuz_kdv_oran', 'makbuz_kdv_dahil',
+    // Vergi Yükü (Gelir Vergisi)
+    'gv_sigorta_oran', 'gv_egitim_saglik_oran', 'gv_uyumlu_oran',
+    'gv_uyumlu_ust_sinir', 'gv_hasilat_kaynagi',
+    'gv_ucret_stopaj_oran', 'gv_ucret_kdv_oran', 'gv_varsayilan_kip',
 ];
 
 $digerleri = array_filter(
@@ -102,6 +110,16 @@ $digerleri = array_filter(
           <?php endforeach; ?>
         </select>
         <span class="yardim">Evrak çizelgesinde ilk açılışta yüklenen satır sayısı</span>
+      </div>
+
+      <div class="form-grup">
+        <label>Takip Dışı Hücre Etiketi</label>
+        <input type="text" name="ayar[evrak_muaf_etiket]" class="girdi"
+               value="<?= esc($deger('evrak_muaf_etiket', 'Takip dışı')) ?>">
+        <span class="yardim">
+          Bankası/çeki olmayan mükelleflerin taralı hücrelerinde görünen yazı
+          (Excel/yazdırma çıktılarında da kullanılır)
+        </span>
       </div>
     </div>
   </div>
@@ -286,6 +304,136 @@ $digerleri = array_filter(
         <a href="<?= site_url('edefter') ?>">E-Defter Takip</a> ekranından
         <b>🔄 Dönem Üret</b> çalıştırın; mevcut dönemlerin tarihleri güncellenir
         (işaretlediğiniz adımlar korunur).
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ AJANDA ============ -->
+<div class="kart">
+  <div class="kart-baslik"><h2>🗓️ Ajanda</h2></div>
+  <div class="kart-govde">
+    <div class="form-grid">
+      <div class="form-grup">
+        <label>Panelde Gösterilecek Gün</label>
+        <input type="number" name="ayar[ajanda_panel_gun]" class="girdi" min="1" max="60"
+               value="<?= esc($deger('ajanda_panel_gun', '7')) ?>">
+        <span class="yardim">Kontrol panelindeki "Yaklaşan İşler" kaç günlük listelensin</span>
+      </div>
+
+      <div class="form-grup">
+        <label>Girişte Hatırlatma Penceresi</label>
+        <select name="ayar[ajanda_giris_uyari]" class="girdi">
+          <?php $ajUyari = (int) $deger('ajanda_giris_uyari', '1'); ?>
+          <option value="1" <?= $ajUyari === 1 ? 'selected' : '' ?>>Açılsın</option>
+          <option value="0" <?= $ajUyari === 0 ? 'selected' : '' ?>>Açılmasın</option>
+        </select>
+        <span class="yardim">Gün içinde işi olan kullanıcıya girişte bir kez uyarı penceresi çıkar</span>
+      </div>
+
+      <div class="form-grup">
+        <label>Dosya Eki Üst Sınırı (KB)</label>
+        <input type="number" name="ayar[ajanda_ek_boyut]" class="girdi" min="1" max="102400"
+               value="<?= esc($deger('ajanda_ek_boyut', '5120')) ?>">
+        <span class="yardim">Ajandaya eklenebilecek dosyaların en büyük boyutu</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MAKBUZ TAKİP ============ -->
+<div class="kart">
+  <div class="kart-baslik"><h2>🧾 Makbuz Takip</h2></div>
+  <div class="kart-govde">
+    <div class="form-grid">
+      <div class="form-grup">
+        <label>Stopaj Oranı (%)</label>
+        <input type="number" name="ayar[makbuz_stopaj_oran]" class="girdi" min="0" max="50" step="0.1"
+               value="<?= esc($deger('makbuz_stopaj_oran', '20')) ?>">
+        <span class="yardim">Serbest meslek makbuzunda varsayılan stopaj oranı</span>
+      </div>
+
+      <div class="form-grup">
+        <label>KDV Oranı (%)</label>
+        <input type="number" name="ayar[makbuz_kdv_oran]" class="girdi" min="0" max="50" step="0.1"
+               value="<?= esc($deger('makbuz_kdv_oran', '20')) ?>">
+        <span class="yardim">Serbest meslek makbuzunda varsayılan KDV oranı</span>
+      </div>
+
+      <div class="form-grup tam">
+        <label class="onay"><input type="checkbox" name="ayar[makbuz_kdv_dahil]" value="1" <?= $acik('makbuz_kdv_dahil') ? 'checked' : '' ?>>
+          <span><b>Excel'den gelen brüt tutar KDV dahil mi?</b><br>
+          <span class="yardim">Evetse içe aktarmada brütten KDV düşülür</span></span></label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ VERGİ YÜKÜ (GELİR VERGİSİ) ============ -->
+<div class="kart">
+  <div class="kart-baslik"><h2>🧮 Vergi Yükü (Gelir Vergisi)</h2></div>
+  <div class="kart-govde">
+    <div class="form-grid">
+      <div class="form-grup">
+        <label>Şahıs / Hayat Sigorta Primi Üst Oranı (%)</label>
+        <input type="number" name="ayar[gv_sigorta_oran]" class="girdi" min="0" max="100" step="0.1"
+               value="<?= esc($deger('gv_sigorta_oran', '15')) ?>">
+        <span class="yardim">GVK md.89 — kazancın (Bağ-Kur sonrası) %15'ini aşamaz</span>
+      </div>
+
+      <div class="form-grup">
+        <label>Eğitim ve Sağlık Harcaması Üst Oranı (%)</label>
+        <input type="number" name="ayar[gv_egitim_saglik_oran]" class="girdi" min="0" max="100" step="0.1"
+               value="<?= esc($deger('gv_egitim_saglik_oran', '10')) ?>">
+        <span class="yardim">GVK md.89/2 — kazancın (Bağ-Kur sonrası) %10'unu aşamaz</span>
+      </div>
+
+      <div class="form-grup">
+        <label>Uyumlu Mükellef İndirimi (%)</label>
+        <input type="number" name="ayar[gv_uyumlu_oran]" class="girdi" min="0" max="100" step="0.1"
+               value="<?= esc($deger('gv_uyumlu_oran', '5')) ?>">
+        <span class="yardim">GVK mük.121 — vergiye uyumlu mükellef indirimi</span>
+      </div>
+
+      <div class="form-grup">
+        <label>Uyumlu Mükellef İndirimi Üst Sınırı (₺)</label>
+        <input type="number" name="ayar[gv_uyumlu_ust_sinir]" class="girdi" min="0" step="1000"
+               value="<?= esc($deger('gv_uyumlu_ust_sinir', '12000000')) ?>">
+        <span class="yardim">2026: 12.000.000 ₺ (her yıl yeniden değerleme oranıyla güncellenir)</span>
+      </div>
+
+      <div class="form-grup">
+        <label>Hasılat Kaynağı</label>
+        <select name="ayar[gv_hasilat_kaynagi]" class="girdi">
+          <?php $hasKaynak = (string) $deger('gv_hasilat_kaynagi', 'tum'); ?>
+          <option value="tum" <?= $hasKaynak === 'tum' ? 'selected' : '' ?>>Tüm kesilen makbuzlar</option>
+          <option value="tahsil" <?= $hasKaynak === 'tahsil' ? 'selected' : '' ?>>Yalnız tahsil edilenler</option>
+        </select>
+        <span class="yardim">Serbest meslek kazancı tahsil esaslıdır; varsayılan tümü kapsar</span>
+      </div>
+
+      <div class="form-grup">
+        <label>Ücret Kipinde Stopaj Oranı (%)</label>
+        <input type="number" name="ayar[gv_ucret_stopaj_oran]" class="girdi" min="0" max="50" step="0.1"
+               value="<?= esc($deger('gv_ucret_stopaj_oran', '20')) ?>">
+        <span class="yardim">Yıllık ücret projeksiyonunda ücretten stopaj</span>
+      </div>
+
+      <div class="form-grup">
+        <label>Ücret Kipinde KDV Oranı (%)</label>
+        <input type="number" name="ayar[gv_ucret_kdv_oran]" class="girdi" min="0" max="50" step="0.1"
+               value="<?= esc($deger('gv_ucret_kdv_oran', '20')) ?>">
+        <span class="yardim">Yıllık ücret projeksiyonunda ücretten KDV</span>
+      </div>
+
+      <div class="form-grup">
+        <label>Varsayılan Hesap Kipi</label>
+        <select name="ayar[gv_varsayilan_kip]" class="girdi">
+          <?php $gvKip = (string) $deger('gv_varsayilan_kip', 'ucret'); ?>
+          <option value="ucret" <?= $gvKip === 'ucret' ? 'selected' : '' ?>>📅 Yıllık Ücret Projeksiyonu</option>
+          <option value="makbuz" <?= $gvKip === 'makbuz' ? 'selected' : '' ?>>🧾 Kesilen Makbuzlar</option>
+        </select>
+        <span class="yardim">Vergi Yükü ekranında yeni kayıtlarda seçili gelen kip</span>
       </div>
     </div>
   </div>
