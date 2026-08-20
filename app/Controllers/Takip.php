@@ -579,12 +579,43 @@ class Takip extends BaseController
             'tarih_modu'  => $this->request->getGet('mod') === 'donem' ? 'donem' : 'beyan',
             'musavir_id'  => $this->kapsamBelirle($this->request->getGet('musavir_id')),
             'mukellef_id' => $this->request->getGet('mukellef_id'),
-            'tur_id'      => $this->request->getGet('tur_id'),
+            'tur_id'      => $this->turFiltresi(),
             'durum'       => $this->request->getGet('durum'),
             'defter_tipi' => $this->request->getGet('defter_tipi'),
             'q'           => $this->request->getGet('q'),
             'gecikmis'    => $this->request->getGet('gecikmis'),
         ];
+    }
+
+    /**
+     * Beyanname türü filtresi — tek veya çoklu değer destekler.
+     *
+     *   ?tur_id=1        → [1]          (tek seçim, eski davranış)
+     *   ?tur_id[]=1&...  → [1,4]        (çoklu seçim)
+     *
+     * @return int[]|null null = filtre yok (tümü)
+     */
+    protected function turFiltresi()
+    {
+        $ham = $this->request->getGet('tur_id');
+
+        if ($ham === null || $ham === '' || $ham === []) {
+            return null;
+        }
+
+        $dizi = is_array($ham) ? $ham : [$ham];
+        $dizi = array_values(array_unique(array_filter(
+            array_map('intval', $dizi),
+            static fn ($v) => $v > 0
+        )));
+
+        if ($dizi === []) {
+            return null;
+        }
+
+        // Tek seçimde skaler (tur_id=1) — eski davranış, linklerde kısa URL;
+        // birden çok seçimde dizi (tur_id[]=1&tur_id[]=4).
+        return count($dizi) === 1 ? $dizi[0] : $dizi;
     }
 
     /**

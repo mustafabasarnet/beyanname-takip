@@ -484,3 +484,10 @@ table.tablo .orta{text-align:center}
   .rozet,.hucre,.evrak-hucre,.tur-rozet{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   @page{margin:1cm;size:landscape}
 }
+
+/* ---- Beyanname Türü çoklu seçim (takip çizelgesi filtresi) ---- */
+.filtre-bar .tur-coklu-grup{flex:1 1 100%;min-width:100%}
+.tur-coklu{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;background:var(--gri-50,#f8fafc);border:1px solid var(--gri-200,#e2e8f0);border-radius:8px;padding:6px 10px}
+.tur-coklu .onay{font-size:12px;margin:0;gap:6px}
+.tur-coklu .onay input[type=checkbox]{width:14px;height:14px}
+.coklu-bilgi{font-weight:400;font-size:11px;color:var(--ana,#2563eb);text-transform:none;letter-spacing:0}

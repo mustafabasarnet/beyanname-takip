@@ -31,16 +31,32 @@
     </select>
   </div>
 
-  <div class="form-grup">
-    <label>Beyanname Türü</label>
-    <select name="tur_id" data-oto-filtre>
-      <option value="">Tümü</option>
+  <div class="form-grup tur-coklu-grup">
+    <label>Beyanname Türü
+      <?php if (is_array($filtre['tur_id'] ?? null) && count($filtre['tur_id']) > 1): ?>
+        <span class="coklu-bilgi">(<?= count($filtre['tur_id']) ?> seçili)</span>
+      <?php endif; ?>
+    </label>
+    <div class="tur-coklu" id="tur-coklu">
+      <?php
+      $seciliTurler = $filtre['tur_id'] ?? null;
+      $seciliTurler = is_array($seciliTurler)
+          ? array_map('intval', $seciliTurler)
+          : ($seciliTurler !== null && $seciliTurler !== '' ? [(int) $seciliTurler] : []);
+      ?>
+      <label class="onay" title="Filtreyi kaldır (tüm türler)">
+        <input type="checkbox" name="tur_tumu" value="1" data-tur-tumu
+               <?= $seciliTurler === [] ? 'checked' : '' ?>>
+        <span>Tümü</span>
+      </label>
       <?php foreach ($turler as $t): ?>
-        <option value="<?= $t['id'] ?>" <?= (int) $filtre['tur_id'] === (int) $t['id'] ? 'selected' : '' ?>>
-          <?= esc($t['kisa_ad']) ?>
-        </option>
+        <label class="onay">
+          <input type="checkbox" name="tur_id[]" value="<?= (int) $t['id'] ?>" data-tur-kutu
+                 <?= in_array((int) $t['id'], $seciliTurler, true) ? 'checked' : '' ?>>
+          <span><?= esc($t['kisa_ad']) ?></span>
+        </label>
       <?php endforeach; ?>
-    </select>
+    </div>
   </div>
 
   <div class="form-grup">
@@ -169,6 +185,12 @@ $ozetTaban = array_filter(
 );
 unset($ozetTaban['tarih_modu'], $ozetTaban['durum'], $ozetTaban['gecikmis']);
 $ozetTaban['mod'] = $mod;
+
+// Çoklu beyanname türü seçimi dizi olduğu için array_filter onu atlar;
+// kart bağlantılarında korunması için açıkça geri eklenir.
+if (! empty($filtre['tur_id']) && is_array($filtre['tur_id'])) {
+    $ozetTaban['tur_id'] = $filtre['tur_id'];
+}
 
 // "Tüm Aylar" seçiliyken ay=null olur ve array_filter anahtarı siler.
 // Adreste ay parametresi hiç yoksa ayBelirle() İÇİNDE BULUNULAN AYA döner;
@@ -1441,5 +1463,35 @@ function topluDurum(durum) {
     })
     .catch(function (e) { BT.bildir(e.message, 'hata'); });
 }
+</script>
+
+<script>
+// Beyanname türü ÇOKLU seçim: "Tümü" ↔ tür kutuları çelişkisini yönetir,
+// her değişimde formu otomatik gönderir (diğer filtrelerle aynı davranış).
+(function () {
+  var grup = document.getElementById('tur-coklu');
+  if (!grup) return;
+
+  var tumu   = grup.querySelector('[data-tur-tumu]');
+  var kutular = grup.querySelectorAll('[data-tur-kutu]');
+
+  function gonder() { if (grup.form) grup.form.submit(); }
+
+  if (tumu) {
+    tumu.addEventListener('change', function () {
+      if (tumu.checked) {
+        kutular.forEach(function (k) { k.checked = false; });
+      }
+      gonder();
+    });
+  }
+
+  kutular.forEach(function (k) {
+    k.addEventListener('change', function () {
+      if (k.checked && tumu) tumu.checked = false;
+      gonder();
+    });
+  });
+})();
 </script>
 <?= $this->endSection() ?>

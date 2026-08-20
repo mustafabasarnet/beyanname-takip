@@ -475,8 +475,14 @@ class BeyannameTakipModel extends Model
             $b->where('beyanname_takip.mukellef_id', (int) $f['mukellef_id']);
         }
 
+        // Beyanname türü: tek değer (tur_id=1) veya çoklu (tur_id[]=1&tur_id[]=4)
         if (! empty($f['tur_id'])) {
-            $b->where('beyanname_takip.beyanname_turu_id', (int) $f['tur_id']);
+            $turler = is_array($f['tur_id']) ? $f['tur_id'] : [$f['tur_id']];
+            $turler = array_values(array_filter(array_map('intval', $turler), static fn ($v) => $v > 0));
+
+            if ($turler !== []) {
+                $b->whereIn('beyanname_takip.beyanname_turu_id', $turler);
+            }
         }
 
         if (! empty($f['durum'])) {
