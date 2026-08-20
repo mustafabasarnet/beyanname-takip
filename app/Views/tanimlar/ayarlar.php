@@ -21,20 +21,46 @@ $bilinen = [
     'edefter_gun_gercek', 'edefter_gun_tuzel',
     'edefter_aralik_gercek_ay', 'edefter_aralik_tuzel_ay',
     'edefter_otomatik_uret', 'edefter_uyari_gun',
-    // Ajanda
-    'ajanda_panel_gun', 'ajanda_giris_uyari', 'ajanda_ek_boyut',
-    // Makbuz Takip
-    'makbuz_stopaj_oran', 'makbuz_kdv_oran', 'makbuz_kdv_dahil',
-    // Vergi Yükü (Gelir Vergisi)
-    'gv_sigorta_oran', 'gv_egitim_saglik_oran', 'gv_uyumlu_oran',
-    'gv_uyumlu_ust_sinir', 'gv_hasilat_kaynagi',
-    'gv_ucret_stopaj_oran', 'gv_ucret_kdv_oran', 'gv_varsayilan_kip',
 ];
 
 $digerleri = array_filter(
     $ayarlar,
     static fn ($x) => ! in_array($x['anahtar'], $bilinen, true)
 );
+
+/*
+ * "Diğer Ayarlar" bölümünde görünen anahtarların Türkçe etiketleri.
+ * Bilinmeyen bir anahtar eklendiğinde anahtar adı okunaklı biçime çevrilir.
+ */
+$digerEtiket = [
+    // Ajanda
+    'ajanda_panel_gun'   => '🗓️ Ajanda — Panelde Gösterilecek Gün',
+    'ajanda_giris_uyari' => '🗓️ Ajanda — Girişte Hatırlatma Penceresi',
+    'ajanda_ek_boyut'    => '🗓️ Ajanda — Dosya Eki Üst Sınırı (KB)',
+    // Makbuz Takip
+    'makbuz_stopaj_oran' => '🧾 Makbuz — Stopaj Oranı (%)',
+    'makbuz_kdv_oran'    => '🧾 Makbuz — KDV Oranı (%)',
+    'makbuz_kdv_dahil'   => '🧾 Makbuz — Excel Brüt Tutarı KDV Dahil mi',
+    // Vergi Yükü (Gelir Vergisi)
+    'gv_sigorta_oran'     => '🧮 Vergi Yükü — Şahıs/Hayat Sigorta Primi Üst Oranı (%)',
+    'gv_egitim_saglik_oran' => '🧮 Vergi Yükü — Eğitim ve Sağlık Harcaması Üst Oranı (%)',
+    'gv_uyumlu_oran'      => '🧮 Vergi Yükü — Uyumlu Mükellef İndirimi (%)',
+    'gv_uyumlu_ust_sinir' => '🧮 Vergi Yükü — Uyumlu Mükellef İndirimi Üst Sınırı (₺)',
+    'gv_hasilat_kaynagi'  => '🧮 Vergi Yükü — Hasılat Kaynağı',
+    'gv_ucret_stopaj_oran' => '🧮 Vergi Yükü — Ücret Kipinde Stopaj Oranı (%)',
+    'gv_ucret_kdv_oran'   => '🧮 Vergi Yükü — Ücret Kipinde KDV Oranı (%)',
+    'gv_varsayilan_kip'   => '🧮 Vergi Yükü — Varsayılan Hesap Kipi',
+];
+
+/* Açılır liste (select) olarak gösterilecek ayarlar: anahtar => [deger => etiket] */
+$digerSelect = [
+    'ajanda_giris_uyari' => ['1' => 'Açılsın', '0' => 'Açılmasın'],
+    'gv_hasilat_kaynagi' => ['tum' => 'Tüm kesilen makbuzlar', 'tahsil' => 'Yalnız tahsil edilenler'],
+    'gv_varsayilan_kip'  => ['ucret' => '📅 Yıllık Ücret Projeksiyonu', 'makbuz' => '🧾 Kesilen Makbuzlar'],
+];
+
+/* Onay kutusu (checkbox) olarak gösterilecek 1/0 ayarlar */
+$digerCheckbox = ['makbuz_kdv_dahil'];
 ?>
 
 <form method="post" action="<?= site_url('tanimlar/ayarlar') ?>">
@@ -309,152 +335,39 @@ $digerleri = array_filter(
   </div>
 </div>
 
-<!-- ============ AJANDA ============ -->
-<div class="kart">
-  <div class="kart-baslik"><h2>🗓️ Ajanda</h2></div>
-  <div class="kart-govde">
-    <div class="form-grid">
-      <div class="form-grup">
-        <label>Panelde Gösterilecek Gün</label>
-        <input type="number" name="ayar[ajanda_panel_gun]" class="girdi" min="1" max="60"
-               value="<?= esc($deger('ajanda_panel_gun', '7')) ?>">
-        <span class="yardim">Kontrol panelindeki "Yaklaşan İşler" kaç günlük listelensin</span>
-      </div>
-
-      <div class="form-grup">
-        <label>Girişte Hatırlatma Penceresi</label>
-        <select name="ayar[ajanda_giris_uyari]" class="girdi">
-          <?php $ajUyari = (int) $deger('ajanda_giris_uyari', '1'); ?>
-          <option value="1" <?= $ajUyari === 1 ? 'selected' : '' ?>>Açılsın</option>
-          <option value="0" <?= $ajUyari === 0 ? 'selected' : '' ?>>Açılmasın</option>
-        </select>
-        <span class="yardim">Gün içinde işi olan kullanıcıya girişte bir kez uyarı penceresi çıkar</span>
-      </div>
-
-      <div class="form-grup">
-        <label>Dosya Eki Üst Sınırı (KB)</label>
-        <input type="number" name="ayar[ajanda_ek_boyut]" class="girdi" min="1" max="102400"
-               value="<?= esc($deger('ajanda_ek_boyut', '5120')) ?>">
-        <span class="yardim">Ajandaya eklenebilecek dosyaların en büyük boyutu</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ============ MAKBUZ TAKİP ============ -->
-<div class="kart">
-  <div class="kart-baslik"><h2>🧾 Makbuz Takip</h2></div>
-  <div class="kart-govde">
-    <div class="form-grid">
-      <div class="form-grup">
-        <label>Stopaj Oranı (%)</label>
-        <input type="number" name="ayar[makbuz_stopaj_oran]" class="girdi" min="0" max="50" step="0.1"
-               value="<?= esc($deger('makbuz_stopaj_oran', '20')) ?>">
-        <span class="yardim">Serbest meslek makbuzunda varsayılan stopaj oranı</span>
-      </div>
-
-      <div class="form-grup">
-        <label>KDV Oranı (%)</label>
-        <input type="number" name="ayar[makbuz_kdv_oran]" class="girdi" min="0" max="50" step="0.1"
-               value="<?= esc($deger('makbuz_kdv_oran', '20')) ?>">
-        <span class="yardim">Serbest meslek makbuzunda varsayılan KDV oranı</span>
-      </div>
-
-      <div class="form-grup tam">
-        <label class="onay"><input type="checkbox" name="ayar[makbuz_kdv_dahil]" value="1" <?= $acik('makbuz_kdv_dahil') ? 'checked' : '' ?>>
-          <span><b>Excel'den gelen brüt tutar KDV dahil mi?</b><br>
-          <span class="yardim">Evetse içe aktarmada brütten KDV düşülür</span></span></label>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ============ VERGİ YÜKÜ (GELİR VERGİSİ) ============ -->
-<div class="kart">
-  <div class="kart-baslik"><h2>🧮 Vergi Yükü (Gelir Vergisi)</h2></div>
-  <div class="kart-govde">
-    <div class="form-grid">
-      <div class="form-grup">
-        <label>Şahıs / Hayat Sigorta Primi Üst Oranı (%)</label>
-        <input type="number" name="ayar[gv_sigorta_oran]" class="girdi" min="0" max="100" step="0.1"
-               value="<?= esc($deger('gv_sigorta_oran', '15')) ?>">
-        <span class="yardim">GVK md.89 — kazancın (Bağ-Kur sonrası) %15'ini aşamaz</span>
-      </div>
-
-      <div class="form-grup">
-        <label>Eğitim ve Sağlık Harcaması Üst Oranı (%)</label>
-        <input type="number" name="ayar[gv_egitim_saglik_oran]" class="girdi" min="0" max="100" step="0.1"
-               value="<?= esc($deger('gv_egitim_saglik_oran', '10')) ?>">
-        <span class="yardim">GVK md.89/2 — kazancın (Bağ-Kur sonrası) %10'unu aşamaz</span>
-      </div>
-
-      <div class="form-grup">
-        <label>Uyumlu Mükellef İndirimi (%)</label>
-        <input type="number" name="ayar[gv_uyumlu_oran]" class="girdi" min="0" max="100" step="0.1"
-               value="<?= esc($deger('gv_uyumlu_oran', '5')) ?>">
-        <span class="yardim">GVK mük.121 — vergiye uyumlu mükellef indirimi</span>
-      </div>
-
-      <div class="form-grup">
-        <label>Uyumlu Mükellef İndirimi Üst Sınırı (₺)</label>
-        <input type="number" name="ayar[gv_uyumlu_ust_sinir]" class="girdi" min="0" step="1000"
-               value="<?= esc($deger('gv_uyumlu_ust_sinir', '12000000')) ?>">
-        <span class="yardim">2026: 12.000.000 ₺ (her yıl yeniden değerleme oranıyla güncellenir)</span>
-      </div>
-
-      <div class="form-grup">
-        <label>Hasılat Kaynağı</label>
-        <select name="ayar[gv_hasilat_kaynagi]" class="girdi">
-          <?php $hasKaynak = (string) $deger('gv_hasilat_kaynagi', 'tum'); ?>
-          <option value="tum" <?= $hasKaynak === 'tum' ? 'selected' : '' ?>>Tüm kesilen makbuzlar</option>
-          <option value="tahsil" <?= $hasKaynak === 'tahsil' ? 'selected' : '' ?>>Yalnız tahsil edilenler</option>
-        </select>
-        <span class="yardim">Serbest meslek kazancı tahsil esaslıdır; varsayılan tümü kapsar</span>
-      </div>
-
-      <div class="form-grup">
-        <label>Ücret Kipinde Stopaj Oranı (%)</label>
-        <input type="number" name="ayar[gv_ucret_stopaj_oran]" class="girdi" min="0" max="50" step="0.1"
-               value="<?= esc($deger('gv_ucret_stopaj_oran', '20')) ?>">
-        <span class="yardim">Yıllık ücret projeksiyonunda ücretten stopaj</span>
-      </div>
-
-      <div class="form-grup">
-        <label>Ücret Kipinde KDV Oranı (%)</label>
-        <input type="number" name="ayar[gv_ucret_kdv_oran]" class="girdi" min="0" max="50" step="0.1"
-               value="<?= esc($deger('gv_ucret_kdv_oran', '20')) ?>">
-        <span class="yardim">Yıllık ücret projeksiyonunda ücretten KDV</span>
-      </div>
-
-      <div class="form-grup">
-        <label>Varsayılan Hesap Kipi</label>
-        <select name="ayar[gv_varsayilan_kip]" class="girdi">
-          <?php $gvKip = (string) $deger('gv_varsayilan_kip', 'ucret'); ?>
-          <option value="ucret" <?= $gvKip === 'ucret' ? 'selected' : '' ?>>📅 Yıllık Ücret Projeksiyonu</option>
-          <option value="makbuz" <?= $gvKip === 'makbuz' ? 'selected' : '' ?>>🧾 Kesilen Makbuzlar</option>
-        </select>
-        <span class="yardim">Vergi Yükü ekranında yeni kayıtlarda seçili gelen kip</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ============ DİĞER (otomatik) ============ -->
+<!-- ============ DİĞER (etiketli) ============ -->
 <?php if ($digerleri !== []): ?>
 <div class="kart">
-  <div class="kart-baslik">
-    <h2>🔧 Diğer Ayarlar</h2>
-    <span class="kucuk-yazi" style="margin-left:auto">
-      Bu ayarların özel bir düzenleme alanı yok — değeri doğrudan yazabilirsiniz
-    </span>
-  </div>
+  <div class="kart-baslik"><h2>🔧 Diğer Ayarlar</h2></div>
   <div class="kart-govde">
     <div class="form-grid">
       <?php foreach ($digerleri as $x): ?>
+        <?php
+        $anahtar = $x['anahtar'];
+        $etiket  = $digerEtiket[$anahtar] ?? ucwords(str_replace('_', ' ', $anahtar));
+        ?>
         <div class="form-grup">
-          <label><code><?= esc($x['anahtar']) ?></code></label>
-          <input type="text" name="ayar[<?= esc($x['anahtar'], 'attr') ?>]" class="girdi"
-                 value="<?= esc($x['deger']) ?>">
+          <label title="<?= esc($anahtar) ?>"><?= esc($etiket) ?></label>
+
+          <?php if (in_array($anahtar, $digerCheckbox, true)): ?>
+            <label class="onay">
+              <input type="checkbox" name="ayar[<?= esc($anahtar, 'attr') ?>]" value="1"
+                     <?= (int) $x['deger'] === 1 ? 'checked' : '' ?>>
+              <span>Evet</span>
+            </label>
+          <?php elseif (isset($digerSelect[$anahtar])): ?>
+            <select name="ayar[<?= esc($anahtar, 'attr') ?>]" class="girdi">
+              <?php foreach ($digerSelect[$anahtar] as $sv => $sad): ?>
+                <option value="<?= esc($sv, 'attr') ?>" <?= (string) $x['deger'] === (string) $sv ? 'selected' : '' ?>>
+                  <?= esc($sad) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          <?php else: ?>
+            <input type="text" name="ayar[<?= esc($anahtar, 'attr') ?>]" class="girdi"
+                   value="<?= esc($x['deger']) ?>">
+          <?php endif; ?>
+
           <?php if (! empty($x['aciklama'])): ?>
             <span class="yardim"><?= esc($x['aciklama']) ?></span>
           <?php endif; ?>
