@@ -31,31 +31,53 @@
     </select>
   </div>
 
+  <?php
+  $seciliTurler = $filtre['tur_id'] ?? null;
+  $seciliTurler = is_array($seciliTurler)
+      ? array_map('intval', $seciliTurler)
+      : ($seciliTurler !== null && $seciliTurler !== '' ? [(int) $seciliTurler] : []);
+
+  // Combobox üzerinde görünecek metin
+  if ($seciliTurler === []) {
+      $turOzet = 'Tümü';
+  } else {
+      $turAdlari = [];
+      foreach ($turler as $t) {
+          if (in_array((int) $t['id'], $seciliTurler, true)) {
+              $turAdlari[] = $t['kisa_ad'];
+          }
+      }
+      $turOzet = count($turAdlari) > 2
+          ? count($seciliTurler) . ' tür seçili'
+          : implode(' + ', $turAdlari);
+  }
+  ?>
   <div class="form-grup tur-coklu-grup">
-    <label>Beyanname Türü
-      <?php if (is_array($filtre['tur_id'] ?? null) && count($filtre['tur_id']) > 1): ?>
-        <span class="coklu-bilgi">(<?= count($filtre['tur_id']) ?> seçili)</span>
-      <?php endif; ?>
-    </label>
-    <div class="tur-coklu" id="tur-coklu">
-      <?php
-      $seciliTurler = $filtre['tur_id'] ?? null;
-      $seciliTurler = is_array($seciliTurler)
-          ? array_map('intval', $seciliTurler)
-          : ($seciliTurler !== null && $seciliTurler !== '' ? [(int) $seciliTurler] : []);
-      ?>
-      <label class="onay" title="Filtreyi kaldır (tüm türler)">
-        <input type="checkbox" name="tur_tumu" value="1" data-tur-tumu
-               <?= $seciliTurler === [] ? 'checked' : '' ?>>
-        <span>Tümü</span>
-      </label>
-      <?php foreach ($turler as $t): ?>
-        <label class="onay">
-          <input type="checkbox" name="tur_id[]" value="<?= (int) $t['id'] ?>" data-tur-kutu
-                 <?= in_array((int) $t['id'], $seciliTurler, true) ? 'checked' : '' ?>>
-          <span><?= esc($t['kisa_ad']) ?></span>
-        </label>
-      <?php endforeach; ?>
+    <label>Beyanname Türü</label>
+    <div class="coklu-sec" id="tur-coklu" data-coklu-sec>
+      <button type="button" class="coklu-kutu" data-coklu-ac>
+        <span class="coklu-ozet"><?= esc($turOzet) ?></span>
+        <span class="coklu-ok">▾</span>
+      </button>
+      <div class="coklu-panel" hidden>
+        <div class="coklu-ara">
+          <input type="text" class="girdi" placeholder="Tür ara…" data-coklu-ara>
+        </div>
+        <div class="coklu-liste">
+          <label class="onay" title="Filtreyi kaldır (tüm türler)">
+            <input type="checkbox" name="tur_tumu" value="1" data-tur-tumu
+                   <?= $seciliTurler === [] ? 'checked' : '' ?>>
+            <span>Tümü</span>
+          </label>
+          <?php foreach ($turler as $t): ?>
+            <label class="onay" data-coklu-satir>
+              <input type="checkbox" name="tur_id[]" value="<?= (int) $t['id'] ?>" data-tur-kutu
+                     <?= in_array((int) $t['id'], $seciliTurler, true) ? 'checked' : '' ?>>
+              <span><?= esc($t['kisa_ad']) ?></span>
+            </label>
+          <?php endforeach; ?>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1466,17 +1488,52 @@ function topluDurum(durum) {
 </script>
 
 <script>
-// Beyanname türü ÇOKLU seçim: "Tümü" ↔ tür kutuları çelişkisini yönetir,
-// her değişimde formu otomatik gönderir (diğer filtrelerle aynı davranış).
+// Beyanname türü ÇOKLU seçim combobox'ı:
+//  - kutucuğa tıklayınca panel açılır/kapanır
+//  - "Tümü" ↔ tür kutuları çelişkisini yönetir
+//  - seçim değişince otomatik gönderir; dışarı tıklayınca kapanır
 (function () {
-  var grup = document.getElementById('tur-coklu');
-  if (!grup) return;
+  var kutu = document.getElementById('tur-coklu');
+  if (!kutu) return;
 
-  var tumu   = grup.querySelector('[data-tur-tumu]');
-  var kutular = grup.querySelectorAll('[data-tur-kutu]');
+  var acBtn   = kutu.querySelector('[data-coklu-ac]');
+  var panel   = kutu.querySelector('.coklu-panel');
+  var ara     = kutu.querySelector('[data-coklu-ara]');
+  var tumu    = kutu.querySelector('[data-tur-tumu]');
+  var kutular = kutu.querySelectorAll('[data-tur-kutu]');
+  var satirlar = kutu.querySelectorAll('[data-coklu-satir]');
 
-  function gonder() { if (grup.form) grup.form.submit(); }
+  function gonder() { if (kutu.form) kutu.form.submit(); }
 
+  // Aç / kapat
+  if (acBtn) {
+    acBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var acik = panel.getAttribute('hidden') === null;
+      panel.hidden = acik;
+      if (!acik && ara) { ara.value = ''; ara.focus(); }
+    });
+  }
+
+  // Dışarı tıklayınca kapat
+  document.addEventListener('click', function (e) {
+    if (!kutu.contains(e.target)) panel.hidden = true;
+  });
+
+  // Panel içi tıklamalar paneli kapatmasın
+  panel.addEventListener('click', function (e) { e.stopPropagation(); });
+
+  // Arama: satırları filtrele
+  if (ara) {
+    ara.addEventListener('input', function () {
+      var q = ara.value.toLocaleLowerCase('tr');
+      satirlar.forEach(function (s) {
+        s.style.display = s.textContent.toLocaleLowerCase('tr').indexOf(q) > -1 ? '' : 'none';
+      });
+    });
+  }
+
+  // "Tümü" işaretlenince diğerlerini temizle
   if (tumu) {
     tumu.addEventListener('change', function () {
       if (tumu.checked) {
@@ -1486,6 +1543,7 @@ function topluDurum(durum) {
     });
   }
 
+  // Tür seçilince "Tümü" kutusunu kaldır
   kutular.forEach(function (k) {
     k.addEventListener('change', function () {
       if (k.checked && tumu) tumu.checked = false;
