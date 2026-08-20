@@ -36,13 +36,6 @@
       <input type="password" id="sifre" name="sifre" class="girdi" required placeholder="••••••••">
     </div>
 
-    <label class="onay" style="margin:10px 0 2px">
-      <input type="checkbox" name="beni_hatirla" value="1" <?= old('beni_hatirla') ? 'checked' : '' ?>>
-      <span>Beni hatırla
-        <small style="color:var(--gri-500,#64748b);font-weight:400">(bu tarayıcıda oturumum açık kalsın)</small>
-      </span>
-    </label>
-
     <button type="submit" class="btn blok" style="margin-top:6px">Giriş Yap</button>
   </form>
 

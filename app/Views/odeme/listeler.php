@@ -18,6 +18,8 @@
   <div class="kart-baslik">
     <h2>📑 Ödeme Listelerim (<?= count($listeler) ?>)</h2>
     <div class="sag">
+      <?php /* Bu sayfa menüden kaldırıldı; geri dönüş bağlantısı şart. */ ?>
+      <a href="<?= site_url('odeme') ?>" class="btn ikincil kucuk">← Ödeme Listesi</a>
       <button class="btn kucuk" onclick="listeAc()">+ Yeni Liste</button>
     </div>
   </div>

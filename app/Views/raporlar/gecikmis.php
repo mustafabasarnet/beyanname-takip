@@ -12,13 +12,19 @@
       <div class="tablo-sar"><table class="tablo" id="gec-tablo">
         <thead><tr><th>Mükellef</th><th>Beyanname</th><th>Dönem</th><th>Son Tarih</th><th>Gecikme</th><th>Durum</th><th>Müşavir</th></tr></thead>
         <tbody>
-        <?php foreach ($kayitlar as $k): $kl = kalanGunMetni($k['son_tarih']); ?>
-          <tr class="gecikmis-satir">
+        <?php foreach ($kayitlar as $k): $kl = kalanGunMetni($k['son_tarih'], $k['durum'] ?? null); ?>
+          <tr class="<?= $kl['bitti'] ? '' : 'gecikmis-satir' ?>">
             <td><a href="<?= site_url('mukellefler/detay/' . $k['mukellef_id']) ?>"><?= esc($k['mukellef_unvan']) ?></a></td>
             <td><span class="tur-rozet" style="background:<?= esc($k['tur_renk']) ?>"><?= esc($k['tur_kisa']) ?></span></td>
             <td class="kucuk-yazi"><?= esc($k['donem_adi']) ?></td>
             <td><?= trTarih($k['son_tarih']) ?></td>
-            <td><span class="rozet kirmizi"><?= abs($kl['gun']) ?> gün</span></td>
+            <td>
+              <?php if ($kl['bitti']): ?>
+                <span class="rozet <?= $kl['sinif'] ?>"><?= esc($kl['metin']) ?></span>
+              <?php else: ?>
+                <span class="rozet kirmizi"><?= abs($kl['gun']) ?> gün</span>
+              <?php endif; ?>
+            </td>
             <td><?= durumRozeti($k['durum']) ?></td>
             <td class="kucuk-yazi"><?= esc($k['musavir_adi'] ?? '-') ?></td>
           </tr>

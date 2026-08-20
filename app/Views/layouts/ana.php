@@ -56,18 +56,25 @@ $aktifUrl = trim(uri_string(), '/');
     <a href="<?= site_url('edefter') ?>" class="<?= aktifMenu('edefter') ?>">
       <span class="ikon">📗</span> E-Defter Takip
     </a>
+    <?php
+    /*
+     * MENÜ SADELEŞTİRMESİ
+     *
+     * "Ödeme Listelerim" ve "Vergi Yükü" menüden kaldırıldı; ikisi de
+     * kendi ana ekranlarının içinden açılıyor:
+     *   Ödeme Listelerim → Ödeme Listesi ekranındaki "📑 Listelerim"
+     *   Vergi Yükü       → Makbuz Takip ekranındaki "🧮 Vergi Yükü"
+     *
+     * Menü bağlantısı yok ama SAYFA AKTİFKEN üst öge vurgulanır ki
+     * kullanıcı nerede olduğunu kaybetmesin.
+     */
+    ?>
     <?php if (in_array($rol, ['admin', 'musavir'], true)): ?>
-      <a href="<?= site_url('odeme') ?>" class="<?= $aktifUrl === 'odeme' ? 'aktif' : '' ?>">
+      <a href="<?= site_url('odeme') ?>" class="<?= aktifMenu('odeme') ?>">
         <span class="ikon">💰</span> Ödeme Listesi
       </a>
-      <a href="<?= site_url('odeme/listeler') ?>" class="<?= aktifMenu('odeme/liste') ?>">
-        <span class="ikon">📑</span> Ödeme Listelerim
-      </a>
-      <a href="<?= site_url('makbuz') ?>" class="<?= aktifMenu('makbuz') ?>">
+      <a href="<?= site_url('makbuz') ?>" class="<?= aktifMenu('makbuz') ?: aktifMenu('gelir-vergisi') ?>">
         <span class="ikon">🧾</span> Makbuz Takip
-      </a>
-      <a href="<?= site_url('gelir-vergisi') ?>" class="<?= aktifMenu('gelir-vergisi') ?>">
-        <span class="ikon">🧮</span> Vergi Yükü
       </a>
     <?php endif; ?>
     <a href="<?= site_url('karsit') ?>" class="<?= aktifMenu('karsit') ?>">

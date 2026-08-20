@@ -458,13 +458,13 @@ $edOzet = $edefterOzet ?? null;
           <table class="tablo">
             <thead><tr><th>Mükellef</th><th>Beyanname</th><th>Dönem</th><th>Son Tarih</th><th>Durum</th></tr></thead>
             <tbody>
-            <?php foreach ($gecikmisler as $g): $k = kalanGunMetni($g['son_tarih']); ?>
-              <tr class="gecikmis-satir">
+            <?php foreach ($gecikmisler as $g): $k = kalanGunMetni($g['son_tarih'], $g['durum'] ?? null); ?>
+              <tr class="<?= $k['bitti'] ? '' : 'gecikmis-satir' ?>">
                 <td><a href="<?= site_url('mukellefler/detay/' . $g['mukellef_id']) ?>"><?= esc(kisalt($g['mukellef_unvan'], 26)) ?></a></td>
                 <td><span class="tur-rozet" style="background:<?= esc($g['tur_renk']) ?>"><?= esc($g['tur_kisa']) ?></span></td>
                 <td class="kucuk-yazi"><?= esc($g['donem_adi']) ?></td>
                 <td><?= trTarih($g['son_tarih']) ?></td>
-                <td><span class="rozet kirmizi"><?= esc($k['metin']) ?></span></td>
+                <td><span class="rozet <?= $k['sinif'] ?>"><?= esc($k['metin']) ?></span></td>
               </tr>
             <?php endforeach; ?>
             </tbody>
@@ -488,8 +488,8 @@ $edOzet = $edefterOzet ?? null;
           <table class="tablo">
             <thead><tr><th>Mükellef</th><th>Beyanname</th><th>Dönem</th><th>Son Tarih</th><th>Kalan</th></tr></thead>
             <tbody>
-            <?php foreach ($yaklasanlar as $y): $k = kalanGunMetni($y['son_tarih']); ?>
-              <tr class="<?= $k['gun'] === 0 ? 'bugun-satir' : '' ?>">
+            <?php foreach ($yaklasanlar as $y): $k = kalanGunMetni($y['son_tarih'], $y['durum'] ?? null); ?>
+              <tr class="<?= ! $k['bitti'] && $k['gun'] === 0 ? 'bugun-satir' : '' ?>">
                 <td><a href="<?= site_url('mukellefler/detay/' . $y['mukellef_id']) ?>"><?= esc(kisalt($y['mukellef_unvan'], 26)) ?></a></td>
                 <td><span class="tur-rozet" style="background:<?= esc($y['tur_renk']) ?>"><?= esc($y['tur_kisa']) ?></span></td>
                 <td class="kucuk-yazi"><?= esc($y['donem_adi']) ?></td>

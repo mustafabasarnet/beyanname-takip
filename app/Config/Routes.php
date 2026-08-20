@@ -190,7 +190,6 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
         $routes->get('excel', 'Odeme::excel');
         $routes->get('yazdir', 'Odeme::yazdir');
         $routes->get('bildirim/(:num)', 'Odeme::bildirim/$1');
-        $routes->post('bildirim-mail/(:num)', 'Odeme::bildirimMail/$1');   // e-posta gönderimi
 
         // Kayıtlı ödeme listeleri (kullanıcıya özel)
         $routes->get('listeler', 'Odeme::listeler');

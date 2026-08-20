@@ -104,7 +104,10 @@
       }
     ?>
     <a href="<?= site_url('makbuz/yazdir?' . $yazdirQs) ?>" target="_blank" class="btn ikincil kucuk">🖨️ Yazdır</a>
-    <a href="<?= site_url('gelir-vergisi?yil=' . (int) $filtre['yil']) ?>" class="btn kucuk">🧮 Gelir Vergisi</a>
+    <?php /* Menüden kaldırıldı; erişim buradan sağlanır. Sayfanın adı
+             "Vergi Yükü" olduğu için buton da aynı adı taşır. */ ?>
+    <a href="<?= site_url('gelir-vergisi?yil=' . (int) $filtre['yil']) ?>" class="btn kucuk"
+       title="Yıllık gelir vergisi + KDV yükü hesabı">🧮 Vergi Yükü</a>
     <a href="<?= site_url('makbuz/excel?' . $qs) ?>" class="btn yesil kucuk">📊 Excel</a>
   </div>
 </form>

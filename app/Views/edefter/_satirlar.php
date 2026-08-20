@@ -13,8 +13,10 @@ $durumlar = $durumlar ?? [];
 $yetki    = $yetki    ?? false;
 ?>
 <?php foreach ($kayitlar as $k):
-    $kalan   = kalanGunMetni($k['son_tarih']);
-    $bitti   = in_array($k['durum'], ['ONAYLANDI', 'YUKLENMEYECEK'], true);
+    // Durum gönderilir: yüklenen/yüklenmeyecek beratlarda geri sayım yerine
+    // sonuç yazılır ("✓ Verildi" / "Takip dışı").
+    $kalan   = kalanGunMetni($k['son_tarih'], $k['durum']);
+    $bitti   = $kalan['bitti'];
     $gecikti = ! $bitti && $kalan['gun'] < 0;
     $pasif   = $k['durum'] === 'YUKLENMEYECEK';
 ?>

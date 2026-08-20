@@ -569,6 +569,10 @@ document.querySelectorAll('.durum-sec').forEach(function (sel) {
         if (yeni === 'ONAYLANDI' || yeni === 'VERILMEYECEK') {
           tr.classList.remove('gecikmis-satir');
         }
+
+        // "Kalan" rozeti de durumla birlikte tazelenir; yoksa iş bittiği
+        // hâlde "3 gün gecikti" yazmaya devam ediyordu.
+        try { kalanRozetYenile(id, yeni); } catch (eK) { console.error(eK); }
         // Onaylandı seçilince tahakkuk girişi aç.
         // try/catch: pencerede beklenmedik bir sorun olsa bile durum
         // güncellemesi başarılı sayılır, kullanıcı akışı kesilmez.
@@ -603,6 +607,48 @@ document.querySelectorAll('.durum-sec').forEach(function (sel) {
 }
 
 durumSecBagla();
+
+/**
+ * "Kalan" sütunundaki rozeti durum değişince yeniden çizer.
+ *
+ * Sunucudaki kalanGunMetni() ile AYNI kuralları uygular:
+ *   ONAYLANDI                  → ✓ Verildi   (yeşil)
+ *   VERILMEYECEK               → Takip dışı  (gri)
+ *   diğer                      → gün sayısına göre geri sayım
+ */
+function kalanRozetYenile(id, durum) {
+  var td = document.querySelector('.kalan-hucre[data-id="' + id + '"]');
+  if (!td) { return; }                       // eski şablon: sessizce geç
+
+  var gun = parseInt(td.dataset.gun, 10);
+  if (isNaN(gun)) { return; }
+
+  var metin, sinif;
+
+  if (durum === 'ONAYLANDI') {
+    metin = '✓ Verildi';  sinif = 'yesil';
+  } else if (durum === 'VERILMEYECEK') {
+    metin = 'Takip dışı'; sinif = 'gri';
+  } else if (gun < 0) {
+    metin = Math.abs(gun) + ' gün gecikti'; sinif = 'kirmizi';
+  } else if (gun === 0) {
+    metin = 'BUGÜN SON GÜN'; sinif = 'kirmizi';
+  } else {
+    metin = gun + ' gün kaldı';
+    sinif = gun <= 3 ? 'turuncu' : (gun <= 7 ? 'sari' : 'yesil');
+  }
+
+  td.innerHTML = '<span class="rozet ' + sinif + '">' + metin + '</span>';
+
+  // Geri alındığında gecikmiş vurgusu yeniden konur
+  var tr = td.closest('tr');
+  if (tr) {
+    var gecikti = gun < 0 && durum !== 'ONAYLANDI' && durum !== 'VERILMEYECEK';
+    tr.classList.toggle('gecikmis-satir', gecikti);
+    tr.classList.toggle('bugun-satir',
+      gun === 0 && durum !== 'ONAYLANDI' && durum !== 'VERILMEYECEK');
+  }
+}
 
 // =================================================================
 //  MUHSGK ↔ SGK DURUM BAĞI
@@ -650,6 +696,9 @@ function esSatirDurumYaz(esId, durum) {
   if (tr && (durum === 'ONAYLANDI' || durum === 'VERILMEYECEK')) {
     tr.classList.remove('gecikmis-satir');
   }
+
+  // Eş (SGK) satırının "Kalan" rozeti de tazelenir
+  try { kalanRozetYenile(esId, durum); } catch (e) { console.error(e); }
 
   // Tahakkuk hücresindeki "pasif" uyarısı durum değişince yeniden çizilir
   if (typeof thHucreYenile === 'function') {

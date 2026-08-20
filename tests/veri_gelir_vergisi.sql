@@ -21,10 +21,10 @@ INSERT INTO musavirler (id, ad_soyad, buro_adi, tc_kimlik, renk, aktif) VALUES
 
 -- Şifre: Test1234
 INSERT INTO kullanicilar (id, kullanici_adi, ad_soyad, eposta, sifre, rol, musavir_id, aktif) VALUES
-(1,'admin','Yönetici','admin@test.local','$2y$12$yxXml3tGERIgVTseZRNIB.tl9xVTll1ffwb0ATk0H2ewzbvOdyROi','admin',NULL,1),
-(2,'personel','Personel Ayşe','personel@test.local','$2y$12$yxXml3tGERIgVTseZRNIB.tl9xVTll1ffwb0ATk0H2ewzbvOdyROi','personel',1,1),
-(3,'musavir','Müşavir Ali','musavir@test.local','$2y$12$yxXml3tGERIgVTseZRNIB.tl9xVTll1ffwb0ATk0H2ewzbvOdyROi','musavir',1,1),
-(4,'fatma','Fatma Kaya','fatma@test.local','$2y$12$yxXml3tGERIgVTseZRNIB.tl9xVTll1ffwb0ATk0H2ewzbvOdyROi','personel',1,1);
+(1,'admin','Yönetici','admin@test.local','$2y$12$28iKMgsSOllSVWBYNOUhqOu2TDdLzrJzavQUPvf6KZmhQuFgqpNTW','admin',NULL,1),
+(2,'personel','Personel Ayşe','personel@test.local','$2y$12$28iKMgsSOllSVWBYNOUhqOu2TDdLzrJzavQUPvf6KZmhQuFgqpNTW','personel',1,1),
+(3,'musavir','Müşavir Ali','musavir@test.local','$2y$12$28iKMgsSOllSVWBYNOUhqOu2TDdLzrJzavQUPvf6KZmhQuFgqpNTW','musavir',1,1),
+(4,'fatma','Fatma Kaya','fatma@test.local','$2y$12$28iKMgsSOllSVWBYNOUhqOu2TDdLzrJzavQUPvf6KZmhQuFgqpNTW','personel',1,1);
 
 INSERT INTO kullanici_musavirleri (kullanici_id, musavir_id) VALUES (3,1);
 

@@ -19,10 +19,15 @@ $mod = $mod ?? ($filtre['tarih_modu'] ?? 'beyan');
 $esHarita = $esHarita ?? [];
 ?>
           <?php foreach ($kayitlar as $k):
-              $kalan   = kalanGunMetni($k['son_tarih']);
-              $gecikti = in_array($k['durum'], ['BEKLIYOR', 'HAZIR'], true) && $kalan['gun'] < 0;
+              /*
+               * Durum bilgisi de gönderilir: Onaylandı satırlarında geri
+               * sayım yerine "✓ Verildi", Verilmeyecek'te "Takip dışı"
+               * yazılır. Bitmiş iş için gecikme uyarısı anlamsızdı.
+               */
+              $kalan   = kalanGunMetni($k['son_tarih'], $k['durum']);
+              $gecikti = ! $kalan['bitti'] && $kalan['gun'] < 0;
           ?>
-            <tr class="<?= $gecikti ? 'gecikmis-satir' : ($kalan['gun'] === 0 ? 'bugun-satir' : '') ?>">
+            <tr class="<?= $gecikti ? 'gecikmis-satir' : (! $kalan['bitti'] && $kalan['gun'] === 0 ? 'bugun-satir' : '') ?>">
               <td><input type="checkbox" class="satir-sec" value="<?= $k['id'] ?>"></td>
 
               <td>
@@ -97,7 +102,14 @@ $esHarita = $esHarita ?? [];
                 <?php endif; ?>
               </td>
 
-              <td><span class="rozet <?= $kalan['sinif'] ?>"><?= esc($kalan['metin']) ?></span></td>
+              <?php /*
+                Kalan hücresi JS tarafından da güncellenir: durum menüsünden
+                "Onaylandı" seçildiğinde sayfa yenilenmeden rozet değişmeli.
+                data-gun, geri alındığında gecikme metnini yeniden kurmak için.
+              */ ?>
+              <td class="kalan-hucre" data-id="<?= $k['id'] ?>" data-gun="<?= (int) $kalan['gun'] ?>">
+                <span class="rozet <?= $kalan['sinif'] ?>"><?= esc($kalan['metin']) ?></span>
+              </td>
 
               <td>
                 <select class="girdi durum-sec" data-id="<?= $k['id'] ?>"

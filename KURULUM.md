@@ -3160,3 +3160,182 @@ mevcut `beyanname_turleri.kod` değerlerinden (`MUHSGK_A`, `MUHSGK_3A`,
 > kopyalanırsa (`esHarita` gelmez) rozetler çizilmez, sayfa çalışır.
 > Yalnızca controller kopyalanırsa SGK penceresi bulunamaz, `sgk_tutar`
 > gönderilmez ve eş kayda **dokunulmaz** — eski davranış aynen sürer.
+
+---
+
+## ⏱️ "Kalan" Sütunu — Verilen Beyannamede Gecikme Yazmaz
+
+Beyanname **Onaylandı** işaretlendikten sonra bile "Kalan" sütununda
+*"3 gün gecikti"* yazıyordu. İş bitmişken geri sayım göstermek hem yanlış
+hem de gereksiz kaygı vericiydi; kırmızı satırlar listeyi kirletiyordu.
+
+Artık ibare **duruma göre** değişir:
+
+| Durum | Kalan sütunu | Renk |
+|---|---|---|
+| **Onaylandı** | `✓ Verildi` | yeşil |
+| **Verilmeyecek** | `Takip dışı` | gri |
+| Bekliyor / Hazır | `3 gün gecikti` · `BUGÜN SON GÜN` · `5 gün kaldı` | kırmızı / turuncu / sarı / yeşil |
+
+Kırmızı satır zemini de aynı kuralı izler: **yalnızca gerçekten bekleyen**
+beyannameler vurgulanır.
+
+### Önemli ayrıntılar
+
+- **Son tarihi geçmemiş** bir kayıt onaylandığında da `✓ Verildi` yazar;
+  "5 gün kaldı" demeye devam etmez — iş zaten bitmiştir.
+- **Durum menüsünden canlı değiştirdiğinizde** rozet anında güncellenir,
+  sayfayı yenilemeye gerek yoktur. Onayı geri alırsanız gecikme ibaresi
+  ve kırmızı zemin **geri gelir**.
+- **E-Defter** ekranında karşılığı `✓ Yüklendi` / `Takip dışı`'dır
+  (berat yüklenir, beyanname verilir — terim ayrımı korundu).
+- **Panel** ve **Gecikmiş Beyannameler raporu** zaten yalnızca
+  Bekliyor/Hazır kayıtları listeler; onaylanan beyanname bu listelere
+  hiç girmez.
+
+### Şema değişikliği
+
+**Yoktur.** Migration çalıştırmanıza gerek yok.
+
+---
+
+### "Kalan" ibaresi testleri
+
+| Test | Sonuç |
+|---|---|
+| **Kalan ibare regresyon testi** | ✓ 56/56 (`bash tests/kalan_ibare_testi.sh`) |
+| Helper birim testi (17 durum) | ✓ durumsuz çağrıda eski davranış birebir |
+| Onaylandı → ✓ Verildi (yeşil) | ✓ süresi dolmamışsa da |
+| Verilmeyecek → Takip dışı (gri) | ✓ |
+| Bekliyor / Hazır / Devam → geri sayım | ✓ değişmedi |
+| Kırmızı zemin yalnız bekleyende | ✓ |
+| **Canlı JS güncellemesi** | ✓ onayla / geri al / verilmeyecek |
+| E-defter ✓ Yüklendi · Takip dışı | ✓ |
+| Panel · rapor · mükellef detayı · karşıt | ✓ çökmüyor, onaylı listeye girmiyor |
+| Geriye dönük uyum | ✓ eski görünüm yeni helper'la çalışıyor |
+
+#### Bu turda bulunan gerçek kusur
+
+İlk düzeltme yalnızca sunucu tarafını kapsıyordu. Tarayıcıda durum
+menüsünden **"Onaylandı" seçildiğinde** satırın kırmızı zemini kalkıyor
+ama rozet **"3 gün gecikti" olarak kalıyordu**; ancak sayfa yenilenince
+düzeliyordu. Ekran görüntüsüyle yakalandı. `kalanRozetYenile()` eklendi:
+sunucudaki `kalanGunMetni()` ile aynı kuralları uygular, `data-gun`
+özniteliği sayesinde onay geri alındığında gecikme metnini yeniden kurar.
+MUHSGK'ya bağlı SGK satırı da tazelenir.
+
+#### Test disiplini notu — yanlış alarmlar
+
+İki kırmızı çıktı, **ikisi de test kusuruydu**:
+
+1. **Bash tırnak kaçışı** — `grep -c "metin = '✓ Verildi'"` gibi iç içe
+   tırnaklı desenler sözdizimi hatası verdi; `grep -cF` (sabit dizge) ile
+   düzeltildi. *Bu tuzağa üst üste üçüncü turda düşüldü.*
+2. **Panel taraması çok genişti** — sayfa genelinde mükellef adı arayınca
+   "evrakı gelmeyenler" kartındaki kayıt eşleşiyordu; o mükellefin evrağı
+   gerçekten gelmemişti. Arama yalnız gecikmiş beyanname tablosuyla
+   sınırlandı. Kodda hata yoktu.
+
+Ayrıca `grep -c 'gecikmis-satir'` ilk bakışta 4 döndürdü (2 bekleniyordu);
+incelendiğinde 2'sinin **JS kodundaki** `classList.remove('gecikmis-satir')`
+satırları olduğu görüldü — test `<tr class="gecikmis-satir"` desenine
+çevrildi.
+
+#### Komşu modüller
+
+`mantik_testi` 72/72 · `filtre_testi` 18/18 · `genc_girisimci_testi` 23/23 ·
+`gelir_vergisi_testi` 168/168 · `gelir_vergisi_http_testi` 356/356 ·
+`evrak_testi` 58/58 · `evrak_muafiyet_testi` 86/86 ·
+`muhsgk_sgk_testi` 61/61 · `ajanda_testi` 108/108 · `edefter_testi` 141/141 ·
+`makbuz_testi` 99/99 · `sistem_testi` 82/82 · `ayarlar_testi` 61/61 ·
+`odeme_kompakt_testi` 56/56 · `odeme_mukerrer_testi` 29/29 ·
+`ozet_kart_testi` 71/71 · `panel_dagilim_testi` 76/76 ·
+`musavir_filtre_testi` 49/49 · `indirim_rozet_testi` 84/84 ·
+`gg_tuzel_testi` 52/52 · `tekrar_yazdirma_testi` 50/50 ·
+`sayfalama_testi` 47/47 · `tahakkuk_testi` 17/17 ·
+`ice_aktar_testi` 48/48 — hiçbiri bozulmadı.
+
+> **Geriye dönük uyum:** `kalanGunMetni()`'nin ikinci parametresi isteğe
+> bağlıdır. Durum gönderilmezse fonksiyon **eski davranışını birebir**
+> sürdürür; helper'ı çağıran eski görünüm dosyaları kırılmaz. Canlı
+> güncelleme de `.kalan-hucre` bulunamazsa sessizce atlanır.
+
+---
+
+## 🧭 Menü Sadeleştirmesi
+
+Sol menüdeki **Takip** bölümü 7 satıra çıkmıştı ve kalabalık görünüyordu.
+Birbirinin devamı olan iki ekran, ait oldukları ana ekranın içine alındı:
+
+| Ekran | Eskiden | Şimdi |
+|---|---|---|
+| **Ödeme Listelerim** | Menüde ayrı satır | Ödeme Listesi ekranı → **📑 Listelerim** düğmesi |
+| **Vergi Yükü** | Menüde ayrı satır | Makbuz Takip ekranı → **🧮 Vergi Yükü** düğmesi |
+
+Takip bölümü artık **5 satır**: Beyanname Takip · Evrak Takip ·
+E-Defter Takip · Ödeme Listesi · Makbuz Takip (+ Karşıt İnceleme).
+
+### Kaybolmamak için
+
+- **Menü vurgusu korunur.** Ödeme Listelerim'deyken menüde *Ödeme Listesi*,
+  Vergi Yükü'ndeyken *Makbuz Takip* vurgulu kalır — kullanıcı hangi
+  bölümde olduğunu görür.
+- **Geri dönüş bağlantıları:** Ödeme Listelerim'e `← Ödeme Listesi`
+  düğmesi eklendi. Vergi Yükü ekranında zaten `🧾 Makbuz Takip` dönüşü
+  vardı.
+- Makbuz ekranındaki düğmenin etiketi `🧮 Gelir Vergisi` → **`🧮 Vergi Yükü`**
+  olarak düzeltildi; sayfanın gerçek adı bu.
+
+### Değişmeyenler
+
+- **Rotalar aynı.** `/odeme/listeler` ve `/gelir-vergisi` adresleri
+  çalışmaya devam eder; yer imleriniz bozulmaz.
+- **Yetkiler aynı.** Personel rolü bu dört ekranın hiçbirine giremez
+  (menüde görünmez, doğrudan URL denerse panele yönlendirilir).
+- **Şema değişikliği yok**; migration gerekmez.
+
+---
+
+### Menü sadeleştirme testleri
+
+| Test | Sonuç |
+|---|---|
+| **Menü regresyon testi** | ✓ 45/45 (`bash tests/menu_sadelestirme_testi.sh`) |
+| İki bağlantı menüden kalktı | ✓ etiket ve URL bazında |
+| Kalan 6 menü ögesi duruyor | ✓ |
+| Dört sayfa da erişilebilir (200) | ✓ rota/yetki bozulmadı |
+| Giriş düğmeleri yerinde | ✓ eski "Gelir Vergisi" etiketi kalmadı |
+| **Alt sayfada üst menü vurgulu** | ✓ tek öge vurgulu |
+| Geri dönüş bağlantıları | ✓ |
+| Personel rolü kapalı | ✓ menüde yok + doğrudan URL 302 |
+
+#### Test disiplini notu — yanlış alarmlar
+
+İki kez yanlış alarm alındı, **ikisinde de kod doğruydu**:
+
+1. **`curl -L` yetki testini bozdu.** Yetki filtresi 302 ile panele
+   yönlendiriyor; `-L` ile istek izlenince panel 200 dönüyor ve test
+   "personel içeri girdi" sanıyordu. Ölçüt *yönlendirme kodu (302) +
+   hedefin panel olması* şeklinde düzeltildi.
+2. **Tarayıcı oturumu kapatılmadan rol değiştirildi.** Ekran görüntüsünde
+   personel menüsünde mali ekranlar göründü; sebebi admin oturumunun açık
+   kalması ve `/giris` isteğinin panele yönlendirilmesiydi. `/cikis`
+   eklenince menü doğru çıktı — **yetkilendirmede sorun yoktu**.
+
+Ayrıca `grep -c "site_url('odeme/listeler')"` bash tırnak kaçışı hatası
+verdi; `grep -cF` ile düzeltildi. *Bu tuzağa dördüncü kez düşüldü — artık
+kod içi dizge denetimlerinde varsayılan olarak `-F` kullanılıyor.*
+
+#### Komşu modüller
+
+`mantik_testi` 72/72 · `filtre_testi` 18/18 · `genc_girisimci_testi` 23/23 ·
+`gelir_vergisi_testi` 168/168 · `gelir_vergisi_http_testi` 356/356 ·
+`evrak_testi` 58/58 · `evrak_muafiyet_testi` 86/86 ·
+`muhsgk_sgk_testi` 61/61 · `kalan_ibare_testi` 56/56 ·
+`ajanda_testi` 108/108 · `edefter_testi` 141/141 · `makbuz_testi` 99/99 ·
+`sistem_testi` 82/82 · `ayarlar_testi` 61/61 · `odeme_kompakt_testi` 56/56 ·
+`odeme_mukerrer_testi` 29/29 · `ozet_kart_testi` 71/71 ·
+`panel_dagilim_testi` 76/76 · `musavir_filtre_testi` 49/49 ·
+`indirim_rozet_testi` 84/84 · `gg_tuzel_testi` 52/52 ·
+`tekrar_yazdirma_testi` 50/50 · `sayfalama_testi` 47/47 ·
+`tahakkuk_testi` 17/17 · `ice_aktar_testi` 48/48 — hiçbiri bozulmadı.

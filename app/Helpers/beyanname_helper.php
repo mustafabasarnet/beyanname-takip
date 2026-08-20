@@ -78,29 +78,62 @@ if (! function_exists('durumRozeti')) {
 }
 
 if (! function_exists('kalanGunMetni')) {
-    function kalanGunMetni(string $sonTarih): array
+    /**
+     * "Kalan" sütununun metni, rengi ve gün farkı.
+     *
+     * DURUM FARKINDALIĞI
+     * ------------------
+     * Beyanname verildikten (Onaylandı) sonra "3 gün gecikti" yazmak
+     * yanlış ve kaygı vericiydi: iş bitmiş, geriye sayacak bir şey yok.
+     * Bu yüzden $durum verildiğinde iş kapanmış sayılan durumlarda geri
+     * sayım yerine sonuç bilgisi gösterilir:
+     *
+     *   ONAYLANDI                  → "✓ Verildi"      (yeşil)
+     *   VERILMEYECEK/YUKLENMEYECEK → "Takip dışı"     (gri)
+     *
+     * $durum verilmezse ESKİ davranış aynen sürer; böylece bu helper'ı
+     * çağıran eski görünüm dosyaları kırılmaz.
+     *
+     * @param string|null $durum Kaydın durumu (BEKLIYOR, HAZIR, ONAYLANDI, ...)
+     *
+     * @return array{metin:string,sinif:string,gun:int,bitti:bool}
+     */
+    function kalanGunMetni(string $sonTarih, ?string $durum = null): array
     {
         $bugun = new DateTime(date('Y-m-d'));
         $son   = new DateTime(substr($sonTarih, 0, 10));
         $fark  = (int) $bugun->diff($son)->format('%r%a');
 
+        // ---- İş kapanmışsa geri sayım gösterilmez ----
+        if ($durum !== null) {
+            // Beyanname: ONAYLANDI · E-defter: ONAYLANDI (aynı kod)
+            if ($durum === 'ONAYLANDI') {
+                return ['metin' => '✓ Verildi', 'sinif' => 'yesil', 'gun' => $fark, 'bitti' => true];
+            }
+
+            // Beyanname: VERILMEYECEK · E-defter: YUKLENMEYECEK
+            if ($durum === 'VERILMEYECEK' || $durum === 'YUKLENMEYECEK') {
+                return ['metin' => 'Takip dışı', 'sinif' => 'gri', 'gun' => $fark, 'bitti' => true];
+            }
+        }
+
         if ($fark < 0) {
-            return ['metin' => abs($fark) . ' gün gecikti', 'sinif' => 'kirmizi', 'gun' => $fark];
+            return ['metin' => abs($fark) . ' gün gecikti', 'sinif' => 'kirmizi', 'gun' => $fark, 'bitti' => false];
         }
 
         if ($fark === 0) {
-            return ['metin' => 'BUGÜN SON GÜN', 'sinif' => 'kirmizi', 'gun' => 0];
+            return ['metin' => 'BUGÜN SON GÜN', 'sinif' => 'kirmizi', 'gun' => 0, 'bitti' => false];
         }
 
         if ($fark <= 3) {
-            return ['metin' => $fark . ' gün kaldı', 'sinif' => 'turuncu', 'gun' => $fark];
+            return ['metin' => $fark . ' gün kaldı', 'sinif' => 'turuncu', 'gun' => $fark, 'bitti' => false];
         }
 
         if ($fark <= 7) {
-            return ['metin' => $fark . ' gün kaldı', 'sinif' => 'sari', 'gun' => $fark];
+            return ['metin' => $fark . ' gün kaldı', 'sinif' => 'sari', 'gun' => $fark, 'bitti' => false];
         }
 
-        return ['metin' => $fark . ' gün kaldı', 'sinif' => 'yesil', 'gun' => $fark];
+        return ['metin' => $fark . ' gün kaldı', 'sinif' => 'yesil', 'gun' => $fark, 'bitti' => false];
     }
 }
 

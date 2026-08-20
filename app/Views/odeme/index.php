@@ -59,6 +59,9 @@
           $qs = http_build_query(array_filter([
         'yil' => $filtre['yil'], 'ay' => $filtre['ay'], 'odendi' => $filtre['odendi'], 'q' => $filtre['q'],
     ], static fn ($v) => $v !== null && $v !== '')); ?>
+    <?php /* Menüden kaldırıldı; erişim buradan sağlanır. */ ?>
+    <a href="<?= site_url('odeme/listeler') ?>" class="btn kucuk"
+       title="Kendi oluşturduğunuz kalıcı mükellef listeleri">📑 Listelerim</a>
     <button type="button" class="btn mor kucuk" onclick="ozelAc()">+ Özel Ödeme</button>
     <?php if (! empty($filtre['ay'])): ?>
       <a href="<?= site_url('odeme/tekrar-uret?' . $qs) ?>" class="btn ikincil kucuk"

@@ -197,8 +197,8 @@ $terkli = ! empty($mukellef['terk_tarihi']);
                 <?php if ($hucreler === []): ?>
                   <td class="hucre bos"></td>
                 <?php else: foreach ($hucreler as $d):
-                    $kalan  = kalanGunMetni($d['son_tarih']);
-                    $gec    = in_array($d['durum'], ['BEKLIYOR', 'HAZIR'], true) && $kalan['gun'] < 0;
+                    $kalan  = kalanGunMetni($d['son_tarih'], $d['durum']);
+                    $gec    = ! $kalan['bitti'] && $kalan['gun'] < 0;
                     $sinif  = $gec ? 'd-gecikmis' : 'd-' . strtolower($d['durum']);
                     $simge  = ['BEKLIYOR'=>'○','HAZIR'=>'◐','ONAYLANDI'=>'●','VERILMEYECEK'=>'—'][$d['durum']] ?? '○';
                 ?>
