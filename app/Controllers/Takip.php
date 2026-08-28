@@ -579,8 +579,10 @@ class Takip extends BaseController
             'tarih_modu'  => $this->request->getGet('mod') === 'donem' ? 'donem' : 'beyan',
             'musavir_id'  => $this->kapsamBelirle($this->request->getGet('musavir_id')),
             'mukellef_id' => $this->request->getGet('mukellef_id'),
-            'tur_id'      => $this->turFiltresi(),
-            'durum'       => $this->request->getGet('durum'),
+            // Çoklu seçim: tur_id[]=1&tur_id[]=4 ya da tur_id=1,4 kabul edilir.
+            // Adreste hiç yoksa kullanıcının son seçimi çerezden okunur.
+            'tur_id'      => $this->cokluHatirla('tur_id'),
+            'durum'       => $this->cokluHatirla('durum', array_keys(BeyannameTakipModel::DURUMLAR)),
             'defter_tipi' => $this->request->getGet('defter_tipi'),
             'q'           => $this->request->getGet('q'),
             'gecikmis'    => $this->request->getGet('gecikmis'),
@@ -588,34 +590,120 @@ class Takip extends BaseController
     }
 
     /**
-     * Beyanname türü filtresi — tek veya çoklu değer destekler.
+     * Çoklu seçilebilen filtre değerini okur.
      *
-     *   ?tur_id=1        → [1]          (tek seçim, eski davranış)
-     *   ?tur_id[]=1&...  → [1,4]        (çoklu seçim)
+     * Kabul edilen biçimler:
+     *   ?tur_id=4            → '4'        (tek değer, eski bağlantılar)
+     *   ?tur_id[]=4&tur_id[]=6 → [4, 6]   (form gönderimi)
+     *   ?tur_id=4,6          → [4, 6]     (kısa bağlantı / Excel-Yazdır)
      *
-     * @return int[]|null null = filtre yok (tümü)
+     * Tek değer kaldıysa DİZİYE ÇEVRİLMEZ; böylece eski kayıtlı bağlantılar
+     * ve diğer ekranlardan gelen linkler aynı davranışı sürdürür.
+     *
+     * @param array<string>|null $izinli Verilirse yalnız bu değerler kabul edilir
+     *
+     * @return string|array<string>|null
      */
-    protected function turFiltresi()
+    protected function cokluAl(string $ad, ?array $izinli = null)
     {
-        $ham = $this->request->getGet('tur_id');
+        $ham = $this->request->getGet($ad);
 
-        if ($ham === null || $ham === '' || $ham === []) {
+        if ($ham === null || $ham === '') {
             return null;
         }
 
-        $dizi = is_array($ham) ? $ham : [$ham];
-        $dizi = array_values(array_unique(array_filter(
-            array_map('intval', $dizi),
-            static fn ($v) => $v > 0
-        )));
+        // "4,6" biçimini diziye çevir
+        if (! is_array($ham)) {
+            $ham = str_contains($ham, ',') ? explode(',', $ham) : $ham;
+        }
 
-        if ($dizi === []) {
+        if (! is_array($ham)) {
+            return $izinli !== null && ! in_array($ham, $izinli, true) ? null : $ham;
+        }
+
+        $temiz = [];
+
+        foreach ($ham as $d) {
+            $d = trim((string) $d);
+
+            if ($d === '' || in_array($d, $temiz, true)) {
+                continue;
+            }
+
+            if ($izinli !== null && ! in_array($d, $izinli, true)) {
+                continue;
+            }
+
+            $temiz[] = $d;
+        }
+
+        if ($temiz === []) {
             return null;
         }
 
-        // Tek seçimde skaler (tur_id=1) — eski davranış, linklerde kısa URL;
-        // birden çok seçimde dizi (tur_id[]=1&tur_id[]=4).
-        return count($dizi) === 1 ? $dizi[0] : $dizi;
+        // Tek değer kaldıysa dizi yapma — eski davranış korunur
+        return count($temiz) === 1 ? $temiz[0] : $temiz;
+    }
+
+    /**
+     * Çoklu filtreyi okur ve kullanıcının son seçimini hatırlar.
+     *
+     * Öncelik:
+     *   1) Adres çubuğunda parametre VARSA o kullanılır ve çereze yazılır
+     *   2) Form gönderildiği hâlde alan boşsa ("Tümü") çerez TEMİZLENİR
+     *   3) Sayfa temiz açıldıysa (hiç filtre parametresi yok) çerez okunur
+     *
+     * 2. madde önemli: kullanıcı "Temizle" dediğinde eski seçim geri
+     * gelmemeli. Formun gönderildiğini, filtre çubuğundaki başka bir
+     * parametrenin (yil) varlığından anlıyoruz.
+     *
+     * @return string|array<string>|null
+     */
+    protected function cokluHatirla(string $ad, ?array $izinli = null)
+    {
+        $deger  = $this->cokluAl($ad, $izinli);
+        $cerez  = 'bt_f_' . $ad;
+        $formGeldi = $this->request->getGet('yil') !== null;
+
+        if ($deger !== null) {
+            $this->cerezYaz($cerez, is_array($deger) ? implode(',', $deger) : (string) $deger);
+
+            return $deger;
+        }
+
+        if ($formGeldi) {
+            $this->cerezYaz($cerez, '');   // "Tümü" seçildi -> hatırlamayı bırak
+
+            return null;
+        }
+
+        $saklanan = (string) ($this->request->getCookie($cerez) ?? '');
+
+        if ($saklanan === '') {
+            return null;
+        }
+
+        $parca = array_values(array_filter(explode(',', $saklanan), static fn ($v) => $v !== ''));
+
+        if ($izinli !== null) {
+            $parca = array_values(array_intersect($parca, $izinli));
+        }
+
+        if ($parca === []) {
+            return null;
+        }
+
+        return count($parca) === 1 ? $parca[0] : $parca;
+    }
+
+    /** Filtre çerezi yazar (bir yıl geçerli, yalnız site içi) */
+    protected function cerezYaz(string $ad, string $deger): void
+    {
+        setcookie($ad, $deger, [
+            'expires'  => $deger === '' ? time() - 3600 : time() + 31536000,
+            'path'     => '/',
+            'samesite' => 'Lax',
+        ]);
     }
 
     /**

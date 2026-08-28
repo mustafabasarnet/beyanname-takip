@@ -306,11 +306,31 @@ class Tanimlar extends BaseController
 
     public function ayarlarKaydet()
     {
-        $model = new AyarModel();
-        $post  = $this->request->getPost('ayar') ?? [];
+        $model  = new AyarModel();
+        $post   = $this->request->getPost('ayar') ?? [];
+        $tanim  = ayarTanimlari();
 
         foreach ($post as $anahtar => $deger) {
-            $model->yaz((string) $anahtar, (string) $deger);
+            $anahtar = (string) $anahtar;
+            $deger   = (string) $deger;
+
+            /*
+             * TUTAR ALANLARI
+             *
+             * Ekranda binlik ayırıcıyla gösterilir (12.000.000). Doğrudan
+             * kaydedilseydi veritabanına "12.000.000" yazılır, sayıya
+             * çevrilirken 12'ye düşerdi. trParaCoz() Türkçe biçimi çözer.
+             */
+            if (($tanim[$anahtar]['tip'] ?? '') === 'para') {
+                $sayi = trParaCoz($deger);
+
+                if ($sayi !== null) {
+                    // Tam sayıysa ondalık yazma (12000000, 12000000.00 değil)
+                    $deger = (string) ($sayi == (int) $sayi ? (int) $sayi : $sayi);
+                }
+            }
+
+            $model->yaz($anahtar, $deger);
         }
 
         // Checkbox'lar işaretli değilken tarayıcı hiç göndermez;

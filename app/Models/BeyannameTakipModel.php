@@ -475,18 +475,44 @@ class BeyannameTakipModel extends Model
             $b->where('beyanname_takip.mukellef_id', (int) $f['mukellef_id']);
         }
 
-        // Beyanname türü: tek değer (tur_id=1) veya çoklu (tur_id[]=1&tur_id[]=4)
+        // -------------------------------------------------------------
+        //  BEYANNAME TÜRÜ — tekil ya da ÇOKLU seçim
+        //
+        //  Filtre çubuğunda birden çok tür işaretlenebilir. Dizi geldiğinde
+        //  whereIn kullanılır.
+        //
+        //  DİKKAT: (int) bir diziye uygulanınca HER ZAMAN 1 döner; eskiden
+        //  buradaki `(int) $f['tur_id']` çoklu seçimde sessizce "1 numaralı
+        //  tür" filtresine dönüşürdü. Bu yüzden tip denetimi şart.
+        // -------------------------------------------------------------
         if (! empty($f['tur_id'])) {
-            $turler = is_array($f['tur_id']) ? $f['tur_id'] : [$f['tur_id']];
-            $turler = array_values(array_filter(array_map('intval', $turler), static fn ($v) => $v > 0));
+            if (is_array($f['tur_id'])) {
+                $idler = array_values(array_filter(array_map('intval', $f['tur_id'])));
 
-            if ($turler !== []) {
-                $b->whereIn('beyanname_takip.beyanname_turu_id', $turler);
+                if ($idler !== []) {
+                    $b->whereIn('beyanname_takip.beyanname_turu_id', $idler);
+                }
+            } else {
+                $b->where('beyanname_takip.beyanname_turu_id', (int) $f['tur_id']);
             }
         }
 
+        // -------------------------------------------------------------
+        //  DURUM — tekil ya da ÇOKLU seçim
+        // -------------------------------------------------------------
         if (! empty($f['durum'])) {
-            $b->where('beyanname_takip.durum', $f['durum']);
+            if (is_array($f['durum'])) {
+                $durumlar = array_values(array_filter(
+                    $f['durum'],
+                    static fn ($d) => array_key_exists($d, self::DURUMLAR)
+                ));
+
+                if ($durumlar !== []) {
+                    $b->whereIn('beyanname_takip.durum', $durumlar);
+                }
+            } else {
+                $b->where('beyanname_takip.durum', $f['durum']);
+            }
         }
 
         // Birden çok durumu birlikte süzmek için (örn. "Kalan" = Bekliyor+Hazır)

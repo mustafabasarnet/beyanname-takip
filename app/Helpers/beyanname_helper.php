@@ -630,3 +630,57 @@ if (! function_exists('trParaCoz')) {
         return round($eksi ? -$sayi : $sayi, 2);
     }
 }
+
+
+if (! function_exists('filtreSorgusu')) {
+    /**
+     * Filtre dizisini adres çubuğu sorgusuna çevirir.
+     *
+     * ÇOKLU SEÇİM: tur_id/durum gibi alanlar dizi olabilir. http_build_query
+     * bunları `tur_id[0]=1&tur_id[1]=4` biçiminde yazar; okunaksız ve uzundur.
+     * Burada virgülle birleştirilir (`tur_id=1,4`) — Takip::cokluAl() bu
+     * biçimi zaten çözer.
+     *
+     * Eskiden özet kartı bağlantıları dizileri `! is_array()` ile ATIYORDU;
+     * çoklu tür seçiliyken karta tıklayınca tür filtresi sessizce kayboluyordu.
+     *
+     * @param array               $filtre Ham filtre dizisi
+     * @param array<string>       $cikar  Adrese yazılmayacak anahtarlar
+     * @param array<string,mixed> $ekle   Zorla eklenecek anahtarlar
+     */
+    function filtreSorgusu(array $filtre, array $cikar = [], array $ekle = []): string
+    {
+        $q = [];
+
+        foreach ($filtre as $ad => $deger) {
+            if (in_array($ad, $cikar, true) || $deger === null || $deger === '') {
+                continue;
+            }
+
+            if (is_array($deger)) {
+                $temiz = array_filter($deger, static fn ($v) => $v !== null && $v !== '');
+
+                if ($temiz === []) {
+                    continue;
+                }
+
+                $q[$ad] = implode(',', $temiz);
+
+                continue;
+            }
+
+            $q[$ad] = $deger;
+        }
+
+        foreach ($ekle as $ad => $deger) {
+            if ($deger === null) {
+                unset($q[$ad]);
+            } else {
+                $q[$ad] = $deger;
+            }
+        }
+
+        return http_build_query($q);
+    }
+}
+

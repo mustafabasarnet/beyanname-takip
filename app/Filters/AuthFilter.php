@@ -12,6 +12,18 @@ class AuthFilter implements FilterInterface
     {
         $session = session();
 
+        /*
+         * BENİ HATIRLA
+         *
+         * Oturum süresi dolmuş olabilir ama kullanıcının geçerli bir
+         * hatırlama jetonu varsa giriş sayfasına yollamadan içeri alırız.
+         * AJAX isteklerinde de çalışır: kullanıcı formu doldururken
+         * oturumu düşerse verisi kaybolmaz.
+         */
+        if (! $session->get('giris_yapildi')) {
+            \App\Controllers\Auth::jetonlaGirisDene();
+        }
+
         if (! $session->get('giris_yapildi')) {
             if ($request->isAJAX()) {
                 return service('response')

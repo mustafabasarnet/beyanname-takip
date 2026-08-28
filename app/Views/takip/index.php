@@ -32,64 +32,39 @@
   </div>
 
   <?php
-  $seciliTurler = $filtre['tur_id'] ?? null;
-  $seciliTurler = is_array($seciliTurler)
-      ? array_map('intval', $seciliTurler)
-      : ($seciliTurler !== null && $seciliTurler !== '' ? [(int) $seciliTurler] : []);
+  /*
+   * BEYANNAME TÜRÜ ve DURUM — ÇOKLU SEÇİM
+   *
+   * Ortak parça include ile çağrılır; $this->include() üst görünümün
+   * yerel değişkenlerini TAŞIMAZ, bu yüzden değişkenler önce hazırlanır.
+   *
+   * Filtre tek değer de olabilir (eski bağlantılar), dizi de — ikisi de
+   * (array) ile normalize edilir.
+   */
+  $turSecenek = [];
 
-  // Combobox üzerinde görünecek metin
-  if ($seciliTurler === []) {
-      $turOzet = 'Tümü';
-  } else {
-      $turAdlari = [];
-      foreach ($turler as $t) {
-          if (in_array((int) $t['id'], $seciliTurler, true)) {
-              $turAdlari[] = $t['kisa_ad'];
-          }
-      }
-      $turOzet = count($turAdlari) > 2
-          ? count($seciliTurler) . ' tür seçili'
-          : implode(' + ', $turAdlari);
+  foreach ($turler as $t) {
+      $turSecenek[(string) $t['id']] = $t['kisa_ad'];
   }
-  ?>
-  <div class="form-grup tur-coklu-grup">
-    <label>Beyanname Türü</label>
-    <div class="coklu-sec" id="tur-coklu" data-coklu-sec>
-      <button type="button" class="coklu-kutu" data-coklu-ac>
-        <span class="coklu-ozet"><?= esc($turOzet) ?></span>
-        <span class="coklu-ok">▾</span>
-      </button>
-      <div class="coklu-panel" hidden>
-        <div class="coklu-ara">
-          <input type="text" class="girdi" placeholder="Tür ara…" data-coklu-ara>
-        </div>
-        <div class="coklu-liste">
-          <label class="onay" title="Filtreyi kaldır (tüm türler)">
-            <input type="checkbox" name="tur_tumu" value="1" data-tur-tumu
-                   <?= $seciliTurler === [] ? 'checked' : '' ?>>
-            <span>Tümü</span>
-          </label>
-          <?php foreach ($turler as $t): ?>
-            <label class="onay" data-coklu-satir>
-              <input type="checkbox" name="tur_id[]" value="<?= (int) $t['id'] ?>" data-tur-kutu
-                     <?= in_array((int) $t['id'], $seciliTurler, true) ? 'checked' : '' ?>>
-              <span><?= esc($t['kisa_ad']) ?></span>
-            </label>
-          <?php endforeach; ?>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <div class="form-grup">
-    <label>Durum</label>
-    <select name="durum" data-oto-filtre>
-      <option value="">Tümü</option>
-      <?php foreach ($durumlar as $k => $v): ?>
-        <option value="<?= $k ?>" <?= $filtre['durum'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option>
-      <?php endforeach; ?>
-    </select>
-  </div>
+  $cs_ad     = 'tur_id';
+  $cs_etiket = 'Beyanname Türü';
+  $cs_ogeler = $turSecenek;
+  $cs_secili = array_filter((array) ($filtre['tur_id'] ?? []), static fn ($v) => $v !== '' && $v !== null);
+  $cs_tekil  = 'tür';
+  $cs_genislik = '185px';
+  include APPPATH . 'Views/parcalar/_coklu_secim.php';
+  ?>
+
+  <?php
+  $cs_ad     = 'durum';
+  $cs_etiket = 'Durum';
+  $cs_ogeler = $durumlar;
+  $cs_secili = array_filter((array) ($filtre['durum'] ?? []), static fn ($v) => $v !== '' && $v !== null);
+  $cs_tekil  = 'durum';
+  $cs_genislik = '165px';
+  include APPPATH . 'Views/parcalar/_coklu_secim.php';
+  ?>
 
   <div class="form-grup">
     <label>Defter Tipi</label>
@@ -148,10 +123,8 @@
     <?php
     // Dışa aktarma linkleri ekrandaki filtrenin AYNISINI taşımalı.
     // Not: filtre dizisinde anahtar 'tarih_modu', URL parametresi ise 'mod'.
-    $disaAktar = array_filter((array) $filtre, static fn ($v) => $v !== null && $v !== '');
-    unset($disaAktar['tarih_modu']);
-    $disaAktar['mod'] = $mod;
-    $qs = http_build_query($disaAktar);
+    // Çoklu seçim alanları virgülle taşınır (tur_id=1,4) — bkz. filtreSorgusu()
+    $qs = filtreSorgusu($filtre, ['tarih_modu'], ['mod' => $mod]);
     ?>
     <a href="<?= site_url('takip/excel?' . $qs) ?>" class="btn yesil kucuk">📊 Excel</a>
     <a href="<?= site_url('takip/yazdir?' . $qs) ?>" target="_blank" class="btn ikincil kucuk">🖨️ Yazdır</a>
@@ -164,10 +137,7 @@
     <div>
       Yalnızca <b><?= esc(defterTipiAdi($filtre['defter_tipi'])) ?></b> tutan
       mükelleflerin beyannameleri listeleniyor.
-      <a href="<?= site_url('takip?' . http_build_query(array_diff_key(
-          array_filter((array) $filtre, static fn ($v) => $v !== null && $v !== '' && ! is_array($v)),
-          ['defter_tipi' => 1, 'tarih_modu' => 1]
-      ) + ['mod' => $mod])) ?>">Filtreyi kaldır</a>
+      <a href="<?= site_url('takip?' . filtreSorgusu($filtre, ['defter_tipi', 'tarih_modu'], ['mod' => $mod])) ?>">Filtreyi kaldır</a>
     </div>
   </div>
 <?php endif; ?>
@@ -201,18 +171,17 @@
  * Kartlar aynı zamanda birer filtre düğmesidir: tıklayınca o duruma süzer,
  * tekrar tıklayınca süzgeci kaldırır.
  */
-$ozetTaban = array_filter(
-    (array) $filtre,
-    static fn ($v) => $v !== null && $v !== '' && ! is_array($v)
-);
-unset($ozetTaban['tarih_modu'], $ozetTaban['durum'], $ozetTaban['gecikmis']);
+/*
+ * Kart bağlantılarının tabanı.
+ *
+ * ÖNEMLİ: Çoklu seçim alanları (tur_id) dizi olabilir; eskiden burada
+ * `! is_array()` ile atılıyordu ve karta tıklayınca tür filtresi
+ * sessizce kayboluyordu. Artık virgülle korunuyor.
+ *
+ * 'durum' kartların KENDİ işi olduğu için çıkarılır.
+ */
+parse_str(filtreSorgusu($filtre, ['tarih_modu', 'durum', 'gecikmis']), $ozetTaban);
 $ozetTaban['mod'] = $mod;
-
-// Çoklu beyanname türü seçimi dizi olduğu için array_filter onu atlar;
-// kart bağlantılarında korunması için açıkça geri eklenir.
-if (! empty($filtre['tur_id']) && is_array($filtre['tur_id'])) {
-    $ozetTaban['tur_id'] = $filtre['tur_id'];
-}
 
 // "Tüm Aylar" seçiliyken ay=null olur ve array_filter anahtarı siler.
 // Adreste ay parametresi hiç yoksa ayBelirle() İÇİNDE BULUNULAN AYA döner;
@@ -244,9 +213,18 @@ $ozetBag = static function (array $ek) use ($ozetTaban) {
     return site_url('takip?' . http_build_query($q));
 };
 
-$aktifDurum   = $filtre['durum'] ?? '';
+/*
+ * Kart vurgusu.
+ *
+ * Durum filtresi artık ÇOKLU olabilir. Kart yalnızca TEK durum seçiliyken
+ * "seçili" görünür; birden çok durum işaretliyken hiçbir kart tek başına o
+ * seçimi temsil etmediği için vurgu yapılmaz (yanıltıcı olurdu).
+ */
+$durumSecim   = array_values(array_filter((array) ($filtre['durum'] ?? [])));
+$aktifDurum   = count($durumSecim) === 1 ? $durumSecim[0] : '';
+$cokluDurum   = count($durumSecim) > 1;
 $aktifGecikme = ! empty($filtre['gecikmis']);
-$suzguVar     = $aktifDurum !== '' || $aktifGecikme;
+$suzguVar     = $durumSecim !== [] || $aktifGecikme;
 
 $kartlar = [
     ['anahtar' => '',             'sinif' => '',        'etiket' => 'Toplam',       'deger' => (int) ($ozet['toplam'] ?? 0),        'alt' => 'Filtreye uyan kayıt'],
@@ -315,7 +293,20 @@ a.stat:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.13)}
     <span>
       Kartlar <b><?= $mod === 'donem' ? 'dönem' : 'beyan' ?></b> filtresinin tamamını sayar;
       liste ise
-      <b><?= $aktifGecikme ? 'gecikmiş' : esc($durumlar[$aktifDurum] ?? $aktifDurum) ?></b>
+      <?php
+      // Çoklu durumda hepsi virgülle yazılır: "Bekliyor, Hazır olan 42 kayıt"
+      if ($aktifGecikme) {
+          $suzgecAdi = 'gecikmiş';
+      } elseif ($cokluDurum) {
+          $suzgecAdi = implode(', ', array_map(
+              static fn ($d) => $durumlar[$d] ?? $d,
+              $durumSecim
+          ));
+      } else {
+          $suzgecAdi = $durumlar[$aktifDurum] ?? $aktifDurum;
+      }
+      ?>
+      <b><?= esc($suzgecAdi) ?></b>
       olan <b><?= number_format((int) $toplamKayit, 0, ',', '.') ?></b> kaydı gösteriyor.
     </span>
     <a href="<?= $ozetBag([]) ?>">Süzgeci kaldır</a>
@@ -1485,71 +1476,5 @@ function topluDurum(durum) {
     })
     .catch(function (e) { BT.bildir(e.message, 'hata'); });
 }
-</script>
-
-<script>
-// Beyanname türü ÇOKLU seçim combobox'ı:
-//  - kutucuğa tıklayınca panel açılır/kapanır
-//  - "Tümü" ↔ tür kutuları çelişkisini yönetir
-//  - seçim değişince otomatik gönderir; dışarı tıklayınca kapanır
-(function () {
-  var kutu = document.getElementById('tur-coklu');
-  if (!kutu) return;
-
-  var acBtn   = kutu.querySelector('[data-coklu-ac]');
-  var panel   = kutu.querySelector('.coklu-panel');
-  var ara     = kutu.querySelector('[data-coklu-ara]');
-  var tumu    = kutu.querySelector('[data-tur-tumu]');
-  var kutular = kutu.querySelectorAll('[data-tur-kutu]');
-  var satirlar = kutu.querySelectorAll('[data-coklu-satir]');
-
-  function gonder() { if (kutu.form) kutu.form.submit(); }
-
-  // Aç / kapat
-  if (acBtn) {
-    acBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      var acik = panel.getAttribute('hidden') === null;
-      panel.hidden = acik;
-      if (!acik && ara) { ara.value = ''; ara.focus(); }
-    });
-  }
-
-  // Dışarı tıklayınca kapat
-  document.addEventListener('click', function (e) {
-    if (!kutu.contains(e.target)) panel.hidden = true;
-  });
-
-  // Panel içi tıklamalar paneli kapatmasın
-  panel.addEventListener('click', function (e) { e.stopPropagation(); });
-
-  // Arama: satırları filtrele
-  if (ara) {
-    ara.addEventListener('input', function () {
-      var q = ara.value.toLocaleLowerCase('tr');
-      satirlar.forEach(function (s) {
-        s.style.display = s.textContent.toLocaleLowerCase('tr').indexOf(q) > -1 ? '' : 'none';
-      });
-    });
-  }
-
-  // "Tümü" işaretlenince diğerlerini temizle
-  if (tumu) {
-    tumu.addEventListener('change', function () {
-      if (tumu.checked) {
-        kutular.forEach(function (k) { k.checked = false; });
-      }
-      gonder();
-    });
-  }
-
-  // Tür seçilince "Tümü" kutusunu kaldır
-  kutular.forEach(function (k) {
-    k.addEventListener('change', function () {
-      if (k.checked && tumu) tumu.checked = false;
-      gonder();
-    });
-  });
-})();
 </script>
 <?= $this->endSection() ?>

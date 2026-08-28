@@ -474,6 +474,58 @@ table.tablo .orta{text-align:center}
 }
 
 /* ---------------- YAZDIRMA ---------------- */
+
+/* ---------------- ÇOKLU SEÇİM KUTUSU ---------------- */
+.coklu-sec{position:relative}
+.coklu-dugme{
+  width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;
+  padding:7px 10px;font:inherit;font-size:13px;text-align:left;cursor:pointer;
+  background:#fff;border:1px solid var(--gri-300,#cbd5e1);border-radius:8px;
+  color:var(--gri-800,#1e293b);transition:.12s
+}
+.coklu-dugme:hover{border-color:var(--ana,#2563eb)}
+.coklu-dugme:focus{outline:none;border-color:var(--ana,#2563eb);
+  box-shadow:0 0 0 3px rgba(37,99,235,.13)}
+/* Filtre etkinken kullanıcı bunu bir bakışta görmeli */
+.coklu-dugme.dolu{border-color:var(--ana,#2563eb);background:var(--ana-acik,#eff6ff);
+  color:var(--ana-koyu,#1d4ed8);font-weight:600}
+.coklu-dugme .cs-ozet{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.coklu-dugme .cs-ok{font-size:10px;opacity:.6;flex:none}
+.coklu-sec.acik .coklu-dugme .cs-ok{transform:rotate(180deg)}
+
+.coklu-panel{
+  display:none;position:absolute;z-index:60;top:calc(100% + 4px);left:0;
+  min-width:100%;width:max-content;max-width:290px;background:#fff;
+  border:1px solid var(--gri-200,#e2e8f0);border-radius:10px;
+  box-shadow:0 10px 30px rgba(15,23,42,.16);overflow:hidden
+}
+.coklu-sec.acik .coklu-panel{display:block}
+/* Sağ kenara taşarsa panel sola hizalanır (JS ekler) */
+.coklu-panel.sag{left:auto;right:0}
+
+.cs-ust{padding:8px;border-bottom:1px solid var(--gri-100,#f1f5f9)}
+.cs-ust .cs-ara{width:100%;padding:5px 8px;font-size:12px}
+.cs-islem{display:flex;gap:6px;margin-top:6px}
+.cs-islem button{
+  flex:1;padding:4px 6px;font:inherit;font-size:11px;cursor:pointer;
+  background:var(--gri-50,#f8fafc);border:1px solid var(--gri-200,#e2e8f0);
+  border-radius:6px;color:var(--gri-600,#475569)
+}
+.cs-islem button:hover{background:var(--gri-100,#f1f5f9);color:var(--gri-800,#1e293b)}
+
+.cs-liste{max-height:260px;overflow-y:auto;padding:4px}
+.cs-oge{
+  display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;
+  cursor:pointer;font-size:13px;color:var(--gri-700,#334155)
+}
+.cs-oge:hover{background:var(--gri-50,#f8fafc)}
+.cs-oge input[type=checkbox]{width:15px;height:15px;accent-color:var(--ana,#2563eb);cursor:pointer;flex:none}
+.cs-bos{padding:12px 10px;text-align:center;font-size:12px;color:var(--gri-400,#94a3b8)}
+
+.cs-alt{padding:8px;border-top:1px solid var(--gri-100,#f1f5f9);
+  background:var(--gri-50,#f8fafc);text-align:right}
+.cs-alt .btn{width:100%}
+
 @media print{
   .yan-menu,.ust-bar,.filtre-bar,.btn,.modal-arka,#bildirimler,.yazdirma-gizle{display:none!important}
   .ana{margin-left:0}
@@ -484,31 +536,3 @@ table.tablo .orta{text-align:center}
   .rozet,.hucre,.evrak-hucre,.tur-rozet{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   @page{margin:1cm;size:landscape}
 }
-
-/* ---- Beyanname Türü çoklu seçim (takip çizelgesi filtresi) ---- */
-/* ---- Beyanname Türü çoklu seçim combobox'ı (takip çizelgesi) ---- */
-.filtre-bar .tur-coklu-grup{flex:1 1 200px;min-width:200px;max-width:280px}
-.coklu-sec{position:relative}
-.coklu-kutu{
-  display:flex;align-items:center;justify-content:space-between;gap:8px;
-  width:100%;padding:8px 10px;font-size:13px;text-align:left;cursor:pointer;
-  background:#fff;border:1px solid var(--gri-300,#cbd5e1);border-radius:8px;
-  color:var(--gri-800,#1e293b);font-family:inherit;
-}
-.coklu-kutu:hover{border-color:var(--ana,#2563eb)}
-.coklu-kutu .coklu-ozet{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.coklu-kutu .coklu-ok{font-size:11px;color:var(--gri-500,#64748b);flex-shrink:0}
-.coklu-panel{
-  position:absolute;top:calc(100% + 4px);left:0;z-index:60;min-width:100%;
-  width:max-content;max-width:280px;
-  background:#fff;border:1px solid var(--gri-300,#cbd5e1);border-radius:10px;
-  box-shadow:0 10px 30px rgba(15,23,42,.14);overflow:hidden;
-}
-.coklu-panel .coklu-ara{padding:8px;border-bottom:1px solid var(--gri-200,#e2e8f0)}
-.coklu-panel .coklu-ara .girdi{padding:6px 9px;font-size:13px}
-.coklu-liste{max-height:230px;overflow-y:auto;padding:6px}
-.coklu-liste .onay{display:flex;align-items:center;gap:8px;padding:6px 8px;margin:0;border-radius:6px;font-size:13px;cursor:pointer}
-.coklu-liste .onay:hover{background:var(--gri-50,#f8fafc)}
-.coklu-liste .onay input[type=checkbox]{width:15px;height:15px;accent-color:var(--ana,#2563eb);cursor:pointer;flex-shrink:0}
-.coklu-liste .onay+.onay{border-top:1px dashed var(--gri-200,#e2e8f0)}
-.coklu-liste .onay:first-child{font-weight:600}

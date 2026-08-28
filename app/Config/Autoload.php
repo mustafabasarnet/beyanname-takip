@@ -14,5 +14,5 @@ class Autoload extends AutoloadConfig
     public $files    = [];
 
     /** Her istekte otomatik yüklenecek helper'lar */
-    public $helpers = ['url', 'form', 'text', 'beyanname'];
+    public $helpers = ['url', 'form', 'text', 'beyanname', 'ayar'];
 }

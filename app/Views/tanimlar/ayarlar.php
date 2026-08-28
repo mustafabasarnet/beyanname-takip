@@ -14,7 +14,7 @@ $acik  = static fn ($k, $v = 0) => (int) ($a[$k]['deger'] ?? $v) === 1;
 $bilinen = [
     'cumartesi_tatil', 'pazar_tatil', 'arife_tatil_sayilsin', 'mali_tatil_uygula',
     'otomatik_donem_uret', 'firma_adi', 'uyari_gun_sayisi',
-    'evrak_donem_kaydirma', 'evrak_sayfa_adedi', 'evrak_muaf_etiket',
+    'evrak_donem_kaydirma', 'evrak_sayfa_adedi',
     'damga_otomatik_ekle', 'bildirim_ucret_varsayilan',
     'gg_istisna_donem', 'karsit_uyari_gun',
     'edefter_aylik_ay_sonra', 'edefter_ucaylik_ay_sonra',
@@ -23,44 +23,32 @@ $bilinen = [
     'edefter_otomatik_uret', 'edefter_uyari_gun',
 ];
 
+/*
+ * Türkçe adı ve girdi tipi tanımlı ayarlar (bkz. app/Helpers/ayar_helper.php).
+ * Bunlar aşağıda kendi kartlarında düzgün etiketlerle çizilir; "Diğer
+ * Ayarlar" bölümüne YALNIZCA hiçbir yerde tanımlanmamış anahtarlar düşer.
+ */
+$tanimli  = ayarTanimlari();
+$gruplar  = ayarGruplari();
+
+// [grup => [anahtar => deger]]
+$gruplu = [];
+
+foreach ($ayarlar as $x) {
+    $ad = $x['anahtar'];
+
+    if (! isset($tanimli[$ad])) {
+        continue;
+    }
+
+    $gruplu[$tanimli[$ad]['grup']][$ad] = $x['deger'];
+}
+
 $digerleri = array_filter(
     $ayarlar,
     static fn ($x) => ! in_array($x['anahtar'], $bilinen, true)
+                   && ! isset($tanimli[$x['anahtar']])
 );
-
-/*
- * "Diğer Ayarlar" bölümünde görünen anahtarların Türkçe etiketleri.
- * Bilinmeyen bir anahtar eklendiğinde anahtar adı okunaklı biçime çevrilir.
- */
-$digerEtiket = [
-    // Ajanda
-    'ajanda_panel_gun'   => '🗓️ Ajanda — Panelde Gösterilecek Gün',
-    'ajanda_giris_uyari' => '🗓️ Ajanda — Girişte Hatırlatma Penceresi',
-    'ajanda_ek_boyut'    => '🗓️ Ajanda — Dosya Eki Üst Sınırı (KB)',
-    // Makbuz Takip
-    'makbuz_stopaj_oran' => '🧾 Makbuz — Stopaj Oranı (%)',
-    'makbuz_kdv_oran'    => '🧾 Makbuz — KDV Oranı (%)',
-    'makbuz_kdv_dahil'   => '🧾 Makbuz — Excel Brüt Tutarı KDV Dahil mi',
-    // Vergi Yükü (Gelir Vergisi)
-    'gv_sigorta_oran'     => '🧮 Vergi Yükü — Şahıs/Hayat Sigorta Primi Üst Oranı (%)',
-    'gv_egitim_saglik_oran' => '🧮 Vergi Yükü — Eğitim ve Sağlık Harcaması Üst Oranı (%)',
-    'gv_uyumlu_oran'      => '🧮 Vergi Yükü — Uyumlu Mükellef İndirimi (%)',
-    'gv_uyumlu_ust_sinir' => '🧮 Vergi Yükü — Uyumlu Mükellef İndirimi Üst Sınırı (₺)',
-    'gv_hasilat_kaynagi'  => '🧮 Vergi Yükü — Hasılat Kaynağı',
-    'gv_ucret_stopaj_oran' => '🧮 Vergi Yükü — Ücret Kipinde Stopaj Oranı (%)',
-    'gv_ucret_kdv_oran'   => '🧮 Vergi Yükü — Ücret Kipinde KDV Oranı (%)',
-    'gv_varsayilan_kip'   => '🧮 Vergi Yükü — Varsayılan Hesap Kipi',
-];
-
-/* Açılır liste (select) olarak gösterilecek ayarlar: anahtar => [deger => etiket] */
-$digerSelect = [
-    'ajanda_giris_uyari' => ['1' => 'Açılsın', '0' => 'Açılmasın'],
-    'gv_hasilat_kaynagi' => ['tum' => 'Tüm kesilen makbuzlar', 'tahsil' => 'Yalnız tahsil edilenler'],
-    'gv_varsayilan_kip'  => ['ucret' => '📅 Yıllık Ücret Projeksiyonu', 'makbuz' => '🧾 Kesilen Makbuzlar'],
-];
-
-/* Onay kutusu (checkbox) olarak gösterilecek 1/0 ayarlar */
-$digerCheckbox = ['makbuz_kdv_dahil'];
 ?>
 
 <form method="post" action="<?= site_url('tanimlar/ayarlar') ?>">
@@ -136,16 +124,6 @@ $digerCheckbox = ['makbuz_kdv_dahil'];
           <?php endforeach; ?>
         </select>
         <span class="yardim">Evrak çizelgesinde ilk açılışta yüklenen satır sayısı</span>
-      </div>
-
-      <div class="form-grup">
-        <label>Takip Dışı Hücre Etiketi</label>
-        <input type="text" name="ayar[evrak_muaf_etiket]" class="girdi"
-               value="<?= esc($deger('evrak_muaf_etiket', 'Takip dışı')) ?>">
-        <span class="yardim">
-          Bankası/çeki olmayan mükelleflerin taralı hücrelerinde görünen yazı
-          (Excel/yazdırma çıktılarında da kullanılır)
-        </span>
       </div>
     </div>
   </div>
@@ -335,39 +313,49 @@ $digerCheckbox = ['makbuz_kdv_dahil'];
   </div>
 </div>
 
-<!-- ============ DİĞER (etiketli) ============ -->
+<?php /* ======= MODÜL AYARLARI (Türkçe adlı, tipine uygun alanlar) ======= */ ?>
+<?php foreach ($gruplar as $gAd => $gBilgi): ?>
+  <?php if (empty($gruplu[$gAd])) { continue; } ?>
+  <div class="kart">
+    <div class="kart-baslik">
+      <h2><?= $gBilgi['ikon'] ?> <?= esc($gBilgi['baslik']) ?></h2>
+      <?php if (! empty($gBilgi['aciklama'])): ?>
+        <span class="kucuk-yazi" style="margin-left:auto;max-width:520px;text-align:right">
+          <?= esc($gBilgi['aciklama']) ?>
+        </span>
+      <?php endif; ?>
+    </div>
+    <div class="kart-govde">
+      <div class="form-grid">
+        <?php foreach ($gruplu[$gAd] as $gAnahtar => $gDeger): ?>
+          <?php
+          $aa_anahtar = $gAnahtar;
+          $aa_tanim   = $tanimli[$gAnahtar];
+          $aa_deger   = $gDeger;
+          include APPPATH . 'Views/parcalar/_ayar_alani.php';
+          ?>
+        <?php endforeach; ?>
+      </div>
+    </div>
+  </div>
+<?php endforeach; ?>
+
+<!-- ============ DİĞER (otomatik) ============ -->
 <?php if ($digerleri !== []): ?>
 <div class="kart">
-  <div class="kart-baslik"><h2>🔧 Diğer Ayarlar</h2></div>
+  <div class="kart-baslik">
+    <h2>🔧 Diğer Ayarlar</h2>
+    <span class="kucuk-yazi" style="margin-left:auto">
+      Bu ayarların özel bir düzenleme alanı yok — değeri doğrudan yazabilirsiniz
+    </span>
+  </div>
   <div class="kart-govde">
     <div class="form-grid">
       <?php foreach ($digerleri as $x): ?>
-        <?php
-        $anahtar = $x['anahtar'];
-        $etiket  = $digerEtiket[$anahtar] ?? ucwords(str_replace('_', ' ', $anahtar));
-        ?>
         <div class="form-grup">
-          <label title="<?= esc($anahtar) ?>"><?= esc($etiket) ?></label>
-
-          <?php if (in_array($anahtar, $digerCheckbox, true)): ?>
-            <label class="onay">
-              <input type="checkbox" name="ayar[<?= esc($anahtar, 'attr') ?>]" value="1"
-                     <?= (int) $x['deger'] === 1 ? 'checked' : '' ?>>
-              <span>Evet</span>
-            </label>
-          <?php elseif (isset($digerSelect[$anahtar])): ?>
-            <select name="ayar[<?= esc($anahtar, 'attr') ?>]" class="girdi">
-              <?php foreach ($digerSelect[$anahtar] as $sv => $sad): ?>
-                <option value="<?= esc($sv, 'attr') ?>" <?= (string) $x['deger'] === (string) $sv ? 'selected' : '' ?>>
-                  <?= esc($sad) ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-          <?php else: ?>
-            <input type="text" name="ayar[<?= esc($anahtar, 'attr') ?>]" class="girdi"
-                   value="<?= esc($x['deger']) ?>">
-          <?php endif; ?>
-
+          <label><code><?= esc($x['anahtar']) ?></code></label>
+          <input type="text" name="ayar[<?= esc($x['anahtar'], 'attr') ?>]" class="girdi"
+                 value="<?= esc($x['deger']) ?>">
           <?php if (! empty($x['aciklama'])): ?>
             <span class="yardim"><?= esc($x['aciklama']) ?></span>
           <?php endif; ?>

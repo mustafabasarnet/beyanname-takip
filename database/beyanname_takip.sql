@@ -300,8 +300,7 @@ CREATE TABLE `evrak_takip` (
   `evrak_turu_id` INT UNSIGNED NOT NULL,
   `yil`           SMALLINT UNSIGNED NOT NULL,
   `ay`            TINYINT UNSIGNED NOT NULL,
-  `durum`         ENUM('GELMEDI','GELDI','YOK') NOT NULL DEFAULT 'GELMEDI'
-                  COMMENT 'YOK = bu dönem bu mükellefte takip edilmiyor',
+  `durum`         ENUM('GELMEDI','GELDI') NOT NULL DEFAULT 'GELMEDI',
   `teslim_tarihi` DATE     NULL,
   `kaydeden_id`   INT UNSIGNED NULL,
   `created_at`    DATETIME NULL,
@@ -313,28 +312,6 @@ CREATE TABLE `evrak_takip` (
   CONSTRAINT `fk_evrak_mukellef` FOREIGN KEY (`mukellef_id`)
      REFERENCES `mukellefler` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_evrak_tur` FOREIGN KEY (`evrak_turu_id`)
-     REFERENCES `evrak_turleri` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ---------------------------------------------------------------------
--- 8a) EVRAK MUAFİYETİ  (mükellefte hiç bulunmayan evrak türleri)
---     Satır varsa o mükellefin o evrak türü çizelgede pasif görünür,
---     kırmızı "eksik" sayılmaz ve sayaçlara girmez.
--- ---------------------------------------------------------------------
-DROP TABLE IF EXISTS `mukellef_evrak_muafiyet`;
-CREATE TABLE `mukellef_evrak_muafiyet` (
-  `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `mukellef_id`   INT UNSIGNED NOT NULL,
-  `evrak_turu_id` INT UNSIGNED NOT NULL,
-  `aciklama`      VARCHAR(200) NULL COMMENT 'Neden takip edilmiyor (örn. banka hesabı yok)',
-  `created_at`    DATETIME NULL,
-  `updated_at`    DATETIME NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_muafiyet` (`mukellef_id`,`evrak_turu_id`),
-  KEY `fk_muaf_tur` (`evrak_turu_id`),
-  CONSTRAINT `fk_muaf_mukellef` FOREIGN KEY (`mukellef_id`)
-     REFERENCES `mukellefler` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_muaf_tur` FOREIGN KEY (`evrak_turu_id`)
      REFERENCES `evrak_turleri` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -495,8 +472,6 @@ CREATE TABLE `musavir_gelir_gider` (
   `id`                 INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `musavir_id`         INT UNSIGNED NOT NULL,
   `yil`                SMALLINT UNSIGNED NOT NULL,
-  `hesap_kipi`         ENUM('ucret','makbuz') NOT NULL DEFAULT 'ucret'
-                         COMMENT 'ucret = yıllık sözleşme ücretleri (projeksiyon), makbuz = kesilen makbuzlar',
   `gider`              DECIMAL(16,2) NOT NULL DEFAULT 0 COMMENT 'Elle girilen mesleki gider — musavir_aylik_gider toplamı EKLENİR',
   `gecmis_yil_zarari`  DECIMAL(16,2) NOT NULL DEFAULT 0 COMMENT 'PASİF (16. güncelleme) — kullanılmıyor',
   `bagkur`             DECIMAL(16,2) NOT NULL DEFAULT 0 COMMENT 'Ödenen Bağ-Kur/SGK primi (sınırsız indirilir)',
@@ -855,91 +830,7 @@ INSERT INTO `ayarlar` (`anahtar`,`deger`,`aciklama`) VALUES
 ('gv_uyumlu_ust_sinir','12000000','Uyumlu mükellef indirimi üst sınırı (TL) — 2026: 12.000.000'),
 ('gv_hasilat_kaynagi','tum','Hasılat kaynağı: tum = kesilen tüm makbuzlar, tahsil = yalnız tahsil edilenler'),
 ('gv_sigorta_oran','15','Şahıs/hayat sigorta primi indirim üst oranı (%) — GVK 89/1'),
-('gv_egitim_saglik_oran','10','Eğitim ve sağlık harcaması indirim üst oranı (%) — GVK 89/2'),
-('gv_ucret_stopaj_oran','20','Yıllık sözleşme ücretinden stopaj oranı (%) — gelir vergisi projeksiyonu'),
-('gv_ucret_kdv_oran','20','Yıllık sözleşme ücretinden KDV oranı (%) — gelir vergisi projeksiyonu'),
-('gv_varsayilan_kip','ucret','Yeni kayıtlarda varsayılan hesap kipi: ucret | makbuz'),
-('ajanda_panel_gun','7','Panelde kaç günlük ajanda gösterilsin'),
-('ajanda_giris_uyari','1','Girişte bugünün işleri penceresi açılsın mı (1=evet)'),
-('ajanda_ek_boyut','5120','Ajanda dosya eki en büyük boyut (KB)');
-
--- ---------------------------------------------------------------------
--- 22) AJANDA / HATIRLATICI
---     Elle girilen işler: toplantı, arama, sözleşme yenileme…
---     Beyanname/e-defter/evrak uyarıları ayrı modüllerde üretilir.
--- ---------------------------------------------------------------------
-DROP TABLE IF EXISTS `ajanda_uyari_okundu`;
-DROP TABLE IF EXISTS `ajanda_ek`;
-DROP TABLE IF EXISTS `ajanda`;
-
-CREATE TABLE `ajanda` (
-  `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `baslik`        VARCHAR(200) NOT NULL,
-  `aciklama`      TEXT NULL,
-  `tarih`         DATE NOT NULL,
-  `saat`          TIME NULL COMMENT 'Boşsa gün boyu',
-  `bitis_tarihi`  DATE NULL,
-  `gorunurluk`    ENUM('kisisel','genel','gorev','musavir') NOT NULL DEFAULT 'kisisel',
-  `atanan_id`     INT UNSIGNED NULL,
-  `musavir_id`    INT UNSIGNED NULL,
-  `oncelik`       ENUM('dusuk','normal','yuksek','acil') NOT NULL DEFAULT 'normal',
-  `etiket`        VARCHAR(60) NULL,
-  `renk`          VARCHAR(9) NULL,
-  `mukellef_id`   INT UNSIGNED NULL,
-  `tekrar`        ENUM('yok','gunluk','haftalik','aylik','yillik') NOT NULL DEFAULT 'yok',
-  `tekrar_bitis`  DATE NULL,
-  `hatirlat_gun`  TINYINT UNSIGNED NOT NULL DEFAULT 0,
-  `durum`         ENUM('BEKLIYOR','YAPILDI','IPTAL') NOT NULL DEFAULT 'BEKLIYOR',
-  `yapildi_at`    DATETIME NULL,
-  `yapan_id`      INT UNSIGNED NULL,
-  `olusturan_id`  INT UNSIGNED NOT NULL,
-  `created_at`    DATETIME NULL,
-  `updated_at`    DATETIME NULL,
-  `deleted_at`    DATETIME NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_ajanda_tarih` (`tarih`,`durum`),
-  KEY `idx_ajanda_olusturan` (`olusturan_id`,`tarih`),
-  KEY `idx_ajanda_atanan` (`atanan_id`,`durum`),
-  KEY `idx_ajanda_gorunurluk` (`gorunurluk`,`tarih`),
-  KEY `idx_ajanda_mukellef` (`mukellef_id`),
-  KEY `idx_ajanda_musavir` (`musavir_id`),
-  CONSTRAINT `fk_ajanda_olusturan` FOREIGN KEY (`olusturan_id`)
-     REFERENCES `kullanicilar` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_ajanda_atanan` FOREIGN KEY (`atanan_id`)
-     REFERENCES `kullanicilar` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_ajanda_yapan` FOREIGN KEY (`yapan_id`)
-     REFERENCES `kullanicilar` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_ajanda_mukellef` FOREIGN KEY (`mukellef_id`)
-     REFERENCES `mukellefler` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_ajanda_musavir` FOREIGN KEY (`musavir_id`)
-     REFERENCES `musavirler` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE `ajanda_ek` (
-  `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `ajanda_id`   INT UNSIGNED NOT NULL,
-  `dosya_adi`   VARCHAR(255) NOT NULL,
-  `saklanan`    VARCHAR(255) NOT NULL,
-  `boyut`       INT UNSIGNED NOT NULL DEFAULT 0,
-  `tur`         VARCHAR(100) NULL,
-  `yukleyen_id` INT UNSIGNED NULL,
-  `created_at`  DATETIME NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_ek_ajanda` (`ajanda_id`),
-  CONSTRAINT `fk_ek_ajanda` FOREIGN KEY (`ajanda_id`)
-     REFERENCES `ajanda` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_ek_yukleyen` FOREIGN KEY (`yukleyen_id`)
-     REFERENCES `kullanicilar` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE `ajanda_uyari_okundu` (
-  `kullanici_id` INT UNSIGNED NOT NULL,
-  `tarih`        DATE NOT NULL,
-  `created_at`   DATETIME NULL,
-  PRIMARY KEY (`kullanici_id`,`tarih`),
-  CONSTRAINT `fk_uyari_kullanici` FOREIGN KEY (`kullanici_id`)
-     REFERENCES `kullanicilar` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+('gv_egitim_saglik_oran','10','Eğitim ve sağlık harcaması indirim üst oranı (%) — GVK 89/2');
 
 SET FOREIGN_KEY_CHECKS = 1;
 

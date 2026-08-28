@@ -207,3 +207,143 @@
   };
 
 })();
+
+/* =================================================================
+ *  ÇOKLU SEÇİM KUTUSU
+ *
+ *  Görünüm parçası: app/Views/parcalar/_coklu_secim.php
+ *  Fonksiyonlar global (onclick özniteliklerinden çağrılır).
+ *
+ *  Davranış: kutu açıkken her tık formu göndermez; kullanıcı seçimini
+ *  bitirip "Uygula"ya bastığında ya da paneli kapattığında TEK sefer
+ *  gönderilir. Her onay kutusunda sayfa yenilense kullanılamazdı.
+ * ================================================================= */
+function cokluKapatHepsi(haric) {
+  document.querySelectorAll('.coklu-sec.acik').forEach(function (k) {
+    if (k === haric) { return; }
+    k.classList.remove('acik');
+    var d = k.querySelector('.coklu-dugme');
+    if (d) { d.setAttribute('aria-expanded', 'false'); }
+    // Panel açıkken yapılan değişiklikler kapanışta uygulanır
+    if (k.dataset.kirli === '1') { k.dataset.kirli = '0'; cokluGonder(k); }
+  });
+}
+
+function cokluAc(dugme) {
+  var kutu = dugme.closest('.coklu-sec');
+  var acik = kutu.classList.contains('acik');
+
+  cokluKapatHepsi(kutu);
+
+  if (acik) {
+    kutu.classList.remove('acik');
+    dugme.setAttribute('aria-expanded', 'false');
+    if (kutu.dataset.kirli === '1') { kutu.dataset.kirli = '0'; cokluGonder(kutu); }
+    return;
+  }
+
+  kutu.classList.add('acik');
+  dugme.setAttribute('aria-expanded', 'true');
+
+  // Panel ekranın sağına taşıyorsa sola hizala
+  var panel = kutu.querySelector('.coklu-panel');
+  if (panel) {
+    panel.classList.remove('sag');
+    var r = panel.getBoundingClientRect();
+    if (r.right > document.documentElement.clientWidth - 8) { panel.classList.add('sag'); }
+  }
+
+  var ara = kutu.querySelector('.cs-ara');
+  if (ara) { ara.value = ''; cokluAra(ara); ara.focus(); }
+}
+
+function cokluAra(inp) {
+  var kutu = inp.closest('.coklu-sec');
+  var q    = inp.value.toLocaleLowerCase('tr').trim();
+  var bulunan = 0;
+
+  kutu.querySelectorAll('.cs-oge').forEach(function (o) {
+    var uyar = q === '' || (o.dataset.metin || '').indexOf(q) > -1;
+    o.style.display = uyar ? '' : 'none';
+    if (uyar) { bulunan++; }
+  });
+
+  var bos = kutu.querySelector('.cs-bos');
+  if (bos) { bos.classList.toggle('gizle', bulunan > 0); }
+}
+
+/** Tümünü seç / temizle — yalnızca ARAMAYA UYAN ögeleri etkiler */
+function cokluTumu(dugme, deger) {
+  var kutu = dugme.closest('.coklu-sec');
+
+  kutu.querySelectorAll('.cs-oge').forEach(function (o) {
+    if (o.style.display === 'none') { return; }
+    var c = o.querySelector('input[type=checkbox]');
+    if (c) { c.checked = deger; }
+  });
+
+  kutu.dataset.kirli = '1';
+  cokluOzetYaz(kutu);
+}
+
+function cokluDegisti(kutuGirdi) {
+  var kutu = kutuGirdi.closest('.coklu-sec');
+  kutu.dataset.kirli = '1';
+  cokluOzetYaz(kutu);
+}
+
+/** Kapalı düğmedeki özet metnini günceller */
+function cokluOzetYaz(kutu) {
+  var hepsi  = kutu.querySelectorAll('.cs-oge input[type=checkbox]');
+  var secili = kutu.querySelectorAll('.cs-oge input[type=checkbox]:checked');
+  var dugme  = kutu.querySelector('.coklu-dugme');
+  var ozet   = kutu.querySelector('.cs-ozet');
+  if (!ozet) { return; }
+
+  var tekil = kutu.dataset.tekil || 'öge';
+  var metin;
+
+  if (secili.length === 0 || secili.length === hepsi.length) {
+    metin = 'Tümü';
+  } else if (secili.length === 1) {
+    var et = secili[0].parentNode.querySelector('span');
+    metin = et ? et.textContent.trim() : ('1 ' + tekil);
+  } else {
+    metin = secili.length + ' ' + tekil + ' seçili';
+  }
+
+  ozet.textContent = metin;
+  dugme.classList.toggle('dolu', secili.length > 0 && secili.length < hepsi.length);
+}
+
+/**
+ * Formu gönderir.
+ *
+ * HEPSİ seçiliyse kutular boşaltılır: "tümü" ile "hepsini tek tek seçtim"
+ * aynı sonucu verir ama ikincisi adres çubuğunu 13 parametreyle şişirirdi.
+ */
+function cokluGonder(kutu) {
+  var hepsi  = kutu.querySelectorAll('.cs-oge input[type=checkbox]');
+  var secili = kutu.querySelectorAll('.cs-oge input[type=checkbox]:checked');
+
+  if (secili.length === hepsi.length) {
+    hepsi.forEach(function (c) { c.checked = false; });
+  }
+
+  var form = kutu.closest('form');
+  if (form) { form.submit(); }
+}
+
+function cokluUygula(dugme) {
+  var kutu = dugme.closest('.coklu-sec');
+  kutu.dataset.kirli = '0';
+  cokluGonder(kutu);
+}
+
+document.addEventListener('click', function (e) {
+  if (!e.target.closest('.coklu-sec')) { cokluKapatHepsi(null); }
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') { cokluKapatHepsi(null); }
+});
+

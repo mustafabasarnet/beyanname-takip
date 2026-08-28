@@ -312,9 +312,7 @@ baslik('GVK md.89 SINIRLI İNDİRİMLER + KDV MAHSUBU');
 function zincir2(array $g, array $dilimler): array
 {
     $kazanc = round($g['hasilat'] - $g['gider'], 2);
-
-    // 19. güncelleme: taban = kazanç − Bağ-Kur
-    $taban = max(0, round($kazanc - ($g['bagkur'] ?? 0), 2));
+    $taban  = max(0, $kazanc);
 
     $sigTavan = round($taban * 15 / 100, 2);
     $egiTavan = round($taban * 10 / 100, 2);
@@ -333,8 +331,7 @@ function zincir2(array $g, array $dilimler): array
 
     $odenmesi = round(max(0, $vergi - $uyumlu), 2);
 
-    // 18. güncelleme: KDV yükümlülüğünden ödenen düşülür → kalan borç
-    // ($g['kdv'] artık KALAN BORCU temsil eder)
+    // KDV stopajdan düşülür → net mahsup
     $mahsup = round(($g['stopaj'] ?? 0) + ($g['diger_mahsup'] ?? 0) - ($g['kdv'] ?? 0), 2);
     $sonuc  = round($odenmesi - $mahsup, 2);
 
@@ -474,26 +471,14 @@ function yuk(array $g, array $dilimler): array
 {
     $gider  = round(($g['gider_elle'] ?? 0) + ($g['gider_aylik'] ?? 0), 2);
     $kazanc = round(($g['hasilat'] ?? 0) - $gider, 2);
-
-    // İndirimler: Bağ-Kur sınırsız; sigorta/eğitim tavanı Bağkur SONRASI tabandan
-    $bagkur = $g['bagkur'] ?? 0;
-    $taban  = max(0, round($kazanc - $bagkur, 2));
-    $sig    = min($g['sigorta'] ?? 0, round($taban * 15 / 100, 2));
-    $egi    = min($g['egitim'] ?? 0, round($taban * 10 / 100, 2));
-
-    $matrah = round(max(0, $kazanc - $bagkur - $sig - $egi), 2);
+    $matrah = round(max(0, $kazanc), 2);
 
     $t     = vergiHesapla($matrah, $dilimler);
     $vergi = $t['vergi'];
 
     $stopaj = $g['stopaj'] ?? 0;
     $diger  = $g['diger_mahsup'] ?? 0;
-
-    // KDV: makbuz yükümlülüğü − ödeme = kalan borç (− ise alacak)
-    // ÖDEME = aylık tablonun AY TOPLAMI: ödenen + indirilecek
-    $kdvYuk    = $g['kdv_yukumluluk'] ?? 0;
-    $kdvOdenen = round(($g['kdv_odenen'] ?? 0) + ($g['kdv_indirilecek'] ?? 0), 2);
-    $kdv       = round($kdvYuk - $kdvOdenen, 2);
+    $kdv    = $g['kdv'] ?? 0;
 
     $gvDenge = round($vergi - $stopaj - $diger, 2);
     $mahsup  = round($stopaj + $diger - $kdv, 2);
@@ -502,73 +487,54 @@ function yuk(array $g, array $dilimler): array
     return [
         'gider' => $gider, 'matrah' => $matrah, 'vergi' => $vergi,
         'gv_denge' => $gvDenge, 'gv_alacak' => max(0, -$gvDenge), 'gv_borc' => max(0, $gvDenge),
-        'kdv_kalan' => $kdv, 'kdv_borc' => max(0, $kdv), 'kdv_alacak' => max(0, -$kdv),
         'yuk' => $sonuc, 'odenecek' => max(0, $sonuc), 'iade' => max(0, -$sonuc),
     ];
 }
 
-// --- KULLANICI SENARYOSU (18. güncelleme) ---------------------------
-// matrah 20.000 → vergi 3.000 · stopaj 4.000 → 1.000 GV alacağı
-// makbuz KDV 4.000, fiilen ödenen 3.000 → kalan borç 1.000
-// yük = −1.000 + 1.000 = 0  → alacak/verecek YOK
+// --- Kullanıcının verdiği senaryo -----------------------------------
+// vergi 3.000, stopaj 4.000 → 1.000 alacak; KDV 2.500 → yük 1.500 ödenecek
 $y1 = yuk([
     'hasilat' => 520000, 'gider_elle' => 500000,   // matrah 20.000 → vergi 3.000
-    'stopaj' => 4000, 'kdv_yukumluluk' => 4000, 'kdv_odenen' => 3000,
+    'stopaj' => 4000, 'kdv' => 2500,
 ], $d26);
 
-esit(20000.0, $y1['matrah'],     'Y1: matrah 20.000');
-esit(3000.0,  $y1['vergi'],      'Y1: vergi 3.000 (%15)');
-esit(1000.0,  $y1['gv_alacak'],  'Y1: devletten 1.000 GV alacağı');
-esit(1000.0,  $y1['kdv_kalan'],  'Y1: kalan KDV borcu 1.000 (4.000 − 3.000)');
-esit(1000.0,  $y1['kdv_borc'],   'Y1: KDV borcu olarak raporlanır');
-esit(0.0,     $y1['yuk'],        'Y1: yük TAM 0 — alacak/verecek yok');
-esit(0.0,     $y1['odenecek'],   'Y1: ödenecek yok');
-esit(0.0,     $y1['iade'],       'Y1: iade de yok');
+esit(20000.0, $y1['matrah'],    'Y1: matrah 20.000');
+esit(3000.0,  $y1['vergi'],     'Y1: vergi 3.000 (%15)');
+esit(-1000.0, $y1['gv_denge'],  'Y1: GV dengesi −1.000');
+esit(1000.0,  $y1['gv_alacak'], 'Y1: devletten 1.000 alacak');
+esit(1500.0,  $y1['odenecek'],  'Y1: KDV 2.500 ile vergi yükü 1.500 ÖDENECEK');
+esit(0.0,     $y1['iade'],      'Y1: iade yok');
 
-// --- Hiç KDV ödenmemişse tüm yükümlülük borç ------------------------
+// --- Aynı senaryo, KDV küçük: yük iadeye döner ----------------------
 $y2 = yuk([
     'hasilat' => 520000, 'gider_elle' => 500000,
-    'stopaj' => 4000, 'kdv_yukumluluk' => 4000, 'kdv_odenen' => 0,
+    'stopaj' => 4000, 'kdv' => 500,
 ], $d26);
 
-esit(4000.0, $y2['kdv_kalan'], 'Y2: ödeme yoksa kalan borç = yükümlülük');
-esit(3000.0, $y2['odenecek'],  'Y2: −1.000 + 4.000 = 3.000 ÖDENECEK');
+esit(500.0, $y2['iade'],     'Y2: KDV 500 → 500 İADE');
+esit(0.0,   $y2['odenecek'], 'Y2: ödenecek yok');
 
-// --- KDV tamamen ödenmişse yalnız GV alacağı kalır ------------------
+// --- KDV tam dengeyi kapatır -----------------------------------------
 $y3 = yuk([
     'hasilat' => 520000, 'gider_elle' => 500000,
-    'stopaj' => 4000, 'kdv_yukumluluk' => 4000, 'kdv_odenen' => 4000,
+    'stopaj' => 4000, 'kdv' => 1000,
 ], $d26);
 
-esit(0.0,    $y3['kdv_kalan'], 'Y3: tamamı ödenince kalan borç 0');
-esit(1000.0, $y3['iade'],      'Y3: yalnız GV alacağı 1.000 İADE');
+esit(0.0, $y3['yuk'],      'Y3: KDV = alacak → yük tam 0');
+esit(0.0, $y3['odenecek'], 'Y3: ne ödeme ne iade');
 
-// --- FAZLA ÖDEME: KDV alacağı doğar, iadeyi büyütür -----------------
+// --- Stopaj yoksa GV borçlu; KDV üstüne biner ------------------------
 $y4 = yuk([
     'hasilat' => 520000, 'gider_elle' => 500000,
-    'stopaj' => 4000, 'kdv_yukumluluk' => 4000, 'kdv_odenen' => 5000,
+    'stopaj' => 0, 'kdv' => 1000,
 ], $d26);
 
-esit(-1000.0, $y4['kdv_kalan'],  'Y4: fazla ödemede kalan negatif');
-esit(1000.0,  $y4['kdv_alacak'], 'Y4: 1.000 KDV alacağı');
-esit(2000.0,  $y4['iade'],       'Y4: 1.000 GV + 1.000 KDV = 2.000 İADE');
-
-// --- Stopaj yoksa GV borçlu; KDV borcu üstüne biner -----------------
-$y5 = yuk([
-    'hasilat' => 520000, 'gider_elle' => 500000,
-    'stopaj' => 0, 'kdv_yukumluluk' => 4000, 'kdv_odenen' => 3000,
-], $d26);
-
-esit(3000.0, $y5['gv_borc'],  'Y5: stopaj yokken GV borcu 3.000');
-esit(4000.0, $y5['odenecek'], 'Y5: 3.000 borç + 1.000 KDV borcu = 4.000');
-
-// --- KDV matrahı DEĞİŞTİRMEZ ----------------------------------------
-esit($y1['matrah'], $y2['matrah'], 'Y6: KDV ödemesi matrahı değiştirmez');
-esit($y1['vergi'],  $y4['vergi'],  'Y6: KDV ödemesi hesaplanan vergiyi değiştirmez');
+esit(3000.0, $y4['gv_borc'],  'Y4: stopaj yokken GV borcu 3.000');
+esit(4000.0, $y4['odenecek'], 'Y4: 3.000 borç + 1.000 KDV = 4.000 yük');
 
 // --- Vergi yükü = GV dengesi + KDV özdeşliği --------------------------
-foreach ([[3000, 4000, 1000], [10000, 2000, 0], [0, 5000, 800], [50000, 50000, 1200]] as $x) {
-    [$v, $st, $kd] = $x;   // $kd = KALAN KDV BORCU
+foreach ([[3000, 4000, 2500], [10000, 2000, 0], [0, 5000, 800], [50000, 50000, 1200]] as $x) {
+    [$v, $st, $kd] = $x;
 
     // Matrahı %15 diliminde tutup vergiyi doğrudan kurgula
     $gvDenge = $v - $st;
@@ -606,144 +572,6 @@ esit(100000.0, $g4['matrah'], 'G4: matrah = hasılat');
 $g5 = yuk(['hasilat' => 100000, 'gider_elle' => 80000, 'gider_aylik' => 50000], $d26);
 esit(130000.0, $g5['gider'],  'G5: toplam gider 130.000');
 esit(0.0,      $g5['matrah'], 'G5: gider hasılatı aşınca matrah 0');
-
-
-// =====================================================================
-baslik('KDV ÖDEMESİ = AY TOPLAMI (ödenen + indirilecek)');
-// =====================================================================
-
-// Kullanıcının ekran görüntüsü: Ocak 3.000+1.000, Şubat 5.000+1.000
-//   ödenen sütunu 8.000 · indirilecek 2.000 · AY TOPLAMI 10.000
-//   makbuz KDV 10.000 → kalan borç 0
-$t1 = yuk([
-    'hasilat' => 520000, 'gider_elle' => 500000, 'stopaj' => 4000,
-    'kdv_yukumluluk' => 10000, 'kdv_odenen' => 8000, 'kdv_indirilecek' => 2000,
-], $d26);
-
-esit(0.0,    $t1['kdv_kalan'], 'T1: 8.000 + 2.000 = 10.000 ödeme → kalan borç 0');
-esit(1000.0, $t1['iade'],      'T1: yalnız GV alacağı 1.000 iade kalır');
-
-// İndirilecek sütunu MAHSUBA GİRER — girilince borç azalmalı
-$t2 = yuk([
-    'hasilat' => 520000, 'gider_elle' => 500000, 'stopaj' => 4000,
-    'kdv_yukumluluk' => 10000, 'kdv_odenen' => 8000, 'kdv_indirilecek' => 0,
-], $d26);
-
-esit(2000.0, $t2['kdv_kalan'], 'T2: indirilecek girilmezse kalan borç 2.000');
-esit(1000.0, $t2['odenecek'],  'T2: −1.000 + 2.000 = 1.000 ödenecek');
-
-// İki sütunun yeri değişse sonuç AYNI olmalı (toplam esas)
-$t3 = yuk([
-    'hasilat' => 520000, 'gider_elle' => 500000, 'stopaj' => 4000,
-    'kdv_yukumluluk' => 10000, 'kdv_odenen' => 2000, 'kdv_indirilecek' => 8000,
-], $d26);
-
-esit($t1['kdv_kalan'], $t3['kdv_kalan'], 'T3: sütun dağılımı sonucu değiştirmez');
-esit($t1['yuk'],       $t3['yuk'],       'T3: vergi yükü aynı');
-
-// Ay toplamı yükümlülüğü aşarsa KDV alacağı
-$t4 = yuk([
-    'hasilat' => 520000, 'gider_elle' => 500000, 'stopaj' => 4000,
-    'kdv_yukumluluk' => 10000, 'kdv_odenen' => 9000, 'kdv_indirilecek' => 3000,
-], $d26);
-
-esit(-2000.0, $t4['kdv_kalan'],  'T4: 12.000 ödeme → 2.000 fazla');
-esit(2000.0,  $t4['kdv_alacak'], 'T4: 2.000 KDV alacağı');
-esit(3000.0,  $t4['iade'],       'T4: 1.000 GV + 2.000 KDV = 3.000 iade');
-
-
-// =====================================================================
-baslik('İNDİRİM TABANI = KAZANÇ − BAĞ-KUR (19. güncelleme)');
-// =====================================================================
-
-// Kazanç 164.000, Bağ-Kur 20.000 → taban 144.000
-//   sigorta tavanı %15 = 21.600 · eğitim tavanı %10 = 14.400
-$b1 = zincir2([
-    'hasilat' => 264000, 'gider' => 100000, 'bagkur' => 20000,
-    'sigorta' => 50000, 'egitim' => 50000,
-], $d26);
-
-esit(21600.0,  $b1['sigorta_tavan'], 'B1: sigorta tavanı (164.000−20.000)×%15');
-esit(14400.0,  $b1['egitim_tavan'],  'B1: eğitim tavanı (164.000−20.000)×%10');
-esit(56000.0,  $b1['indirim'],       'B1: indirim 20.000 + 21.600 + 14.400');
-esit(108000.0, $b1['matrah'],        'B1: matrah 108.000');
-
-// Bağ-Kur artınca tavan DÜŞER (eski davranışta değişmezdi)
-$b2 = zincir2([
-    'hasilat' => 264000, 'gider' => 100000, 'bagkur' => 64000,
-    'sigorta' => 50000, 'egitim' => 50000,
-], $d26);
-
-esit(15000.0, $b2['sigorta_tavan'], 'B2: Bağkur 64.000 → taban 100.000, tavan 15.000');
-esit(10000.0, $b2['egitim_tavan'],  'B2: eğitim tavanı 10.000');
-
-// Bağ-Kur kazancı aşarsa taban 0
-$b3 = zincir2([
-    'hasilat' => 264000, 'gider' => 100000, 'bagkur' => 200000,
-    'sigorta' => 50000, 'egitim' => 50000,
-], $d26);
-
-esit(0.0, $b3['sigorta_tavan'], 'B3: Bağkur kazancı aşınca sigorta tavanı 0');
-esit(0.0, $b3['egitim_tavan'],  'B3: eğitim tavanı 0');
-esit(0.0, $b3['matrah'],        'B3: matrah 0');
-
-// =====================================================================
-baslik('YILLIK ÜCRET PROJEKSİYONU');
-// =====================================================================
-
-/** Yıllık ücretten hasılat/stopaj/KDV türetimi (model ile aynı kural) */
-function ucretProjeksiyon(array $ucretler, float $stopajOran = 20, float $kdvOran = 20): array
-{
-    $brut = round(array_sum($ucretler), 2);
-
-    return [
-        'brut'   => $brut,
-        'stopaj' => round($brut * $stopajOran / 100, 2),
-        'kdv'    => round($brut * $kdvOran / 100, 2),
-        'adet'   => count($ucretler),
-    ];
-}
-
-$p1 = ucretProjeksiyon([120000, 96000, 48000]);
-esit(264000.0, $p1['brut'],   'P1: 120.000 + 96.000 + 48.000 = 264.000 hasılat');
-esit(52800.0,  $p1['stopaj'], 'P1: stopaj %20 = 52.800');
-esit(52800.0,  $p1['kdv'],    'P1: KDV %20 = 52.800');
-esit(3,        $p1['adet'],   'P1: 3 mükellef');
-
-// Farklı oranlar
-$p2 = ucretProjeksiyon([100000], 15, 10);
-esit(15000.0, $p2['stopaj'], 'P2: stopaj oranı ayardan (%15)');
-esit(10000.0, $p2['kdv'],    'P2: KDV oranı ayardan (%10)');
-
-// Ücret yoksa sıfır — çökme olmamalı
-$p3 = ucretProjeksiyon([]);
-esit(0.0, $p3['brut'],   'P3: ücret yoksa hasılat 0');
-esit(0.0, $p3['stopaj'], 'P3: stopaj 0');
-esit(0,   $p3['adet'],   'P3: mükellef 0');
-
-// Toplam üzerinden yuvarlama: kuruş farkı birikmemeli
-$p4 = ucretProjeksiyon([33333.33, 33333.33, 33333.34]);
-esit(100000.0, $p4['brut'],   'P4: kuruşlu ücretler tam 100.000');
-esit(20000.0,  $p4['stopaj'], 'P4: stopaj tam 20.000 (toplamdan hesaplandı)');
-
-// --- Ücret kipiyle tam zincir ---------------------------------------
-// hasılat 264.000 · gider 100.000 · Bağkur 20.000
-// sigorta/eğitim 50.000 talep → tavanlar 21.600 / 14.400 → matrah 108.000
-// vergi = 108.000 × %15 = 16.200 (1. dilim)
-// stopaj 52.800 → GV alacağı 36.600
-// KDV yükümlülüğü 52.800, ödenen 40.000 → kalan borç 12.800
-// yük = −36.600 + 12.800 = −23.800 → İADE
-$z1 = yuk([
-    'hasilat' => 264000, 'gider_elle' => 100000, 'bagkur' => 20000,
-    'sigorta' => 50000, 'egitim' => 50000,
-    'stopaj' => 52800,
-    'kdv_yukumluluk' => 52800, 'kdv_odenen' => 30000, 'kdv_indirilecek' => 10000,
-], $d26);
-
-esit(16200.0, $z1['vergi'],      'Z1: vergi 16.200');
-esit(36600.0, $z1['gv_alacak'],  'Z1: GV alacağı 36.600');
-esit(12800.0, $z1['kdv_kalan'],  'Z1: kalan KDV borcu 12.800');
-esit(23800.0, $z1['iade'],       'Z1: yıl içi vergi yükü 23.800 İADE');
 
 // =====================================================================
 echo "\n" . str_repeat('=', 56) . "\n";

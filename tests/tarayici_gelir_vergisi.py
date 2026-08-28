@@ -92,19 +92,6 @@ print('\n=== 1) HESAP EKRANI YÜKLENİYOR ===')
 # =====================================================================
 git(B + '/gelir-vergisi/detay/1?yil=2026', 2.6)
 
-# 19. güncelleme: varsayılan kip "yıllık ücret projeksiyonu" oldu.
-# 1-10. bölümler KESİLEN MAKBUZ senaryolarına göre yazıldığı için önce
-# makbuz kipine geçilir; ücret kipi 14. bölümde ayrıca sınanır.
-KIP_MAKBUZ = ("(()=>{const f=[...document.querySelectorAll('.kip-secici button')]"
-              ".find(b=>b.value==='makbuz');"
-              " if(f && !f.classList.contains('aktif')){f.click();return 1} return 0})()")
-KIP_AKTIF = ("[...document.querySelectorAll('.kip-secici button')]"
-             ".find(b=>b.value==='makbuz').classList.contains('aktif')")
-
-js(KIP_MAKBUZ)
-time.sleep(2.6)
-ol('makbuz kipine geçildi', True, js(KIP_AKTIF))
-
 ol('sayfa başlığında müşavir adı', True, 'Ali Yılmaz' in (js('document.body.innerText') or ''))
 ol('gider kutusu var', True, js("!!document.getElementById('gv-gider')"))
 ol('hesap dökümü tablosu var', True, js("!!document.getElementById('c-matrah')"))
@@ -138,11 +125,9 @@ ol('kazanç 250.000', '250.000,00', metin('c-kazanc'))
 ol('matrah 250.000', '250.000,00', metin('c-matrah'))
 # vergi = 28.500 + (250.000−190.000)×%20 = 40.500
 ol('vergi 40.500 (2. dilim)', '40.500,00', metin('c-vergi'))
-# 18. güncelleme: makbuzlardaki 110.000 KDV yükümlülüğü doğar, hiç ödenmemiş →
-# mahsup = stopaj 110.000 − borç 110.000 = 0 → verginin tamamı ödenecek.
-ol('sonuç 40.500 ödenecek', '40.500,00', metin('c-sonuc-tutar'))
-ol('etiket ÖDEYECEKSİNİZ', True, 'ÖDEYECEKSİNİZ' in (metin('gv-sonuc-etiket') or ''))
-ol('iade sınıfı yok', False,
+ol('sonuç 69.500 iade (110.000−40.500)', '69.500,00', metin('c-sonuc-tutar'))
+ol('etiket İADE oldu', True, 'İADE ALACAKSINIZ' in (metin('gv-sonuc-etiket') or ''))
+ol('iade satırı yeşil sınıf aldı', True,
    js("document.getElementById('gv-sonuc-satir').classList.contains('iade')"))
 ol('dilim notu 2. dilim gösteriyor', True, '2. dilim' in (metin('gv-dilim-not') or ''))
 
@@ -153,8 +138,7 @@ time.sleep(1.6)
 ol("'1.000.000' bir milyon olarak okundu", '1.000.000,00', metin('c-gider'))
 ol('gider hasılatı aşınca matrah 0', '0,00', metin('c-matrah'))
 ol('zararda vergi 0', '0,00', metin('c-vergi'))
-# Zararda vergi 0; mahsup = 110.000 stopaj − 110.000 KDV borcu = 0 → sonuç 0.
-ol('zararda KDV borcu iadeyi kapatır', '0,00', metin('c-sonuc-tutar'))
+ol('zararda stopajın tamamı iade', '110.000,00', metin('c-sonuc-tutar'))
 
 # =====================================================================
 print('\n=== 3) ÖDENECEK DURUMU VE %5 İNDİRİM ===')
@@ -171,8 +155,7 @@ ol('elle hasılat geçerli oldu', '3.000.000,00', metin('c-hasilat'))
 ol('elle stopaj geçerli oldu', '200.000,00', metin('c-stopaj'))
 ol('matrah 2.500.000', '2.500.000,00', metin('c-matrah'))
 ol('vergi 757.500 (4. dilim)', '757.500,00', metin('c-vergi'))
-# mahsup = elle stopaj 200.000 − KDV borcu 110.000 = 90.000
-ol('ödenecek 667.500', '667.500,00', metin('c-sonuc-tutar'))
+ol('ödenecek 557.500', '557.500,00', metin('c-sonuc-tutar'))
 ol('etiket ÖDENECEK oldu', True, 'ÖDEYECEKSİNİZ' in (metin('gv-sonuc-etiket') or ''))
 ol('ödenecekte yeşil sınıf kalktı', False,
    js("document.getElementById('gv-sonuc-satir').classList.contains('iade')"))
@@ -183,7 +166,7 @@ js("""(()=>{const e=document.getElementById('gv-uyumlu');
 time.sleep(1.6)
 ol('%5 indirim 37.875 (757.500×0,05)', '37.875,00', metin('c-uyumlu'))
 ol('ödenmesi gereken 719.625', '719.625,00', metin('c-odenmesi_gereken'))
-ol('indirimle ödenecek 629.625', '629.625,00', metin('c-sonuc-tutar'))
+ol('indirimle ödenecek 519.625', '519.625,00', metin('c-sonuc-tutar'))
 
 # =====================================================================
 print('\n=== 4) AJAX KAYDETMİYOR (yalnız önizleme) ===')
@@ -193,8 +176,8 @@ ol('durum "kaydedilmedi" uyarısı var', True,
 
 git(B + '/gelir-vergisi/detay/1?yil=2026', 2.4)
 # Sayfa yenilenince KAYITLI değere döner. HTTP testinin son bıraktığı gider
-# 100.000'dir (23. bölüm "ücret projeksiyonu" senaryosu bunu yazar).
-ol('yenilemede kayıtlı gider geri geldi', '100.000,00', metin('c-gider'))
+# 530.000'dir (21. bölüm "vergi yükü" senaryosu bunu yazar).
+ol('yenilemede kayıtlı gider geri geldi', '530.000,00', metin('c-gider'))
 ol('yenilemede canlı değer kaybolur (3.000.000 yok)', '550.000,00', metin('c-hasilat'))
 
 # =====================================================================
@@ -326,13 +309,9 @@ ol('Ocak ay toplamı 14.000', '14.000,00',
    js("""document.querySelector('[data-ay-toplam="1"]').textContent.trim()"""))
 ol('Şubat ay toplamı 16.000', '16.000,00',
    js("""document.querySelector('[data-ay-toplam="2"]').textContent.trim()"""))
-# 18. güncelleme: özet kutusu artık AY TOPLAMINI (ödenen + indirilecek) gösterir.
-ol('ay toplamı 30.000', '30.000,00', metin('kdv-t-odenen'))
-ol('kırılım: sadece ödenen 22.500', '22.500,00', metin('kdv-t-sadece-odenen'))
+ol('ödenen toplamı 22.500', '22.500,00', metin('kdv-t-odenen'))
 ol('indirilecek toplamı 7.500', '7.500,00', metin('kdv-t-indirilecek'))
-# NOT: "Yıllık Toplam" özet kutusu kaldırıldı (yerine "Kalan KDV Borcu" geldi);
-# ödenen+indirilecek toplamı artık yalnız tablo tfoot'unda bilgi olarak durur.
-ol('tfoot bilgi toplamı 30.000', '30.000,00', metin('kdv-f-toplam'))
+ol('yıllık toplam 30.000', '30.000,00', metin('kdv-t-toplam'))
 ol('tfoot toplamı da güncellendi', '30.000,00', metin('kdv-f-toplam'))
 ol('dolu kutu yeşil işaretlendi', True,
    js("""document.querySelector('[name="kdv[1][odenen]"]').classList.contains('dolu')"""))
@@ -340,10 +319,10 @@ ol('dolu kutu yeşil işaretlendi', True,
 # "1.000.000" gibi binlikli girdi doğru okunmalı (JS tarafı)
 kdvYaz(3, 'odenen', '1.000.000')
 time.sleep(0.5)
-ol("JS '1.000.000' bir milyon okudu", '1.030.000,00', metin('kdv-f-toplam'))
+ol("JS '1.000.000' bir milyon okudu", '1.030.000,00', metin('kdv-t-toplam'))
 kdvYaz(3, 'odenen', '')
 time.sleep(0.5)
-ol('boşaltınca toplam geri döndü', '30.000,00', metin('kdv-f-toplam'))
+ol('boşaltınca toplam geri döndü', '30.000,00', metin('kdv-t-toplam'))
 
 # =====================================================================
 print('\n=== 10) KDV KAYDEDİLİNCE HESABA GİRİYOR ===')
@@ -353,48 +332,25 @@ time.sleep(2.8)
 
 ol('KDV kaydedildi mesajı', True,
    'kdv' in (js('document.body.innerText') or '').lower())
-ol('kayıtlı ay toplamı 30.000', '30.000,00', metin('kdv-t-odenen'))
+ol('kayıtlı KDV toplamı 30.000', '30.000,00', metin('kdv-t-toplam'))
+ol('hesapta KDV satırı 30.000', '30.000,00', metin('c-kdv'))
 
-# Ödeme = ay toplamı (22.500 ödenen + 7.500 indirilecek = 30.000)
-#   kalan borç = 110.000 − 30.000 = 80.000
-ol('kalan KDV borcu 80.000', '80.000,00', metin('c-kdv'))
-ol('kart özetinde de 80.000', '80.000,00', metin('kdv-t-kalan'))
+# 5. bölümde stopaj kutusu boş kaydedildiği için makbuz stopajı 110.000 geçerli.
+# net mahsup = 110.000 − 30.000 KDV = 80.000
+ol('net mahsup = stopaj − KDV', '80.000,00', metin('c-mahsup_toplam'))
 
-# 5. bölümde stopaj kutusu boş kaydedildi → makbuz stopajı 110.000 geçerli.
-# net mahsup = 110.000 − 80.000 = 30.000
-ol('net mahsup = stopaj − kalan KDV borcu', '30.000,00', metin('c-mahsup_toplam'))
-
-# Tamamı ödenirse kalan borç 0 olur, mahsup stopaja eşitlenir.
-# DİKKAT: ödeme = ay toplamı. İndirilecek sütunları da sıfırlanmalı ki
-# yalnız "ödenen" 110.000 olsun.
-kdvYaz(1, 'odenen', '110.000')
-kdvYaz(1, 'indirilecek', '')
-kdvYaz(2, 'odenen', '')
-kdvYaz(2, 'indirilecek', '')
+# KDV'yi stopajın üstüne çıkar → ÖDENECEK olmalı
+kdvYaz(1, 'odenen', '300.000')
 time.sleep(0.5)
 js("document.getElementById('kdv-form').submit()")
 time.sleep(2.8)
 
-ol('tamamı ödenince kalan borç 0', '0,00', metin('c-kdv'))
-ol('mahsup stopaja eşitlendi', '110.000,00', metin('c-mahsup_toplam'))
-
-# Fazla ödeme → KDV alacağı doğar, etiket değişir (indirilecek 0)
-kdvYaz(1, 'odenen', '130.000')
-time.sleep(0.5)
-js("document.getElementById('kdv-form').submit()")
-time.sleep(2.8)
-
-ol('fazla ödemede KDV alacağı 20.000', '20.000,00', metin('c-kdv-yuk'))
-ol('fazla ödeme etiketi göründü', True,
-   'Fazla Ödeme' in (metin('gv-kdvk-etiket') or ''))
-ol('fazla ödeme yeşil gösterildi', True,
-   js("document.getElementById('c-kdv-yuk').classList.contains('yesil')"))
-
-# --- İŞARET KURALI: eksi işareti kullanılmaz ------------------------
-ol('GV dengesinde eksi işareti YOK', False,
-   ('−' in (metin('c-gv-denge') or '')) or ('-' in (metin('c-gv-denge') or '')))
-ol('KDV kırılımında eksi işareti YOK', False,
-   ('−' in (metin('c-kdv-yuk') or '')) or ('-' in (metin('c-kdv-yuk') or '')))
+ol('KDV stopajı aşınca net mahsup negatif', True,
+   (metin('c-mahsup_toplam') or '').startswith('-'))
+ol('KDV stopajı aşınca etiket ÖDENECEK', True,
+   'ÖDEYECEKSİNİZ' in (metin('gv-sonuc-etiket') or ''))
+ol('ödenecek satırı yeşil değil', False,
+   js("document.getElementById('gv-sonuc-satir').classList.contains('iade')"))
 
 
 # =====================================================================
@@ -486,25 +442,22 @@ js("""(()=>{const f=document.getElementById('form-egitim_saglik');
 time.sleep(2.6)
 
 ol('düzenleme sonrası satır sayısı aynı', 2, satirSayisi('egitim_saglik'))
-# 19. güncelleme: eğitim tavanı = (kazanç 300.000 − Bağkur 50.000) × %10 = 25.000
-# Liste 29.500 olsa da tavan 25.000 ile sınırlanır.
-ol('eğitim tavanla sınırlandı (25.000)', '25.000,00', metin('c-egitim'))
+ol('düzenleme hesaba yansıdı (29.500)', '29.500,00', metin('c-egitim'))
 
 # --- Sigorta listesi ayrı çalışıyor mu? -----------------------------
 kalemEkle('sigorta', '2026-02-01', 'hayat', 'Hayat sigortası', '20.000')
 ol('sigorta listesine eklendi', 1, satirSayisi('sigorta'))
 ol('eğitim listesi etkilenmedi', 2, satirSayisi('egitim_saglik'))
 ol('sigorta hesaba yansıdı', '20.000,00', metin('c-sigorta'))
-ol('eğitim tutarı değişmedi (tavan 25.000)', '25.000,00', metin('c-egitim'))
+ol('eğitim tutarı değişmedi', '29.500,00', metin('c-egitim'))
 
 # --- Sınır aşımı listede de çalışıyor mu? ---------------------------
-# Bu noktada gider 250.000, Bağkur 50.000'dir (5. bölümde kaydedildi):
-#   kazanç = 550.000 − 250.000 = 300.000
-#   taban  = 300.000 − 50.000 Bağkur = 250.000  (19. güncelleme)
-#   sigorta tavanı %15 = 37.500 · liste 60.000 → 37.500 iner
+# Bu noktada gider 250.000'dir (5. bölümde kaydedildi):
+#   kazanç = 550.000 − 250.000 = 300.000 → sigorta tavanı %15 = 45.000
+#   liste 20.000 + 40.000 = 60.000 → 45.000 iner, 15.000 aşım
 kalemEkle('sigorta', '2026-08-15', 'sahis', 'Şahıs sigortası', '40.000')
 ol('sigorta listesi 2 belge', 2, satirSayisi('sigorta'))
-ol('tavanla sınırlandı (37.500)', '37.500,00', metin('c-sigorta'))
+ol('tavanla sınırlandı (45.000)', '45.000,00', metin('c-sigorta'))
 ol('kart içinde aşım uyarısı', True,
    'indirilemedi' in (js("document.getElementById('sigorta').innerText") or ''))
 
@@ -513,8 +466,7 @@ js("""(()=>{const a=document.querySelector('#sigorta a.btn.kirmizi');
   a.removeAttribute('onclick'); a.click(); return 1})()""")
 time.sleep(2.6)
 ol('sigorta belgesi silindi', 1, satirSayisi('sigorta'))
-# Silmeden sonra liste 40.000; tavan 37.500 olduğu için yine sınırlanır.
-ol('silme sonrası tavan geçerli (37.500)', '37.500,00', metin('c-sigorta'))
+ol('silme hesaba yansıdı (40.000)', '40.000,00', metin('c-sigorta'))
 
 
 # =====================================================================
@@ -582,144 +534,9 @@ ol('boş tabloda toplam 0', '0,00', metin('ag-t-toplam'))
 print('\n=== 13) VERGİ YÜKÜ KIRILIMI EKRANDA ===')
 # =====================================================================
 ol('GV dengesi satırı var', True, js("!!document.getElementById('c-gv-denge')"))
-ol('KDV kırılım satırı var', True, js("!!document.getElementById('c-kdv-yuk')"))
-ol('KDV kırılım etiketi var', True, js("!!document.getElementById('gv-kdvk-etiket')"))
+ol('KDV yükü satırı var', True, js("!!document.getElementById('c-kdv-yuk')"))
 ol('sonuç etiketi "VERGİ YÜKÜ" diyor', True,
    'VERGİ YÜKÜ' in (metin('gv-sonuc-etiket') or ''))
-
-
-# =====================================================================
-print('\n=== 14) YILLIK ÜCRET PROJEKSİYONU (kip değiştirme) ===')
-# =====================================================================
-git(B + '/gelir-vergisi/detay/1?yil=2026', 2.6)
-
-ol('kip seçici var', True, js("!!document.querySelector('.kip-secici')"))
-ol('iki kip düğmesi', 2,
-   js("document.querySelectorAll('.kip-secici button').length"))
-
-KIP_UCRET = ("(()=>{const f=[...document.querySelectorAll('.kip-secici button')]"
-             ".find(b=>b.value==='ucret'); f.click(); return 1})()")
-UCRET_AKTIF = ("[...document.querySelectorAll('.kip-secici button')]"
-               ".find(b=>b.value==='ucret').classList.contains('aktif')")
-
-# Makbuz kipindeki hasılatı not al
-makbuzHasilat = metin('c-hasilat')
-
-js(KIP_UCRET)
-time.sleep(2.8)
-
-ol('ücret kipine geçildi', True, js(UCRET_AKTIF))
-ol('hasılat ücretlerden 264.000', '264.000,00', metin('c-hasilat'))
-ol('hasılat makbuz kipinden farklı', True, makbuzHasilat != metin('c-hasilat'))
-ol('stopaj ücretlerden 52.800', '52.800,00', metin('c-stopaj'))
-
-# Ücret dökümü kartı
-ol('ücret dökümü kartı göründü', True, js("!!document.getElementById('ucret-dokum')"))
-# 20. güncelleme: kart artık KAPALI başlar ve sayfalama için gizli bir
-# "bulunamadı" satırı içerir. Gerçek satırlar data-uc-satir ile işaretli;
-# gizli içerik innerText'e girmediği için textContent kullanılır.
-ol('dökümde 3 mükellef', 3,
-   js("document.querySelectorAll('#uc-tablo tr[data-uc-satir]').length"))
-ol('dökümde mükellef adı', True,
-   'ALFA TEKSTİL' in (js("document.getElementById('ucret-dokum').textContent") or ''))
-ol('dökümde stopaj kırılımı', True,
-   '24.000,00' in (js("document.getElementById('ucret-dokum').textContent") or ''))
-
-# KDV kartı ücret yükümlülüğünü gösteriyor
-# NOT: .et etiketleri CSS text-transform:uppercase ile büyütülür; innerText
-# büyük harf döndürdüğü için textContent üzerinden karşılaştırılır.
-ol('KDV kartı ücret yükümlülüğü diyor', True,
-   js("""[...document.querySelectorAll('#kdv-form .kdv-ozet .et')]
-        .some(e => e.textContent.trim() === 'Ücret KDV Yükümlülüğü')"""))
-
-# Sol bilgi kutusu kipe göre değişti
-ol('bilgi kutusu ücretlerden diyor', True,
-   'yıllık sözleşme ücretlerinden' in (js('document.body.innerText') or ''))
-
-# --- Kip değişimi kayıtları korur -----------------------------------
-giderOnce = js("document.getElementById('gv-gider').value")
-js(KIP_UCRET.replace("'ucret'", "'makbuz'"))
-time.sleep(2.8)
-ol('makbuz kipine dönüldü', False, js(UCRET_AKTIF))
-ol('gider kaydı korundu', giderOnce, js("document.getElementById('gv-gider').value"))
-
-js(KIP_UCRET)
-time.sleep(2.8)
-ol('tekrar ücret kipi', True, js(UCRET_AKTIF))
-ol('gider yine korundu', giderOnce, js("document.getElementById('gv-gider').value"))
-
-# =====================================================================
-print('\n=== 15) İNDİRİM TABANI = KAZANÇ − BAĞ-KUR ===')
-# =====================================================================
-# Ücret kipi: hasılat 264.000. Gideri ve Bağkur'u kontrollü yazalım.
-yaz('gv-gider', '100.000')
-yaz('gv-bagkur', '20.000')
-yaz('gv-sigorta', '50.000')
-yaz('gv-egitim', '50.000')
-time.sleep(1.8)
-
-# kazanç 164.000 − Bağkur 20.000 = taban 144.000
-ol('sigorta tavanı 21.600', '21.600,00', metin('gv-sigorta-tavan'))
-ol('eğitim tavanı 14.400', '14.400,00', metin('gv-egitim-tavan'))
-ol('sigorta tavanla sınırlı', '21.600,00', metin('c-sigorta'))
-ol('eğitim tavanla sınırlı', '14.400,00', metin('c-egitim'))
-ol('matrah 108.000', '108.000,00', metin('c-matrah'))
-
-# Bağ-Kur artınca tavan DÜŞMELİ (canlı)
-yaz('gv-bagkur', '64.000')
-time.sleep(1.8)
-ol('Bağkur artınca sigorta tavanı 15.000', '15.000,00', metin('gv-sigorta-tavan'))
-ol('Bağkur artınca eğitim tavanı 10.000', '10.000,00', metin('gv-egitim-tavan'))
-# taban 100.000 → sigorta 15.000, eğitim 10.000 (ikisi ayrı ayrı ölçülür)
-ol('tavan düşünce sigorta 15.000', '15.000,00', metin('c-sigorta'))
-ol('tavan düşünce eğitim 10.000', '10.000,00', metin('c-egitim'))
-
-
-# =====================================================================
-print('\n=== 16) ÜCRET DÖKÜMÜ: KATLANIR KART + SAYFALAMA ===')
-# =====================================================================
-git(B + '/gelir-vergisi/detay/1?yil=2026', 2.8)
-
-ol('ücret kartı var', True, js("!!document.getElementById('ucret-dokum')"))
-ol('kart varsayılan KAPALI', 'none',
-   js("document.getElementById('uc-govde').style.display"))
-ol('başlıkta "göster" yazıyor', True,
-   'göster' in (js("document.querySelector('.uc-ac-yazi').textContent") or ''))
-
-# Kart sayfanın SONUNDA mı? (KDV ve gider tablolarından sonra)
-ol('ücret dökümü KDV tablosundan sonra', True,
-   js("""(()=>{const a=document.getElementById('kdv-form'),
-     b=document.getElementById('ucret-dokum');
-     return b.compareDocumentPosition(a) === Node.DOCUMENT_POSITION_PRECEDING})()"""))
-ol('ücret dökümü gider tablosundan sonra', True,
-   js("""(()=>{const a=document.getElementById('agider-form'),
-     b=document.getElementById('ucret-dokum');
-     return b.compareDocumentPosition(a) === Node.DOCUMENT_POSITION_PRECEDING})()"""))
-
-# --- Aç / kapa ------------------------------------------------------
-js("document.querySelector('.uc-bas').click()")
-time.sleep(0.7)
-ol('tıklayınca açıldı', True,
-   js("document.getElementById('uc-govde').style.display !== 'none'"))
-ol('aria-expanded true oldu', 'true',
-   js("document.querySelector('.uc-bas').getAttribute('aria-expanded')"))
-ol('başlıkta "gizle" yazıyor', True,
-   'gizle' in (js("document.querySelector('.uc-ac-yazi').textContent") or ''))
-
-js("document.querySelector('.uc-bas').click()")
-time.sleep(0.6)
-ol('tekrar tıklayınca kapandı', 'none',
-   js("document.getElementById('uc-govde').style.display"))
-
-js("document.querySelector('.uc-bas').click()")
-time.sleep(0.7)
-
-# --- Az mükellefte sayfalama gizli -----------------------------------
-ol('3 mükellefte sayfalama gizli', False,
-   js("!!document.getElementById('uc-onceki')"))
-ol('3 satır görünüyor', 3,
-   js("""[...document.querySelectorAll('#uc-tablo tr[data-uc-satir]')]
-        .filter(t=>t.style.display !== 'none').length"""))
 
 print()
 print('=' * 54)

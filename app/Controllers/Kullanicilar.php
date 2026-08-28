@@ -78,11 +78,14 @@ class Kullanicilar extends BaseController
         $veri  = $this->formVerisi();
         $sifre = (string) $this->request->getPost('sifre');
 
+        $sifreDegisti = false;
+
         if ($sifre !== '') {
             if (strlen($sifre) < 6) {
                 return redirect()->back()->withInput()->with('hata', 'Şifre en az 6 karakter olmalıdır.');
             }
             $veri['sifre'] = password_hash($sifre, PASSWORD_DEFAULT);
+            $sifreDegisti  = true;
         }
 
         // Benzersizlik kontrolünde DÜZENLENEN KAYDI hariç tut.
@@ -98,6 +101,11 @@ class Kullanicilar extends BaseController
         }
 
         $this->model->musavirleriKaydet($id, $this->erisimListesi($veri));
+
+        // Şifre değiştiyse o kullanıcının kalıcı oturumları iptal edilir
+        if ($sifreDegisti) {
+            $this->hatirlamaJetonlariniSil($id);
+        }
 
         // Kendi hesabını düzenlediyse oturumdaki bilgileri tazele
         if ($id === (int) $this->aktifKullanici['id']) {
@@ -168,7 +176,31 @@ class Kullanicilar extends BaseController
         $this->model->update($id, $veri);
         $this->session->set('ad_soyad', $veri['ad_soyad']);
 
+        /*
+         * Şifre değiştiyse "beni hatırla" jetonları iptal edilir.
+         * Aksi halde çalınmış bir çerez, şifre değiştirilse bile
+         * geçerli kalmaya devam ederdi.
+         */
+        if (isset($veri['sifre'])) {
+            $this->hatirlamaJetonlariniSil((int) $id);
+        }
+
         return redirect()->to(site_url('profil'))->with('basari', 'Profiliniz güncellendi.');
+    }
+
+    /**
+     * Kullanıcının tüm "beni hatırla" jetonlarını siler.
+     *
+     * Şifre değiştiğinde çağrılır. Tablo yoksa (migration çalıştırılmamış)
+     * sessizce geçer; program çökmez.
+     */
+    protected function hatirlamaJetonlariniSil(int $kullaniciId): void
+    {
+        try {
+            (new \App\Models\HatirlatmaJetonModel())->kullaniciyiTemizle($kullaniciId);
+        } catch (\Throwable $e) {
+            log_message('error', 'Hatırlama jetonları silinemedi: ' . $e->getMessage());
+        }
     }
 
     /**
