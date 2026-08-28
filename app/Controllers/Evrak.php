@@ -19,11 +19,45 @@ class Evrak extends BaseController
         $this->model = new EvrakTakipModel();
     }
 
+    /**
+     * Varsayılan seçilen ay (toplama ayı).
+     *
+     * Evrak listesi ekranı açıldığında varsayılan olarak BİR ÖNCEKİ
+     * ayın evrakları gösterilir (muhasebe pratiği: içinde bulunulan ayın
+     * evrakları bir sonraki ay toplanır — örn. Ağustos'ta Temmuz evrakları).
+     *
+     * Dönem kaydırma ayarı (evrak_donem_kaydirma) da hesaba katılarak
+     * "toplama ayı" buna göre geri hesaplanır; böylece kullanıcı
+     * kaydırma=0 yapsa bile ilk açılışta bir önceki ayı görür.
+     *
+     * @return array{yil:int,ay:int}
+     */
+    protected function varsayilanSecilenAy(): array
+    {
+        $ayarlar  = (new AyarModel())->tumu();
+        $kaydirma = max(0, min(11, (int) ($ayarlar['evrak_donem_kaydirma'] ?? 1)));
+
+        // Ekstra 1 ay geri al: amaç "evrak dönemi = önceki ay" olsun.
+        //   dönem = seçilen_ay - kaydırma
+        //   dönem = şu_an - 1 ay
+        //   => seçilen_ay = şu_an - 1 + kaydırma
+        // Bu formül kaydırma=1 iken seçilen_ay = şu_an (mevcut davranış),
+        // kaydırma=0 iken seçilen_ay = şu_an - 1 (yani doğrudan evrak
+        // dönemi = önceki ay) sonucunu verir.
+        $ts = mktime(0, 0, 0, (int) date('n') - 1 + $kaydirma, 1, (int) date('Y'));
+
+        return [
+            'yil' => (int) date('Y', $ts),
+            'ay'  => (int) date('n', $ts),
+        ];
+    }
+
     public function index()
     {
-        // Seçilen ay = evrakların TOPLANDIĞI ay
-        $secilenYil = (int) ($this->request->getGet('yil') ?? date('Y'));
-        $secilenAy  = (int) ($this->request->getGet('ay') ?? date('n'));
+        // Seçilen ay = evrakların TOPLANDIĞI ay (varsayılan: önceki ayın evrakları)
+        $varsayilan = $this->varsayilanSecilenAy();
+        $secilenYil = (int) ($this->request->getGet('yil') ?? $varsayilan['yil']);
+        $secilenAy  = (int) ($this->request->getGet('ay') ?? $varsayilan['ay']);
 
         // Evrak dönemi = seçilen ay - kaydırma (varsayılan 1 ay geri)
         $donem = $this->model->donemHesapla($secilenYil, $secilenAy);
@@ -91,8 +125,9 @@ class Evrak extends BaseController
      */
     public function dahaFazla()
     {
-        $secilenYil = (int) ($this->request->getGet('yil') ?? date('Y'));
-        $secilenAy  = (int) ($this->request->getGet('ay') ?? date('n'));
+        $varsayilan = $this->varsayilanSecilenAy();
+        $secilenYil = (int) ($this->request->getGet('yil') ?? $varsayilan['yil']);
+        $secilenAy  = (int) ($this->request->getGet('ay') ?? $varsayilan['ay']);
 
         $donem = $this->model->donemHesapla($secilenYil, $secilenAy);
         $yil   = $donem['yil'];
@@ -395,9 +430,10 @@ class Evrak extends BaseController
     public function excel()
     {
         // Ekranla aynı dönem mantığı: seçilen ay - kaydırma
+        $varsayilan = $this->varsayilanSecilenAy();
         $donem = $this->model->donemHesapla(
-            (int) ($this->request->getGet('yil') ?? date('Y')),
-            (int) ($this->request->getGet('ay') ?? date('n'))
+            (int) ($this->request->getGet('yil') ?? $varsayilan['yil']),
+            (int) ($this->request->getGet('ay') ?? $varsayilan['ay'])
         );
         $yil = $donem['yil'];
         $ay  = $donem['ay'];
@@ -448,8 +484,9 @@ class Evrak extends BaseController
 
     public function yazdir()
     {
-        $secilenYil = (int) ($this->request->getGet('yil') ?? date('Y'));
-        $secilenAy  = (int) ($this->request->getGet('ay') ?? date('n'));
+        $varsayilan = $this->varsayilanSecilenAy();
+        $secilenYil = (int) ($this->request->getGet('yil') ?? $varsayilan['yil']);
+        $secilenAy  = (int) ($this->request->getGet('ay') ?? $varsayilan['ay']);
 
         // Ekranla aynı dönem mantığı
         $donem = $this->model->donemHesapla($secilenYil, $secilenAy);
