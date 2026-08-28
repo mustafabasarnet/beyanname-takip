@@ -26,6 +26,14 @@ class Panel extends BaseController
         $evrak   = new EvrakTakipModel();
         $edefter = new EdefterTakipModel();
 
+        // Evrak takibi beyannameye göre 1 ay geriden gelir (ör. Ağustos beyannameleri için Temmuz evrakları toplanır)
+        $evrakAy = $ay - 1;
+        $evrakYil = $yil;
+        if ($evrakAy === 0) {
+            $evrakAy = 12;
+            $evrakYil--;
+        }
+
         // Ajanda: gecikmiş + yaklaşan işler (tablo yoksa sessizce boş geçer)
         $ajanda = ['liste' => [], 'sayaclar' => ['gecikmis' => 0, 'bugun' => 0, 'yaklasan' => 0, 'toplam' => 0]];
 
@@ -53,8 +61,10 @@ class Panel extends BaseController
             'mukellefStat' => (new MukellefModel())->istatistik($musavirId),
             'yaklasanlar'  => $takip->yaklasanlar(7, $musavirId, 15),
             'gecikmisler'  => $takip->gecikmisler($musavirId, 15),
-            'evrakOzet'    => $evrak->ozet($yil, $ay, $musavirId),
-            'evrakGelmeyen'=> array_slice($evrak->evrakiGelmeyenler($yil, $ay, $musavirId), 0, 10),
+            'evrakYil'     => $evrakYil,
+            'evrakAy'      => $evrakAy,
+            'evrakOzet'    => $evrak->ozet($evrakYil, $evrakAy, $musavirId),
+            'evrakGelmeyen'=> array_slice($evrak->evrakiGelmeyenler($evrakYil, $evrakAy, $musavirId), 0, 10),
             'grafik'       => $takip->aylikGrafik($yil, $musavirId, 'beyan'),
             // Beyanname türü bazında durum tablosu. Türler o ay gerçekten
             // var olan kayıtlardan üretilir; geçici vergiler yalnızca

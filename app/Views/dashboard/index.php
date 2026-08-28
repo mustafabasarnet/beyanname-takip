@@ -663,8 +663,8 @@ $edOzet = $edefterOzet ?? null;
 <!-- ============ EVRAK ÖZETİ ============ -->
 <div class="kart">
   <div class="kart-baslik">
-    <h2>📁 <?= ayAdi($ay) ?> <?= $yil ?> Evrak Durumu</h2>
-    <div class="sag"><a href="<?= site_url('evrak?yil=' . $yil . '&ay=' . $ay) ?>" class="btn ikincil mini">Evrak Çizelgesi</a></div>
+    <h2>📁 <?= ayAdi($evrakAy) ?> <?= $evrakYil ?> Evrak Durumu</h2>
+    <div class="sag"><a href="<?= site_url('evrak?yil=' . $evrakYil . '&ay=' . $evrakAy) ?>" class="btn ikincil mini">Evrak Çizelgesi</a></div>
   </div>
   <div class="kart-govde">
     <?php
@@ -683,7 +683,7 @@ $edOzet = $edefterOzet ?? null;
       <div class="kucuk-yazi mb8"><b>Hiç evrak getirmeyen mükellefler:</b></div>
       <div class="satir">
         <?php foreach ($evrakGelmeyen as $m): ?>
-          <a href="<?= site_url('evrak?yil=' . $yil . '&ay=' . $ay) ?>" class="rozet kirmizi"><?= esc(kisalt($m['unvan'], 24)) ?></a>
+          <a href="<?= site_url('evrak?yil=' . $evrakYil . '&ay=' . $evrakAy) ?>" class="rozet kirmizi"><?= esc(kisalt($m['unvan'], 24)) ?></a>
         <?php endforeach; ?>
       </div>
     <?php endif; ?>
