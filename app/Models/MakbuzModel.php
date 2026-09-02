@@ -286,7 +286,7 @@ class MakbuzModel extends Model
      * MALİ MÜŞAVİR BAZINDA ÖZET
      * "Hangi müşavir ne kadar makbuz kesmiş?"
      */
-    public function musavirOzeti(int $yil, $musavirId = null): array
+    public function musavirOzeti(int $yil, $musavirId = null, bool $pasifDahil = false): array
     {
         // Hedef: müşavirin portföyündeki mükelleflerin yıllık ücret toplamı
         $hedefB = $this->db->table('mukellefler m')
@@ -295,8 +295,13 @@ class MakbuzModel extends Model
                       COALESCE(SUM(u.tutar),0) AS ucret')
             ->join("mukellef_ucretleri u", "u.mukellef_id = m.id AND u.yil = {$yil}", 'left')
             ->join('musavirler mus', 'mus.id = m.musavir_id', 'left')
-            ->where('m.deleted_at', null)
-            ->where('m.aktif', 1);
+            ->where('m.deleted_at', null);
+
+        // Pasif (terk etmiş) mükellefler: ekrandaki "Pasifler dahil" durumuna uyar.
+        // Varsayılan pasifleri DAHİL eder — üst özet kartıyla aynı kapsam olsun.
+        if (! $pasifDahil) {
+            $hedefB->where('m.aktif', 1);
+        }
 
         $this->musavirKosulu($hedefB, $musavirId);
 
@@ -312,6 +317,11 @@ class MakbuzModel extends Model
             ->join('mukellefler m', 'm.id = mk.mukellef_id')
             ->where('m.deleted_at', null)
             ->where('mk.yil', $yil);
+
+        // Kesilen tarafı da pasif kapsamıyla aynı hizada olsun
+        if (! $pasifDahil) {
+            $kesB->where('m.aktif', 1);
+        }
 
         $this->musavirKosulu($kesB, $musavirId);
 

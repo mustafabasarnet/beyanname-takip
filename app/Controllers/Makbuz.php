@@ -46,7 +46,11 @@ class Makbuz extends BaseController
             'kayitlar'    => $this->model->cizelge($sayfaFiltre),
             'filtre'      => $filtre,
             'ozet'        => $this->model->ozet($filtre),
-            'musavirOzet' => $this->model->musavirOzeti((int) $filtre['yil'], $this->musavirFiltresi()),
+            'musavirOzet' => $this->model->musavirOzeti(
+                (int) $filtre['yil'],
+                $this->musavirFiltresi(),
+                ! empty($filtre['pasif_dahil'])
+            ),
             'musavirler'  => $this->secilebilirMusavirler(),
             'durumlar'    => self::DURUMLAR,
             'toplamKayit' => $toplam,
@@ -413,7 +417,8 @@ class Makbuz extends BaseController
         if ($bicim === 'ozet') {
             $veri['musavirOzet'] = $this->model->musavirOzeti(
                 (int) $filtre['yil'],
-                $filtre['musavir_id'] ?: $this->musavirFiltresi()
+                $filtre['musavir_id'] ?: $this->musavirFiltresi(),
+                ! empty($filtre['pasif_dahil'])
             );
         } else {
             // Sayfalama yok: filtreye uyan TÜM satırlar
