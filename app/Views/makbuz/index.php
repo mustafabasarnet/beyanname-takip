@@ -73,7 +73,9 @@
 
   <div class="form-grup">
     <label class="onay" style="margin-top:18px">
-      <input type="checkbox" name="pasif" value="1" <?= ! empty($filtre['pasif_dahil']) ? 'checked' : '' ?> data-oto-filtre>
+      <input type="hidden" name="pasif" id="pasif-gizli" value="<?= ! empty($filtre['pasif_dahil']) ? '1' : '0' ?>">
+      <input type="checkbox" id="pasif-kutu" <?= ! empty($filtre['pasif_dahil']) ? 'checked' : '' ?>
+             onchange="document.getElementById('pasif-gizli').value = this.checked ? '1' : '0'; this.form.submit();">
       Pasifler dahil
     </label>
   </div>
@@ -83,7 +85,10 @@
     <a href="<?= site_url('makbuz') ?>" class="btn ikincil kucuk">Sıfırla</a>
     <?php $qs = http_build_query(array_filter([
         'yil' => $filtre['yil'], 'durum' => $filtre['durum'], 'q' => $filtre['q'],
-    ], static fn ($v) => $v !== null && $v !== '')); ?>
+    ], static fn ($v) => $v !== null && $v !== ''));
+    // Pasif dahil/hariç her zaman açıkça taşınır (varsayılan dahil olsa bile
+    // Excel/yazdır çıktılarının ekranla birebir aynı olması için).
+    $qs .= '&pasif=' . (! empty($filtre['pasif_dahil']) ? '1' : '0'); ?>
     <a href="<?= site_url('makbuz/ice-aktar?kip=ucret&yil=' . (int) $filtre['yil']) ?>" class="btn mor kucuk">
       📥 Ücret Yükle
     </a>
@@ -93,11 +98,8 @@
     <button type="button" class="btn ikincil kucuk" onclick="BT.modalAc('kopya-modal')">📋 Ücret Kopyala</button>
     <?php
       // Yazdırma bağlantısı: ekrandaki filtre çıktıya taşınır
+      // ($qs artık pasif=1/0 değerini de içeriyor)
       $yazdirQs = $qs;
-
-      if (! empty($filtre['pasif_dahil'])) {
-          $yazdirQs .= '&pasif=1';
-      }
 
       if ($secMus > 0) {
           $yazdirQs .= '&musavir_id=' . $secMus;

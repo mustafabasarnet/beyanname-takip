@@ -497,12 +497,17 @@ class Makbuz extends BaseController
     // -----------------------------------------------------------------
     protected function filtreAl(): array
     {
+        // Varsayılan: pasif (terk etmiş) mükellefler DAHİL olsun.
+        // ?pasif=1  → pasifler dahil   ?pasif=0 → yalnızca aktifler
+        // Parametre hiç yoksa varsayılan dahil (true).
+        $pasifHam = $this->request->getGet('pasif');
+
         return [
             'yil'         => (int) ($this->request->getGet('yil') ?? date('Y')),
             'musavir_id'  => $this->kapsamBelirle($this->request->getGet('musavir_id')),
             'durum'       => $this->request->getGet('durum'),
             'q'           => $this->request->getGet('q'),
-            'pasif_dahil' => $this->request->getGet('pasif'),
+            'pasif_dahil' => $pasifHam === null ? true : $pasifHam === '1' || $pasifHam === 'on',
         ];
     }
 
