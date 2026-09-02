@@ -204,7 +204,9 @@ class GelirVergisiModel extends Model
                       COALESCE(SUM(CASE WHEN mk.tahsil_edildi=1 THEN 1 ELSE 0 END),0)         AS tahsil_adet')
             ->join('mukellefler m', 'm.id = mk.mukellef_id')
             ->where('m.deleted_at', null)
-            ->where('mk.musavir_id', $musavirId)
+            // Mükellefin bağlı olduğu müşavire göre (makbuzu kesen değil) —
+            // Makbuz Takip ile aynı eksende tutarlı hesap
+            ->where('m.musavir_id', $musavirId)
             ->where('mk.yil', $yil)
             ->get()->getRowArray();
 
@@ -299,7 +301,9 @@ class GelirVergisiModel extends Model
                       COALESCE(SUM(mk.stopaj),0) AS stopaj')
             ->join('mukellefler m', 'm.id = mk.mukellef_id')
             ->where('m.deleted_at', null)
-            ->where('mk.musavir_id', $musavirId)
+            // Mükellefin bağlı olduğu müşavire göre (makbuzu kesen değil) —
+            // Makbuz Takip ile aynı eksende tutarlı hesap
+            ->where('m.musavir_id', $musavirId)
             ->where('mk.yil', $yil)
             ->groupBy('mk.ay')
             ->get()->getResultArray();

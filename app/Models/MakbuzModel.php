@@ -302,9 +302,12 @@ class MakbuzModel extends Model
 
         $hedef = $hedefB->groupBy('m.musavir_id, mus.ad_soyad, mus.renk')->get()->getResultArray();
 
-        // Gerçekleşen: makbuzu KESEN müşavir (mükellefin portföy sahibi değil)
+        // Gerçekleşen: mükellefin BAĞLI OLDUĞU müşavire göre makbuz toplamı.
+        // Makbuzu kim keserse kessin (izinli meslektaş vb.), hasılat mükellefin
+        // portföy sahibinde görünür — böylece üst özet kartı, mükellef listesi
+        // ve Vergi Yükü hesapları tek eksende tutarlı olur.
         $kesB = $this->db->table('makbuzlar mk')
-            ->select('mk.musavir_id, COUNT(*) AS adet, SUM(mk.brut) AS kesilen,
+            ->select('m.musavir_id, COUNT(*) AS adet, SUM(mk.brut) AS kesilen,
                       SUM(mk.stopaj) AS stopaj, SUM(mk.kdv) AS kdv')
             ->join('mukellefler m', 'm.id = mk.mukellef_id')
             ->where('m.deleted_at', null)
@@ -314,7 +317,7 @@ class MakbuzModel extends Model
 
         $kesilenler = [];
 
-        foreach ($kesB->groupBy('mk.musavir_id')->get()->getResultArray() as $r) {
+        foreach ($kesB->groupBy('m.musavir_id')->get()->getResultArray() as $r) {
             $kesilenler[(int) $r['musavir_id']] = $r;
         }
 
