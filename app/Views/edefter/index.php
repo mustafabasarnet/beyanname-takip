@@ -150,6 +150,40 @@ th.ed-adim-h{text-align:center}
        onclick="return confirm('<?= $uretYil ?> DÖNEM yılı için e-defter kayıtları oluşturulacak/güncellenecek. Devam edilsin mi?')">
       🔄 <?= $uretYil ?> Dönemlerini Üret
     </a>
+
+    <?php
+    // Yazdırma: ekrandaki filtre çıktıya taşınır (sayfalama parametresi yok)
+    $yazQs = array_filter([
+        'mod'        => $eMod,
+        'yil'        => $filtre['yil'] ?? null,
+        'ay'         => ($filtre['ay'] ?? null) ?: 0,   // "Tüm Aylar" korunur
+        'donem_tipi' => $filtre['donem_tipi'] ?? null,
+        'durum'      => $filtre['durum'] ?? null,
+        'q'          => $filtre['q'] ?? null,
+    ], static fn ($v) => $v !== null && $v !== '');
+
+    if (! empty($filtre['gecikmis'])) {
+        $yazQs['gecikmis'] = 1;
+    }
+
+    // Sorumlu personel (seçiliyse)
+    if (! empty($filtre['sorumlu_id'])) {
+        $yazQs['sorumlu_id'] = $filtre['sorumlu_id'];
+    }
+
+    // Müşavir tek seçimse URL'de korunur
+    $ym = $filtre['musavir_id'] ?? null;
+
+    if (is_array($ym) && count($ym) === 1) {
+        $yazQs['musavir_id'] = (int) $ym[0];
+    } elseif (! is_array($ym) && $ym) {
+        $yazQs['musavir_id'] = (int) $ym;
+    }
+    ?>
+    <a href="<?= site_url('edefter/yazdir?' . http_build_query($yazQs)) ?>"
+       target="_blank" class="btn kucuk" title="Ekrandaki filtreyle kompakt yazdırma çıktısı alır">
+      🖨️ Yazdır
+    </a>
   </div>
 </form>
 

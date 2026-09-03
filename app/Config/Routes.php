@@ -163,6 +163,7 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
         $routes->post('not', 'Edefter::not');                     // AJAX
         $routes->get('daha-fazla', 'Edefter::dahaFazla');         // AJAX
         $routes->get('toplu-uret', 'Edefter::topluUret');
+        $routes->get('yazdir', 'Edefter::yazdir');                // kompakt yazdırma
     });
 
     // ----------------- EVRAK TAKİP -----------------

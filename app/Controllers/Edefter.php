@@ -63,6 +63,35 @@ class Edefter extends BaseController
         ], 'E-Defter Takip');
     }
 
+    /**
+     * Yazdırma / dışa kontrol çıktısı (kompakt).
+     *
+     * Ekrandaki tüm filtreler (görünüm modu, yıl/ay, dönem tipi, durum,
+     * sorumlu, müşavir, arama, gecikmiş) çıktıya taşınır; sayfalama
+     * UYGULANMAZ — kâğıda tam liste dökülür. Stiller gömülüdür, stil.css
+     * kopyalanmasa da çıktı düzgün görünür.
+     */
+    public function yazdir()
+    {
+        $filtre  = $this->filtreAl();
+        $adimlar = (new EdefterAdimModel())->aktifler();
+
+        return view('edefter/yazdir', [
+            'kayitlar'    => $this->model->cizelge($filtre),
+            'filtre'      => $filtre,
+            'adimlar'     => $adimlar,
+            'durumlar'    => EdefterTakipModel::DURUMLAR,
+            'donemTipleri'=> EdefterTakipModel::DONEM_TIPLERI,
+            'aktifKullanici' => $this->aktifKullanici,
+            'ozet'        => $this->model->ozet(
+                (int) $filtre['yil'],
+                $filtre['ay'] ?: null,
+                $this->musavirFiltresi(),
+                $filtre['tarih_modu']
+            ),
+        ]);
+    }
+
     /** AJAX: sonsuz kaydırma */
     public function dahaFazla()
     {
