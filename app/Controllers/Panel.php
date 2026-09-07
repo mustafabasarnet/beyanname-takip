@@ -143,6 +143,61 @@ class Panel extends BaseController
     }
 
     /** Takvim görünümü */
+    /**
+     * AJAX: e-Defter panel kartındaki bir sayıya tıklanınca açılan liste.
+     *
+     * Panelden ayrılmadan "Bu ay yüklenecek hazır beratlardan hangi mükellefler?"
+     * sorusunu yanıtlar. Kapsam musavirFiltresi() ile korunur.
+     *
+     * GET: yil, ay, durum  (durum: '' | ONAYLANDI | HAZIR | GECIKMIS | KALAN)
+     */
+    public function edefterListesi()
+    {
+        $yil    = (int) ($this->request->getGet('yil') ?? date('Y'));
+        $ay     = (int) ($this->request->getGet('ay') ?? date('n'));
+        $durum  = (string) ($this->request->getGet('durum') ?? '');
+
+        $filtre = [
+            'yil'        => $yil,
+            'ay'         => $ay ?: null,
+            'tarih_modu' => 'berat',          // panel kartı berat eksenindedir
+            'musavir_id' => $this->musavirFiltresi(),
+        ];
+
+        // "Kalan" ve "Gecikmiş" gerçek durum değildir; ayrı ele alınır.
+        if ($durum === 'KALAN') {
+            $filtre['durum_liste'] = ['BEKLIYOR', 'DEVAM', 'HAZIR'];
+        } elseif ($durum === 'GECIKMIS') {
+            $filtre['gecikmis'] = 1;
+        } elseif ($durum !== '') {
+            $filtre['durum'] = $durum;
+        }
+
+        $kayitlar = (new EdefterTakipModel())->cizelge($filtre + ['limit' => 500]);
+        $liste    = [];
+
+        foreach ($kayitlar as $k) {
+            $liste[] = [
+                'id'        => (int) $k['id'],
+                'mukellef'  => $k['mukellef_unvan'],
+                'kimlik'    => $k['vergi_kimlik_no'] ?: $k['tc_kimlik_no'],
+                'sorumlu'   => $k['sorumlu_adi'] ?? '',
+                'donem'     => $k['donem_adi'],
+                'son_tarih' => trTarih($k['son_tarih']),
+                'durum'     => $k['durum'],
+                'durum_ad'  => EdefterTakipModel::DURUMLAR[$k['durum']] ?? $k['durum'],
+                'gecikmis'  => $k['son_tarih'] < date('Y-m-d')
+                    && ! in_array($k['durum'], ['ONAYLANDI', 'YUKLENMEYECEK'], true),
+            ];
+        }
+
+        return $this->response->setJSON([
+            'durum'    => true,
+            'adet'     => count($liste),
+            'kayitlar' => $liste,
+        ]);
+    }
+
     public function takvim()
     {
         return $this->goster('dashboard/takvim', [

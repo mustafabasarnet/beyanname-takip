@@ -37,6 +37,8 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
     $routes->get('panel/takvim-veri', 'Panel::takvimVeri');
     // Tür dağılımı tablosundaki sayıya tıklanınca açılan mükellef listesi
     $routes->get('panel/tur-listesi', 'Panel::turListesi');
+    // E-Defter panel kartındaki sayıya tıklanınca açılan liste
+    $routes->get('panel/edefter-listesi', 'Panel::edefterListesi');
 
     // ----------------- MÜKELLEFLER -----------------
     $routes->group('mukellefler', static function ($routes) {

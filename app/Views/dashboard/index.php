@@ -265,7 +265,8 @@ $edOzet = $edefterOzet ?? null;
   .edk-sayi{display:block;font-size:27px;font-weight:800;line-height:1.15;letter-spacing:-1px}
   .edk-etiket{font-size:11px;text-transform:uppercase;letter-spacing:.4px;
     color:var(--gri-500,#64748b);font-weight:600}
-  .edk-bag{text-decoration:none;color:inherit;display:block}
+  .edk-bag{text-decoration:none;color:inherit;display:block;width:100%;background:none;border:0;
+    cursor:pointer;text-align:left;font:inherit;padding:0}
   .edk-bag:hover .edk-sayi{color:var(--ana,#2563eb)}
   .edk-cubuk{height:9px;border-radius:99px;background:var(--gri-200,#e2e8f0);overflow:hidden}
   .edk-cubuk i{display:block;height:100%;background:#059669;border-radius:99px}
@@ -291,32 +292,33 @@ $edOzet = $edefterOzet ?? null;
 
     <div class="kart-govde">
       <?php
-      // Kart sayıları tıklanabilir: E-Defter Takip ekranını süzülü açar
-      $edBag = static fn (string $ek = '') => site_url('edefter?yil=' . (int) $yil . '&ay=' . (int) $ay . $ek);
+      // Kart sayıları tıklanınca açılır pencere (bdk) açılır ve ilgili
+      // e-Defter kayıtları listelenir; "Takip ekranında aç" ile süzülmüş
+      // e-Defter Takip ekranına geçilir.
       ?>
       <div class="edk-rakamlar">
-        <a href="<?= $edBag() ?>" class="edk-bag">
+        <button type="button" class="edk-bag" data-ed-durum="" data-ed-ad="Toplam">
           <span class="edk-sayi"><?= number_format((int) $edOzet['toplam'], 0, ',', '.') ?></span>
           <span class="edk-etiket">Toplam</span>
-        </a>
-        <a href="<?= $edBag('&durum=ONAYLANDI') ?>" class="edk-bag">
+        </button>
+        <button type="button" class="edk-bag" data-ed-durum="ONAYLANDI" data-ed-ad="Yüklenen">
           <span class="edk-sayi" style="color:#059669"><?= (int) $edOzet['onaylandi'] ?></span>
           <span class="edk-etiket">Yüklenen</span>
-        </a>
-        <a href="<?= $edBag('&durum=HAZIR') ?>" class="edk-bag">
+        </button>
+        <button type="button" class="edk-bag" data-ed-durum="HAZIR" data-ed-ad="Hazır">
           <span class="edk-sayi" style="color:#ca8a04"><?= (int) $edOzet['hazir'] ?></span>
           <span class="edk-etiket">Hazır</span>
-        </a>
+        </button>
         <?php if ((int) $edOzet['gecikmis'] > 0): ?>
-          <a href="<?= $edBag('&gecikmis=1') ?>" class="edk-bag">
+          <button type="button" class="edk-bag" data-ed-durum="GECIKMIS" data-ed-ad="Gecikmiş">
             <span class="edk-sayi" style="color:#dc2626"><?= (int) $edOzet['gecikmis'] ?></span>
             <span class="edk-etiket">Gecikmiş</span>
-          </a>
+          </button>
         <?php endif; ?>
-        <a href="<?= $edBag() ?>" class="edk-bag">
+        <button type="button" class="edk-bag" data-ed-durum="KALAN" data-ed-ad="Kalan">
           <span class="edk-sayi"><?= (int) $edOzet['kalan'] ?></span>
           <span class="edk-etiket">Kalan</span>
-        </a>
+        </button>
       </div>
 
       <div class="edk-cubuk"><i style="width:<?= (int) $edOzet['oran'] ?>%"></i></div>
@@ -343,6 +345,93 @@ $edOzet = $edefterOzet ?? null;
     <div class="bdk-bos">Yükleniyor…</div>
   </div>
 </div>
+
+<script>
+// E-DEFTER panel kartı: sayıya tıklayınca aynı açılır pencerede liste.
+(function () {
+  var ED_YIL = <?= (int) $yil ?>, ED_AY = <?= (int) $ay ?>;
+  var ED_BASE = <?= json_encode(site_url('edefter')) ?>;
+  var ED_LIST = <?= json_encode(site_url('panel/edefter-listesi')) ?>;
+  var ED_ROZET = {
+    'ONAYLANDI': 'onaylandi', 'HAZIR': 'hazir', 'DEVAM': 'mavi',
+    'BEKLIYOR': 'bekliyor', 'YUKLENMEYECEK': 'gri'
+  };
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  document.querySelectorAll('.edk-bag[data-ed-durum]').forEach(function (dugme) {
+    dugme.addEventListener('click', function () {
+      var durum = dugme.dataset.edDurum || '';
+      var ad    = dugme.dataset.edAd || 'Liste';
+
+      document.getElementById('bdk-p-baslik').textContent = 'E-Defter — ' + ad;
+      document.getElementById('bdk-p-govde').innerHTML =
+        '<div class="bdk-bos">Yükleniyor…</div>';
+      document.getElementById('bdk-ortu').classList.add('acik');
+      document.getElementById('bdk-pencere').classList.add('acik');
+
+      // "Takip ekranında aç" — e-Defter Takip ekranını süzülü açar.
+      // Kalan ve Gecikmiş gerçek durum değil; karşılıkları farklıdır.
+      var takip = ED_BASE + '?mod=berat&yil=' + ED_YIL + '&ay=' + ED_AY;
+      if (durum === 'GECIKMIS') { takip += '&gecikmis=1'; }
+      else if (durum === 'KALAN') { takip += '&durum=BEKLIYOR,DEVAM,HAZIR'; }
+      else if (durum) { takip += '&durum=' + durum; }
+      document.getElementById('bdk-p-takip').href = takip;
+
+      var url = ED_LIST + '?yil=' + ED_YIL + '&ay=' + ED_AY
+              + '&durum=' + encodeURIComponent(durum);
+
+      fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function (y) { return y.json(); })
+        .then(function (v) {
+          if (!v.durum) {
+            document.getElementById('bdk-p-govde').innerHTML =
+              '<div class="bdk-bos">' + esc(v.mesaj || 'Liste alınamadı.') + '</div>';
+            return;
+          }
+          if (!v.kayitlar.length) {
+            document.getElementById('bdk-p-govde').innerHTML =
+              '<div class="bdk-bos">Bu koşullara uyan kayıt yok.</div>';
+            return;
+          }
+
+          var h = '<table class="tablo"><thead><tr>'
+                + '<th>Mükellef</th><th>Dönem</th><th>Son Tarih</th><th>Durum</th>'
+                + '</tr></thead><tbody>';
+
+          v.kayitlar.forEach(function (k) {
+            h += '<tr>'
+              + '<td><a href="' + ED_BASE + '?q=' + encodeURIComponent(k.mukellef)
+                  + '" class="kalin">' + esc(k.mukellef) + '</a>'
+              + '<div class="kucuk-yazi">' + esc(k.kimlik || '')
+              + (k.sorumlu ? ' · 👤 ' + esc(k.sorumlu) : '') + '</div></td>'
+              + '<td class="kucuk-yazi">' + esc(k.donem) + '</td>'
+              + '<td' + (k.gecikmis ? ' class="metin-kirmizi"' : '') + '><b>'
+                  + esc(k.son_tarih) + '</b>' + (k.gecikmis ? ' ⏰' : '') + '</td>'
+              + '<td><span class="rozet ' + (ED_ROZET[k.durum] || 'gri') + '">'
+                  + esc(k.durum_ad) + '</span></td>'
+              + '</tr>';
+          });
+
+          h += '</tbody></table>';
+          if (v.adet >= 500) {
+            h += '<div class="kucuk-yazi" style="padding:10px 14px">'
+               + 'İlk 500 kayıt gösteriliyor. Tamamı için "Takip ekranında aç".</div>';
+          }
+          document.getElementById('bdk-p-govde').innerHTML = h;
+        })
+        .catch(function () {
+          document.getElementById('bdk-p-govde').innerHTML =
+            '<div class="bdk-bos">Bağlantı hatası. Sayfayı yenileyip tekrar deneyin.</div>';
+        });
+    });
+  });
+})();
+</script>
 
 <script>
 (function () {
