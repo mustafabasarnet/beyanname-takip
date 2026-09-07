@@ -13,13 +13,16 @@ use CodeIgniter\Model;
  */
 class KisiselNotModel extends Model
 {
+    /** Görev öncelikleri (ağırlık sırası: acil > yuksek > normal > dusuk) */
+    public const ONCELIKLER = ['dusuk', 'normal', 'yuksek', 'acil'];
+
     protected $table         = 'kisisel_notlar';
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
     protected $useTimestamps = true;
     protected $allowedFields = [
-        'kullanici_id', 'tur', 'tarih', 'baslik', 'metin',
-        'tamamlandi', 'tamamlandi_tarihi',
+        'kullanici_id', 'tur', 'tarih', 'baslik', 'metin', 'oncelik', 'etiket',
+        'son_tarih', 'tamamlandi', 'tamamlandi_tarihi',
     ];
 
     /** Bir kullanıcının belirli gündeki günlük notu (yoksa null) */
@@ -69,18 +72,20 @@ class KisiselNotModel extends Model
             ->findAll();
     }
 
-    /** Açık (tamamlanmamış) görevler — önce en yeni */
+    /** Açık (tamamlanmamış) görevler — öncelik, sonra son tarih, sonra yeni */
     public function acikGorevler(int $kullaniciId): array
     {
         return $this->where('kullanici_id', $kullaniciId)
             ->where('tur', 'gorev')
             ->where('tamamlandi', 0)
+            ->orderBy("FIELD(oncelik,'acil','yuksek','normal','dusuk')", 'ASC', false)
+            ->orderBy('son_tarih', 'ASC', false)
             ->orderBy('id', 'DESC')
             ->findAll();
     }
 
     /** Tamamlanmış görevler — en yeni üstte */
-    public function bitenGorevler(int $kullaniciId, int $limit = 50): array
+    public function bitenGorevler(int $kullaniciId, int $limit = 100): array
     {
         return $this->where('kullanici_id', $kullaniciId)
             ->where('tur', 'gorev')
@@ -90,16 +95,96 @@ class KisiselNotModel extends Model
             ->findAll();
     }
 
-    /** Görev ekle */
-    public function gorevEkle(int $kullaniciId, string $baslik, ?string $metin): int
+    /** Görev öncelik/etiket/son_tarih girdilerini temizler */
+    protected function temizleGorevAlani(string $oncelik, ?string $etiket, ?string $sonTarih): array
     {
+        $oncelik = in_array($oncelik, self::ONCELIKLER, true) ? $oncelik : 'normal';
+        $etiket  = trim((string) $etiket);
+
+        if ($etiket === '') {
+            $etiket = null;
+        } else {
+            $etiket = mb_substr($etiket, 0, 60);
+        }
+
+        $sonTarih = trim((string) $sonTarih);
+        $sonTarih = preg_match('/^\d{4}-\d{2}-\d{2}$/', $sonTarih) ? $sonTarih : null;
+
+        return [$oncelik, $etiket, $sonTarih];
+    }
+
+    /** Görev ekle */
+    public function gorevEkle(
+        int $kullaniciId,
+        string $baslik,
+        ?string $metin = null,
+        string $oncelik = 'normal',
+        ?string $etiket = null,
+        ?string $sonTarih = null
+    ): int {
+        [$oncelik, $etiket, $sonTarih] = $this->temizleGorevAlani($oncelik, $etiket, $sonTarih);
+
         return (int) $this->insert([
             'kullanici_id' => $kullaniciId,
             'tur'          => 'gorev',
             'baslik'       => $baslik,
-            'metin'        => $metin === '' ? null : $metin,
+            'metin'        => trim((string) $metin) === '' ? null : trim((string) $metin),
+            'oncelik'      => $oncelik,
+            'etiket'       => $etiket,
+            'son_tarih'    => $sonTarih,
             'tamamlandi'   => 0,
         ]);
+    }
+
+    /**
+     * Görevi günceller (yalnız sahibi).
+     *
+     * @return bool kayıt yoksa / başkasına aitse false
+     */
+    public function gorevGuncelle(int $kullaniciId, int $gorevId, array $veri): bool
+    {
+        $g = $this->where('id', $gorevId)
+            ->where('kullanici_id', $kullaniciId)
+            ->where('tur', 'gorev')
+            ->first();
+
+        if ($g === null) {
+            return false;
+        }
+
+        $yeni = [];
+
+        if (array_key_exists('baslik', $veri)) {
+            $baslik = trim((string) $veri['baslik']);
+
+            if ($baslik === '') {
+                return false;
+            }
+
+            $yeni['baslik'] = $baslik;
+        }
+
+        if (array_key_exists('metin', $veri)) {
+            $m = trim((string) $veri['metin']);
+            $yeni['metin'] = $m === '' ? null : $m;
+        }
+
+        if (array_key_exists('oncelik', $veri) || array_key_exists('etiket', $veri) || array_key_exists('son_tarih', $veri)) {
+            [$o, $e, $s] = $this->temizleGorevAlani(
+                (string) ($veri['oncelik'] ?? $g['oncelik'] ?? 'normal'),
+                (string) ($veri['etiket'] ?? $g['etiket'] ?? ''),
+                (string) ($veri['son_tarih'] ?? $g['son_tarih'] ?? '')
+            );
+            $yeni['oncelik']   = $o;
+            $yeni['etiket']    = $e;
+            $yeni['son_tarih'] = $s;
+        }
+
+        if ($yeni === []) {
+            return true;
+        }
+
+        return $this->update($gorevId, $yeni);
     }
 
     /**

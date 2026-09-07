@@ -139,10 +139,12 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
     // id'siyle süzer).
     $routes->group('kisisel', ['filter' => 'auth'], static function ($routes) {
         $routes->get('/', 'Kisisel::index');
-        $routes->post('not-kaydet', 'Kisisel::notKaydet');
-        $routes->post('gorev-ekle', 'Kisisel::gorevEkle');
-        $routes->post('gorev-ters', 'Kisisel::gorevTers');
-        $routes->post('sil', 'Kisisel::sil');
+        $routes->post('not-kaydet', 'Kisisel::notKaydet');       // AJAX
+        $routes->post('gorev-ekle', 'Kisisel::gorevEkle');       // AJAX
+        $routes->post('gorev-ters', 'Kisisel::gorevTers');       // AJAX
+        $routes->post('gorev-guncelle', 'Kisisel::gorevGuncelle'); // AJAX
+        $routes->post('gorev-sil', 'Kisisel::gorevSil');         // AJAX
+        $routes->post('gecmis-sil', 'Kisisel::gecmisSil');       // AJAX
     });
 
     // ----------------- GELİR VERGİSİ HESABI (mali müşavir bazında) -----------------
