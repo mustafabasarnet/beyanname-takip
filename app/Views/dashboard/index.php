@@ -265,7 +265,7 @@ $edOzet = $edefterOzet ?? null;
   .edk-sayi{display:block;font-size:27px;font-weight:800;line-height:1.15;letter-spacing:-1px}
   .edk-etiket{font-size:11px;text-transform:uppercase;letter-spacing:.4px;
     color:var(--gri-500,#64748b);font-weight:600}
-  .edk-bag{text-decoration:none;color:inherit;display:block;width:100%;background:none;border:0;
+  .edk-bag{text-decoration:none;color:inherit;display:inline-block;width:auto;background:none;border:0;
     cursor:pointer;text-align:left;font:inherit;padding:0}
   .edk-bag:hover .edk-sayi{color:var(--ana,#2563eb)}
   .edk-cubuk{height:9px;border-radius:99px;background:var(--gri-200,#e2e8f0);overflow:hidden}
