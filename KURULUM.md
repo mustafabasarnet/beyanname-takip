@@ -17,6 +17,7 @@ Son geliştirme turunda eklenen/düzeltilenler:
 | **Makbuz Takip + Vergi Yükü** | "Kesilen / hasılat" hep **mükellefin portföy sahibine** göre — makbuzu kesen değil (tutarlılık) |
 | **E-Defter Takip** | 🖨️ **Kompakt yazdırma** sayfası (kontrol çıktısı, A4 yatay) |
 | **E-Defter Takip** | **Durum** ve **Sorumlu Personel** filtrelerinde **çoklu seçim** (Beyanname Takip bileşeniyle aynı) |
+| **Yeni: Kişisel Notlar** | Her kullanıcıya özel **günlük not + to-do list**; yönetici dahil kimse başkasınınkini göremez |
 
 Ayrıntılar: Makbuz Takip bölümü → "Pasifler dahil" · E-Defter bölümü → "7. Yazdırma" ve
 "8. Durum ve Sorumlu Personel — çoklu seçim" · Vergi Yükü bölümü → "Hasılat kapsamı".
