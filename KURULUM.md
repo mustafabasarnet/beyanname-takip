@@ -5,6 +5,22 @@ CodeIgniter 4.7 · PHP 8.1+ · MySQL/MariaDB · Modern responsive arayüz
 > ✅ **Canlı test edildi:** PHP 8.4 + MariaDB 11.8 ortamında kurulumdan mükellef
 > eklemeye kadar tüm akış çalıştırıldı; 29 sayfa ve 6 AJAX ucu hatasız yanıt verdi.
 
+---
+
+## 🆕 Son Güncellemeler (Eylül 2026)
+
+Son geliştirme turunda eklenen/düzeltilenler:
+
+| Alan | Değişiklik |
+|---|---|
+| **Makbuz Takip** | "Pasifler dahil" **varsayılan olarak açık**; üst özet ve mali müşavir kartları aynı kapsamı izler (aşağıda ayrıntı) |
+| **Makbuz Takip + Vergi Yükü** | "Kesilen / hasılat" hep **mükellefin portföy sahibine** göre — makbuzu kesen değil (tutarlılık) |
+| **E-Defter Takip** | 🖨️ **Kompakt yazdırma** sayfası (kontrol çıktısı, A4 yatay) |
+| **E-Defter Takip** | **Durum** ve **Sorumlu Personel** filtrelerinde **çoklu seçim** (Beyanname Takip bileşeniyle aynı) |
+
+Ayrıntılar: Makbuz Takip bölümü → "Pasifler dahil" · E-Defter bölümü → "7. Yazdırma" ve
+"8. Durum ve Sorumlu Personel — çoklu seçim" · Vergi Yükü bölümü → "Hasılat kapsamı".
+
 ## ⚙️ Gerekli PHP Eklentileri
 
 ```
@@ -838,12 +854,31 @@ hangilerinin aktarılacağını siz seçersiniz. Bu adımda hiçbir şey kaydedi
 Listenin üstünde her müşavir için portföy büyüklüğü, sözleşme toplamı,
 kesilen, kalan, makbuz adedi ve stopaj toplamı görünür.
 
-> **Not:** "Kesilen" sütunu makbuzu **kesen** müşaviri esas alır; mükellefin
-> portföy sahibinden farklı olabilir (örn. izindeki meslektaş adına kesim).
+> **Kesilen hesabı:** "Kesilen" (makbuz toplamı) mükellefin **portföy sahibine**
+> (bağlı olduğu mali müşavire) göre hesaplanır. Makbuzu başka bir müşavir kesse
+> bile (örn. izindeki meslektaş adına kesim) hasılat mükellefin portföy sahibinde
+> görünür. Böylece üst özet kartı, mükellef listesi, mali müşavir kartları ve
+> Vergi Yükü hesabı **tek eksende** tutarlı olur.
 
 > **İleride:** Bu modüldeki brüt toplamlar gelir vergisi hesaplamasında
 > kullanılacak şekilde saklanıyor (stopaj ayrı tutulduğu için mahsup
 > hesabı da hazır).
+
+### Pasifler dahil (varsayılan)
+
+Makbuz Takip listesinde terk etmiş (pasif) mükellefler **varsayılan olarak
+dahildir** — "Pasifler dahil" kutusu sayfa açılışında **tikli** gelir.
+Tiki kaldırırsanız yalnızca aktif mükellefler görünür.
+
+| Görünüm | Kapsam |
+|---|---|
+| Varsayılan (kutu tikli) | Aktif + pasif (terk etmiş) mükellefler |
+| Kutu boş (`pasif=0`) | Yalnızca aktif mükellefler |
+
+Üst özet kartları **ve** "Mali Müşavir Bazında" kartları **aynı kapsamı**
+izler — ikisi de ya pasifleri içerir ya da ikisi de dışarıda bırakır; sayılar
+birbirini asla tutmaz durumda kalmaz. Excel ve yazdırma çıktıları da ekrandaki
+kapsamı aynen taşır.
 
 ---
 
@@ -1065,6 +1100,42 @@ Etiket, o ay hangi dönemlerin yükleneceğini tipiyle birlikte gösterir:
 | Haziran 2026 | `Aylık 2026.02 · 3 Aylık 2026.01-03` | Şubat ayı defteri + 1. dönem (Oca-Mar) |
 | Ağustos 2026 | `2026.04` | yalnızca aylık var, ön ek yazılmaz | Sayılara tıklayınca süzülmüş liste açılır.
 Berat dönemi olmayan aylarda kart görünmez, panel sade kalır.
+
+### 7. Yazdırma — kompakt kontrol çıktısı
+
+Filtre çubuğundaki **🖨️ Yazdır** düğmesi, ekrandaki filtreyle **kompakt**
+bir kontrol çıktısı açar (Makbuz Takip yazdırmasına benzer yapı; sayfalama
+uygulanmaz, kâğıda tam liste dökülür).
+
+- **Sayfa düzeni:** A4 **yatay**, gömülü stiller (stil.css olmasa da çıkar).
+- **Özet şeridi:** Toplam · Gecikmiş · Devam Ediyor · Hazır · Onaylandı ·
+  Yüklenmeyecek · % Tamamlanma.
+- **Tablo sütunları:** Mükellef · Dönem · Son Tarih · Durum · her kontrol
+  adımı için tek sütun (**✓** işaretli / **—** boş) · İlerleme % · Not.
+- **Durum rozetleri:** `✓ Yüklendi` (onaylandı), `Takip dışı`
+  (yüklenmeyecek), gecikme ve kalan gün renkleri.
+- Çıktı, ekrandaki görünüm eksenini (berat / dönem), yıl, ay, dönem tipi,
+  durum, sorumlu, müşavir, arama ve "sadece gecikmişler" filtrelerini taşır.
+- Araç çubuğu (Yazdır / Ekrana Dön) yazıcıya basılmaz.
+
+### 8. Durum ve Sorumlu Personel — çoklu seçim
+
+**Durum** ve **Sorumlu Personel** filtreleri tekli açılır menü yerine
+**çoklu seçim kutusu** kullanır (Beyanname Takip'teki çoklu seçimle aynı
+bileşen): tıklayınca panelde onay kutuları, arama kutusu, "Tümünü Seç" ve
+"Temizle" çıkar.
+
+| Özellik | Davranış |
+|---|---|
+| Çoklu seçim | `durum[]=BEKLIYOR&durum[]=HAZIR` ya da kısa `durum=BEKLIYOR,HAZIR` |
+| Tek değer | `durum=HAZIR` — eski bağlantılar aynen çalışır |
+| Hatırlama | Son seçim çerezde tutulur; sayfa açılınca geri gelir ("Temizle" derseniz sıfırlanır) |
+| Kapsam | Liste, özet sayaçları, sonsuz kaydırma ve yazdırma çıktısı seçimle aynı şekilde süzülür |
+| Sorumlu Personel | Birden çok personel birlikte seçilebilir (örn. tüm ekibi tek bakışta) |
+
+> "Sorumlu Personel" kutusu, portföyde e-defter sorumlusu atanmış mükellef
+> varsa görünür; atama mükellef kartındaki **E-Defter Sorumlusu** alanından
+> yapılır.
 
 ---
 
@@ -2077,6 +2148,11 @@ vergisini** hesaplar. Siz yalnızca **gider rakamını** girersiniz; hasılat ve
 stopaj makbuzlardan otomatik gelir.
 
 **Menü:** Takip → 🧮 Gelir Vergisi  (personel göremez)
+
+> **Hasılat kapsamı:** Makbuzlar mükellefin **bağlı olduğu mali müşavire**
+> göre sayılır (makbuzu kesen değil). Makbuzu başka bir müşavir kesse bile
+> hasılat, mükellefin portföy sahibinin hesabında görünür — Makbuz Takip
+> ekranıyla aynı eksen, ekranlar arası tutarsızlık olmaz.
 
 ### Nasıl çalışır?
 
