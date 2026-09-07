@@ -46,6 +46,11 @@ $aktifUrl = trim(uri_string(), '/');
       <?php endif; ?>
     </a>
 
+    <!-- Kişisel not + to-do: yalnız kullanıcının kendisi görür -->
+    <a href="<?= site_url('kisisel') ?>" class="<?= aktifMenu('kisisel') ?>">
+      <span class="ikon">📝</span> Kişisel Notlar
+    </a>
+
     <div class="menu-baslik">Takip</div>
     <a href="<?= site_url('takip') ?>" class="<?= aktifMenu('takip') ?>">
       <span class="ikon">📝</span> Beyanname Takip

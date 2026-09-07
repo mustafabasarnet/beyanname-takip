@@ -133,6 +133,18 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
         $routes->get('ek-sil/(:num)', 'Ajanda::ekSil/$1');
     });
 
+    // ----------------- KİŞİSEL NOT + TO-DO (tamamen sahibine özel) -----------------
+    // Her kullanıcı yalnız KENDİ notlarını/görevlerini görür; yönetici dahil
+    // hiçbir rol başkasınınkine erişemez (controller tüm sorguları kullanıcı
+    // id'siyle süzer).
+    $routes->group('kisisel', ['filter' => 'auth'], static function ($routes) {
+        $routes->get('/', 'Kisisel::index');
+        $routes->post('not-kaydet', 'Kisisel::notKaydet');
+        $routes->post('gorev-ekle', 'Kisisel::gorevEkle');
+        $routes->post('gorev-ters', 'Kisisel::gorevTers');
+        $routes->post('sil', 'Kisisel::sil');
+    });
+
     // ----------------- GELİR VERGİSİ HESABI (mali müşavir bazında) -----------------
     // Hasılat makbuzlardan gelir; kullanıcı gideri girer, tarife uygulanır.
     // Mali bilgi içerir: personel erişemez.
