@@ -19,6 +19,7 @@ Son geliştirme turunda eklenen/düzeltilenler:
 | **E-Defter Takip** | **Durum** ve **Sorumlu Personel** filtrelerinde **çoklu seçim** (Beyanname Takip bileşeniyle aynı) |
 | **Yeni: Kişisel Notlar** | Her kullanıcıya özel **günlük not + to-do list**; yönetici dahil kimse başkasınınkini göremez |
 | **Kişisel To-Do genişletme** | Görevlere **öncelik / etiket / son tarih**; liste **AJAX** ile işlevsel (ekle, tamamla, düzenle, sil) |
+| **Panel — E-Defter kartı** | E-Defter sayılarına (Yüklenen/Hazır/Kalan…) tıklayınca **açılır liste**; üstte **Takip ekranında aç** → süzülmüş E-Defter Takip |
 
 Ayrıntılar: Makbuz Takip bölümü → "Pasifler dahil" · E-Defter bölümü → "7. Yazdırma" ve
 "8. Durum ve Sorumlu Personel — çoklu seçim" · Vergi Yükü bölümü → "Hasılat kapsamı".
