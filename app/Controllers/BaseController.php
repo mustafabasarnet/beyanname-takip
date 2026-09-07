@@ -246,4 +246,126 @@ abstract class BaseController extends Controller
             return $onbellek = 0;
         }
     }
+
+    // =================================================================
+    //  ÇOKLU SEÇİM FİLTRESİ (durum, tür, sorumlu…)
+    //
+    //  _coklu_secim.php bileşeni onay kutuları sunar ve formu ad[] dizisi
+    //  olarak gönderir. Burada kabul edilen biçimler:
+    //    ?durum=HAZIR            → 'HAZIR'            (tek, eski bağlantılar)
+    //    ?durum[]=A&durum[]=B    → [A, B]             (form gönderimi)
+    //    ?durum=A,B              → [A, B]             (kısa bağlantı / dışa aktar)
+    //  Tek değer kaldıysa DİZİYE ÇEVRİLMEZ; eski davranış korunur.
+    // =================================================================
+
+    /**
+     * Çoklu seçilebilen filtre değerini okur.
+     *
+     * @param array<string>|null $izinli Verilirse yalnız bu değerler kabul edilir
+     *
+     * @return string|array<string>|null
+     */
+    protected function cokluAl(string $ad, ?array $izinli = null)
+    {
+        $ham = $this->request->getGet($ad);
+
+        if ($ham === null || $ham === '') {
+            return null;
+        }
+
+        // "A,B" biçimini diziye çevir
+        if (! is_array($ham)) {
+            $ham = str_contains($ham, ',') ? explode(',', $ham) : $ham;
+        }
+
+        if (! is_array($ham)) {
+            return $izinli !== null && ! in_array($ham, $izinli, true) ? null : $ham;
+        }
+
+        $temiz = [];
+
+        foreach ($ham as $d) {
+            $d = trim((string) $d);
+
+            if ($d === '' || in_array($d, $temiz, true)) {
+                continue;
+            }
+
+            if ($izinli !== null && ! in_array($d, $izinli, true)) {
+                continue;
+            }
+
+            $temiz[] = $d;
+        }
+
+        if ($temiz === []) {
+            return null;
+        }
+
+        return count($temiz) === 1 ? $temiz[0] : $temiz;
+    }
+
+    /**
+     * Çoklu filtreyi okur ve kullanıcının son seçimini çerezden hatırlar.
+     *
+     * Öncelik:
+     *   1) Adres çubuğunda parametre VARSA o kullanılır ve çereze yazılır
+     *   2) Form gönderildiği hâlde alan boşsa ("Tümü") çerez TEMİZLENİR
+     *   3) Sayfa temiz açıldıysa (hiç filtre parametresi yok) çerez okunur
+     *
+     * 2. madde önemli: kullanıcı "Temizle" dediğinde eski seçim geri
+     * gelmemeli. Formun gönderildiğini, filtre çubuğundaki başka bir
+     * parametrenin (yil) varlığından anlıyoruz.
+     *
+     * @param array<string>|null $izinli Verilirse yalnız bu değerler kabul edilir
+     * @param string             $onEk   Çerez adı ön eki (ekranlar birbirine karışmasın)
+     *
+     * @return string|array<string>|null
+     */
+    protected function cokluHatirla(string $ad, ?array $izinli = null, string $onEk = 'bt_f_')
+    {
+        $deger  = $this->cokluAl($ad, $izinli);
+        $cerez  = $onEk . $ad;
+        $formGeldi = $this->request->getGet('yil') !== null;
+
+        if ($deger !== null) {
+            $this->filtreCerezYaz($cerez, is_array($deger) ? implode(',', $deger) : (string) $deger);
+
+            return $deger;
+        }
+
+        if ($formGeldi) {
+            $this->filtreCerezYaz($cerez, '');   // "Tümü" seçildi -> hatırlamayı bırak
+
+            return null;
+        }
+
+        $saklanan = (string) ($this->request->getCookie($cerez) ?? '');
+
+        if ($saklanan === '') {
+            return null;
+        }
+
+        $parca = array_values(array_filter(explode(',', $saklanan), static fn ($v) => $v !== ''));
+
+        if ($izinli !== null) {
+            $parca = array_values(array_intersect($parca, $izinli));
+        }
+
+        if ($parca === []) {
+            return null;
+        }
+
+        return count($parca) === 1 ? $parca[0] : $parca;
+    }
+
+    /** Çoklu filtre çerezi yazar (bir yıl geçerli, yalnız site içi) */
+    protected function filtreCerezYaz(string $ad, string $deger): void
+    {
+        setcookie($ad, $deger, [
+            'expires'  => $deger === '' ? time() - 3600 : time() + 31536000,
+            'path'     => '/',
+            'samesite' => 'Lax',
+        ]);
+    }
 }

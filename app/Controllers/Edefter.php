@@ -274,8 +274,11 @@ class Edefter extends BaseController
             // 'donem' = defterin ait olduğu dönem
             'tarih_modu'  => $this->request->getGet('mod') === 'donem' ? 'donem' : 'berat',
             'donem_tipi'  => $this->request->getGet('donem_tipi'),
-            'durum'       => $this->request->getGet('durum'),
-            'sorumlu_id'  => $this->request->getGet('sorumlu_id'),
+            // Çoklu seçim (tıpkı Beyanname Takip'teki gibi):
+            //   durum[]=BEKLIYOR&durum[]=HAZIR ya da durum=BEKLIYOR,HAZIR kabul edilir.
+            //   Adreste yoksa kullanıcının son seçimi çerezden hatırlanır.
+            'durum'       => $this->cokluHatirla('durum', array_keys(EdefterTakipModel::DURUMLAR), 'ed_f_'),
+            'sorumlu_id'  => $this->cokluHatirla('sorumlu_id', null, 'ed_f_'),
             'musavir_id'  => $this->kapsamBelirle($this->request->getGet('musavir_id')),
             'q'           => $this->request->getGet('q'),
             'gecikmis'    => $this->request->getGet('gecikmis'),

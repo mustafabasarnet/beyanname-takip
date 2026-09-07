@@ -87,28 +87,28 @@ th.ed-adim-h{text-align:center}
     </select>
   </div>
 
-  <div class="form-grup">
-    <label>Durum</label>
-    <select name="durum" data-oto-filtre>
-      <option value="">Tümü</option>
-      <?php foreach ($durumlar as $dk => $dv): ?>
-        <option value="<?= $dk ?>" <?= ($filtre['durum'] ?? '') === $dk ? 'selected' : '' ?>><?= esc($dv) ?></option>
-      <?php endforeach; ?>
-    </select>
-  </div>
+  <?php
+  // Durum — çoklu seçim (tıpkı Beyanname Takip'teki gibi)
+  $cs_ad       = 'durum';
+  $cs_etiket   = 'Durum';
+  $cs_ogeler   = $durumlar;
+  $cs_secili   = array_filter((array) ($filtre['durum'] ?? []), static fn ($v) => $v !== '' && $v !== null);
+  $cs_tekil    = 'durum';
+  $cs_genislik = '165px';
+  include APPPATH . 'Views/parcalar/_coklu_secim.php';
+  ?>
 
   <?php if ($personeller !== []): ?>
-    <div class="form-grup">
-      <label>Sorumlu Personel</label>
-      <select name="sorumlu_id" data-oto-filtre>
-        <option value="">Tümü</option>
-        <?php foreach ($personeller as $pid => $pad): ?>
-          <option value="<?= $pid ?>" <?= (int) ($filtre['sorumlu_id'] ?? 0) === (int) $pid ? 'selected' : '' ?>>
-            <?= esc($pad) ?>
-          </option>
-        <?php endforeach; ?>
-      </select>
-    </div>
+    <?php
+    // Sorumlu Personel — çoklu seçim
+    $cs_ad       = 'sorumlu_id';
+    $cs_etiket   = 'Sorumlu Personel';
+    $cs_ogeler   = $personeller;
+    $cs_secili   = array_filter((array) ($filtre['sorumlu_id'] ?? []), static fn ($v) => $v !== '' && $v !== null);
+    $cs_tekil    = 'personel';
+    $cs_genislik = '170px';
+    include APPPATH . 'Views/parcalar/_coklu_secim.php';
+    ?>
   <?php endif; ?>
 
   <?php if (count($musavirler) > 1): ?>
@@ -152,13 +152,16 @@ th.ed-adim-h{text-align:center}
     </a>
 
     <?php
-    // Yazdırma: ekrandaki filtre çıktıya taşınır (sayfalama parametresi yok)
+    // Yazdırma: ekrandaki filtre çıktıya taşınır (sayfalama parametresi yok).
+    // Çoklu seçimler (durum, sorumlu) virgülle taşınır: durum=BEKLIYOR,HAZIR
+    $virgul = static fn ($v) => is_array($v) ? implode(',', $v) : $v;
+
     $yazQs = array_filter([
         'mod'        => $eMod,
         'yil'        => $filtre['yil'] ?? null,
         'ay'         => ($filtre['ay'] ?? null) ?: 0,   // "Tüm Aylar" korunur
         'donem_tipi' => $filtre['donem_tipi'] ?? null,
-        'durum'      => $filtre['durum'] ?? null,
+        'durum'      => $virgul($filtre['durum'] ?? null),
         'q'          => $filtre['q'] ?? null,
     ], static fn ($v) => $v !== null && $v !== '');
 
@@ -166,9 +169,9 @@ th.ed-adim-h{text-align:center}
         $yazQs['gecikmis'] = 1;
     }
 
-    // Sorumlu personel (seçiliyse)
+    // Sorumlu personel (seçiliyse) — çokluysa virgülle
     if (! empty($filtre['sorumlu_id'])) {
-        $yazQs['sorumlu_id'] = $filtre['sorumlu_id'];
+        $yazQs['sorumlu_id'] = $virgul($filtre['sorumlu_id']);
     }
 
     // Müşavir tek seçimse URL'de korunur

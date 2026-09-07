@@ -377,20 +377,32 @@ class EdefterTakipModel extends Model
             $b->where('edefter_takip.donem_tipi', $f['donem_tipi']);
         }
 
+        // Durum: tek değer (durum=HAZIR) veya çoklu (durum[]=A&durum[]=B ya da durum=A,B)
         if (! empty($f['durum'])) {
-            $b->where('edefter_takip.durum', $f['durum']);
+            $durumlar = is_array($f['durum']) ? $f['durum'] : [$f['durum']];
+            $durumlar = array_values(array_filter(array_map('strval', $durumlar), static fn ($d) => $d !== ''));
+
+            if ($durumlar !== []) {
+                $b->whereIn('edefter_takip.durum', $durumlar);
+            }
         }
 
         if (! empty($f['durum_liste']) && is_array($f['durum_liste'])) {
-            $b->whereIn('edefter_takip.durum', $f['durum_liste']);
+            $b->whereIn('edefter_takip.durum', array_map('strval', $f['durum_liste']));
         }
 
         if (! empty($f['mukellef_id'])) {
             $b->where('edefter_takip.mukellef_id', (int) $f['mukellef_id']);
         }
 
+        // Sorumlu personel: tek veya çoklu seçim
         if (! empty($f['sorumlu_id'])) {
-            $b->where('m.edefter_sorumlu_id', (int) $f['sorumlu_id']);
+            $sorumlular = is_array($f['sorumlu_id']) ? $f['sorumlu_id'] : [$f['sorumlu_id']];
+            $sorumlular = array_values(array_filter(array_map('intval', $sorumlular), static fn ($v) => $v > 0));
+
+            if ($sorumlular !== []) {
+                $b->whereIn('m.edefter_sorumlu_id', $sorumlular);
+            }
         }
 
         if (! empty($f['musavir_id'])) {
