@@ -165,13 +165,21 @@ $seciliAralik = (string) ($filtre['aralik'] ?? '');
                 </td>
                 <td><span class="rozet mavi"><?= esc(kisalt($k['tur_ad'], 22)) ?></span></td>
                 <td>
+                  <?php
+                  $gerekTodo = (int) ($k['gerek_todo'] ?? 0);
+                  ?>
                   <?php if ($toplam > 0): ?>
                     <div style="display:flex;align-items:center;gap:8px">
                       <div class="progress" style="flex:1;min-width:60px">
                         <div class="dolu" style="width:<?= (int) round($tamam / $toplam * 100) ?>%"></div>
                       </div>
                       <span class="kucuk-yazi kalin"><?= $tamam ?>/<?= $toplam ?></span>
+                      <?php if ($gerekTodo > 0): ?>
+                        <span class="rozet gri" title="<?= $gerekTodo ?> todo takip dışı — ilerlemeye dahil değil">⊘<?= $gerekTodo ?></span>
+                      <?php endif; ?>
                     </div>
+                  <?php elseif ($gerekTodo > 0): ?>
+                    <span class="rozet gri" title="Tüm todolar takip dışı — ilerlemeye dahil değil">⊘ <?= $gerekTodo ?> takip dışı</span>
                   <?php else: ?>
                     <span class="kucuk-yazi">—</span>
                   <?php endif; ?>

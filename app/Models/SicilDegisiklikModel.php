@@ -27,7 +27,7 @@ class SicilDegisiklikModel extends Model
 
     protected $allowedFields = [
         'mukellef_id', 'turu_id', 'degisiklik_tarihi', 'konu', 'aciklama',
-        'durum', 'kaydeden_id',
+        'durum', 'kaydeden_id', 'deleted_at',
     ];
 
     /** İşlem durumu görünen adları (durum görevlerden türetilir). */
@@ -306,6 +306,13 @@ class SicilDegisiklikModel extends Model
 
     /**
      * Liste sorgusunun ortak başlangıcı (join + soft delete + todo sayaçları).
+     *
+     * Sayı semantiği — "Takip dışı" (GEREKSIZ) todo'lar ilerlemeye DAHİL
+     * EDİLMEZ:
+     *   toplam_todo : değerlendirmeye alınan todo sayısı (GEREKSIZ hariç)
+     *   tamam_todo  : Yapıldı (TAMAM) sayısı
+     *   acik_todo   : açık (yapılmadı) sayısı  → toplam = tamam + açık
+     *   gerek_todo  : takip dışı sayısı (yalnız bilgi)
      */
     protected function listeBuilder()
     {
@@ -319,13 +326,17 @@ class SicilDegisiklikModel extends Model
                       kk.ad_soyad AS kaydeden_adi,
                       (SELECT COUNT(*) FROM sicil_bildirim_gorevleri ag
                         WHERE ag.sicil_degisikligi_id = d.id
-                          AND ag.deleted_at IS NULL) AS toplam_todo,
+                          AND ag.deleted_at IS NULL
+                          AND ag.durum <> 'GEREKSIZ') AS toplam_todo,
                       (SELECT COUNT(*) FROM sicil_bildirim_gorevleri ag
                         WHERE ag.sicil_degisikligi_id = d.id
                           AND ag.deleted_at IS NULL AND ag.durum = 'TAMAM') AS tamam_todo,
                       (SELECT COUNT(*) FROM sicil_bildirim_gorevleri ag
                         WHERE ag.sicil_degisikligi_id = d.id
                           AND ag.deleted_at IS NULL AND {$acik}) AS acik_todo,
+                      (SELECT COUNT(*) FROM sicil_bildirim_gorevleri ag
+                        WHERE ag.sicil_degisikligi_id = d.id
+                          AND ag.deleted_at IS NULL AND ag.durum = 'GEREKSIZ') AS gerek_todo,
                       (SELECT MIN(ag.son_tarih) FROM sicil_bildirim_gorevleri ag
                         WHERE ag.sicil_degisikligi_id = d.id
                           AND ag.deleted_at IS NULL AND ag.son_tarih IS NOT NULL

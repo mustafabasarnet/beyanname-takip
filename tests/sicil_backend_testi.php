@@ -173,8 +173,51 @@ $satir = $gec[0] ?? [];
 t('Liste ilerleme alanları var (toplam/tamam/açık)', isset($satir['toplam_todo'], $satir['tamam_todo'], $satir['acik_todo']), json_encode(array_keys($satir)));
 t('Liste en yakın son tarihi hesaplıyor', ($satir['en_yakin_son'] ?? null) === '2026-08-01', $satir['en_yakin_son'] ?? '-');
 
-echo "=== 9) TEMİZLİK ===\n";
+echo "=== 9) GEREKSIZ ILERLEMEYE DAHIL DEGIL + YUMUŞAK SİLME ===\n";
+$degM->guncelle($degId, ['degisiklik_tarihi' => '2026-09-07'], 1);
+
+// Yeni işlem: 3 todo — 1 takip dışı, 1 tamam, 1 açık (geçmiş tarihli)
+$s2 = $degM->olustur([
+    'mukellef_id'       => $mkId,
+    'turu_id'           => $sablonId,
+    'degisiklik_tarihi' => '2026-09-01',
+    'aciklama'          => 'ilerleme/silme testi',
+], 1);
+t('İşlem 2 oluştu (3 todo)', $s2['durum'] === true && count($s2['olusan_todolar'] ?? []) === 3);
+$degId2 = (int) $s2['id'];
+
+$todos2 = (new \App\Models\SicilGorevModel())->islemTodoListesi($degId2);
+$gorevM->durumDegistir((int) $todos2[0]['id'], 'GEREKSIZ', 1);
+$gorevM->durumDegistir((int) $todos2[1]['id'], 'TAMAM', 1);
+$gorevM->update((int) $todos2[2]['id'], ['son_tarih' => '2020-01-01', 'durum' => 'BEKLIYOR']);
+
+$satir2 = null;
+foreach ($degM->listele(['mukellef_id' => $mkId]) as $x) {
+    if ((int) $x['id'] === $degId2) { $satir2 = $x; break; }
+}
+t('toplam_todo GEREKSIZ hariç (3-1=2)', (int) ($satir2['toplam_todo'] ?? -1) === 2, (string) ($satir2['toplam_todo'] ?? 'yok'));
+t('tamam_todo = 1', (int) ($satir2['tamam_todo'] ?? -1) === 1);
+t('gerek_todo = 1', (int) ($satir2['gerek_todo'] ?? -1) === 1);
+t('acik_todo = 1', (int) ($satir2['acik_todo'] ?? -1) === 1);
+
+$onceki = (new \App\Models\SicilGorevModel())->sayaclar();
+t('Sayaç silmeden önce gecikti>=1', ($onceki['gecikti'] ?? 0) >= 1, json_encode($onceki));
+
+t('sicilSil (soft) başarılı', $degM->sicilSil($degId2) === true);
+$silinen = $degM->find($degId2);
+t('Kayıt deleted_at aldı (soft)', ($silinen['deleted_at'] ?? null) !== null);
+$kaldiMi = false;
+foreach ($degM->listele(['mukellef_id' => $mkId]) as $x) {
+    if ((int) $x['id'] === $degId2) { $kaldiMi = true; break; }
+}
+t('Silinen işlem listede GÖRÜNMEZ', $kaldiMi === false);
+$sonraki = (new \App\Models\SicilGorevModel())->sayaclar();
+t('Silinen işlemin todoları sayaçlara dahil DEĞİL (gecikti azaldı)', ($sonraki['gecikti'] ?? 0) < ($onceki['gecikti'] ?? 0), json_encode($sonraki));
+
+// Temizlik — soft silinen satırı da kaldır
 $db->query('DELETE FROM sicil_degisiklikleri');                       // işlem (todo cascade)
+
+echo "=== 10) TEMİZLİK ===\n";
 $db->query('DELETE FROM sicil_bildirim_kurallari WHERE degisiklik_turu_id = ' . $sablonId);
 $db->query('DELETE FROM sicil_degisiklik_turleri WHERE id = ' . $sablonId);
 t('Temizlendi', true);

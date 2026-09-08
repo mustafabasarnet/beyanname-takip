@@ -4,16 +4,33 @@
 <?php
 $deg     = $degisiklik;              // detay satırı (+ todolar)
 $todolar = $deg['todolar'] ?? [];
-$toplam  = count($todolar);
+$toplam  = count($todolar);          // listedeki tüm todo (takip dışı dahil)
 $tamam   = 0;
 $acik    = 0;
+$gerek   = 0;
 
 foreach ($todolar as $t) {
-    if ($t['durum'] === 'TAMAM') { $tamam++; }
-    elseif (in_array($t['durum'], ['BEKLIYOR', 'HAZIR', 'GONDERILDI'], true)) { $acik++; }
+    if ($t['durum'] === 'TAMAM') {
+        $tamam++;
+    } elseif (in_array($t['durum'], ['BEKLIYOR', 'HAZIR', 'GONDERILDI'], true)) {
+        $acik++;
+    } else {
+        $gerek++;                    // takip dışı — ilerlemeye katılmaz
+    }
 }
-$kalan = $toplam - $tamam - $acik;   // takip dışı (gereksiz)
-$oran  = $toplam > 0 ? (int) round($tamam / $toplam * 100) : 0;
+$hedef = $tamam + $acik;             // değerlendirilen todo sayısı
+$oran  = $hedef > 0 ? (int) round($tamam / $hedef * 100) : ($gerek > 0 ? 100 : 0);
+$ilerlemeMetin = $hedef > 0 ? $tamam . '/' . $hedef . ' tamamlandı'
+                 : ($gerek > 0 ? 'Tümü takip dışı' : 'Todo tanımlı değil');
+$altParcalar = [];
+if ($hedef > 0) { $altParcalar[] = $acik . ' açık'; }
+if ($gerek > 0) { $altParcalar[] = $gerek . ' takip dışı'; }
+
+// Evraklar todo bazında gruplu (kanıt dosyaları)
+$evrakMap = [];
+foreach ($belgeler ?? [] as $b) {
+    $evrakMap[(int) ($b['gorev_id'] ?? 0)][] = $b;
+}
 $degDurumRozet = match ($deg['durum']) {
     'TAMAM'   => 'yesil',
     'ISLEMDE' => 'sari',
@@ -37,6 +54,19 @@ $rol = $aktifKullanici['rol'] ?? 'personel';
 .todo-ad.yapildi{color:#047857;text-decoration:line-through}
 .todo-ayrinti{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:3px;font-size:12px;color:var(--gri-500)}
 .todo-islem{margin-left:auto;display:flex;gap:6px;align-items:center;flex:0 0 auto}
+.todo-evrak{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
+.evrak-cip{display:inline-flex;align-items:center;gap:4px;background:#fff;
+  border:1px solid var(--gri-200,#e2e8f0);border-radius:8px;padding:2px 4px 2px 8px;font-size:11.5px}
+.evrak-cip a{color:var(--gri-700,#334155);text-decoration:none;max-width:260px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.evrak-cip a:hover{color:var(--ana,#1d4ed8)}
+.evrak-sil{border:none;background:none;color:var(--gri-400,#94a3b8);cursor:pointer;font-size:14px;
+  line-height:1;padding:0 4px}
+.evrak-sil:hover{color:var(--kirmizi,#dc2626)}
+.evrak-ekle{display:inline-flex;align-items:center;gap:4px;cursor:pointer;
+  color:var(--gri-600,#475569);border:1px dashed var(--gri-300,#cbd5e1);border-radius:8px;
+  padding:3px 9px;font-size:11.5px;font-weight:600;user-select:none}
+.evrak-ekle:hover{border-color:var(--ana,#1d4ed8);color:var(--ana,#1d4ed8)}
 </style>
 
 <div id="sicil-bildirim" style="margin-bottom:10px"></div>
@@ -74,17 +104,20 @@ $rol = $aktifKullanici['rol'] ?? 'personel';
         <div style="white-space:pre-wrap"><?= nl2br(esc($deg['aciklama'])) ?></div></div>
     <?php endif; ?>
 
-    <!-- İlerleme -->
+    <!-- İlerleme (takip dışı todolar paydaya girmez) -->
     <div>
       <div class="satir arali" style="justify-content:space-between">
-        <b id="ilerleme-metin"><?= $toplam > 0 ? $tamam . '/' . $toplam . ' tamamlandı' : 'Todo tanımlı değil' ?></b>
-        <span class="kucuk-yazi" id="ilerleme-alt">
-          <?php if ($toplam > 0): ?><?= $acik ?> açık<?php if ($kalan > 0): ?> · <?= $kalan ?> takip dışı<?php endif; ?><?php endif; ?>
-        </span>
+        <b id="ilerleme-metin"><?= $ilerlemeMetin ?></b>
+        <span class="kucuk-yazi" id="ilerleme-alt"><?= implode(' · ', $altParcalar) ?></span>
       </div>
       <div class="progress">
         <div class="dolu" id="ilerleme-bar" style="width:<?= $oran ?>%"></div>
       </div>
+      <?php if ($hedef === 0 && $toplam > 0): ?>
+        <div class="kucuk-yazi" style="margin-top:6px;color:var(--gri-500,#64748b)">
+          ⊘ Bu işlemdeki tüm todolar takip dışı bırakıldı.
+        </div>
+      <?php endif; ?>
     </div>
   </div>
 </div>
@@ -129,6 +162,20 @@ $rol = $aktifKullanici['rol'] ?? 'personel';
                 </span>
               <?php endif; ?>
             </div>
+            <?php $todoBelgeler = $evrakMap[(int) $t['id']] ?? []; ?>
+            <div class="todo-evrak" data-evrak-kap="<?= (int) $t['id'] ?>">
+              <?php foreach ($todoBelgeler as $b): ?>
+                <span class="evrak-cip" data-evrak-cip="<?= (int) $b['id'] ?>">
+                  <a href="<?= site_url('sicil/evrak-indir/' . (int) $b['id']) ?>" title="<?= esc($b['dosya_adi']) ?>">📎 <?= esc(kisalt($b['dosya_adi'], 40)) ?></a>
+                  <button type="button" class="evrak-sil" data-id="<?= (int) $b['id'] ?>" title="Evrakı sil">×</button>
+                </span>
+              <?php endforeach; ?>
+              <label class="evrak-ekle" title="Evrak yükle (görevin tamamlandığına dair kanıt dosyası)">
+                + 📎 Evrak
+                <input type="file" class="evrak-dosya" data-gorev="<?= (int) $t['id'] ?>" hidden
+                       accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.xlsx,.xls,.csv,.docx,.doc,.txt,.zip">
+              </label>
+            </div>
           </div>
           <div class="todo-islem">
             <?php if ($tamMi || $gereksizMi): ?>
@@ -147,7 +194,6 @@ $rol = $aktifKullanici['rol'] ?? 'personel';
 
 <script>
 (function () {
-  var toplam = <?= $toplam ?>;
   var kapi = document.getElementById('ilerleme-bar');
 
   function rozetSinif(d) {
@@ -202,14 +248,27 @@ $rol = $aktifKullanici['rol'] ?? 'personel';
       b2.addEventListener('click', function () { istekGonder(satir, 'GEREKSIZ'); });
       btnKap.appendChild(b2);
     }
-    // işlem ilerlemesi + üst durum
+    // işlem ilerlemesi (takip dışı paydaya girmez) + üst durum
     var tm = parseInt(j.tamam || 0, 10);
-    var tp = parseInt(j.toplam || toplam, 10);
-    document.getElementById('ilerleme-metin').textContent = tp > 0 ? tm + '/' + tp + ' tamamlandı' : 'Todo tanımlı değil';
-    if (kapi) { kapi.style.width = tp > 0 ? Math.round(tm / tp * 100) + '%' : '0%'; }
+    var tp = parseInt(j.toplam || 0, 10);   // değerlendirilen todo (GEREKSIZ hariç)
+    var ac = parseInt(j.acik || 0, 10);
+    var gk = parseInt(j.gerek || 0, 10);
+    var alt = [];
+    if (tp > 0) { alt.push(ac + ' açık'); }
+    if (gk > 0) { alt.push(gk + ' takip dışı'); }
+    var metin;
+    if (tp > 0) { metin = tm + '/' + tp + ' tamamlandı'; }
+    else if (gk > 0) { metin = 'Tümü takip dışı'; }
+    else { metin = 'Todo tanımlı değil'; }
+    document.getElementById('ilerleme-metin').textContent = metin;
+    document.getElementById('ilerleme-alt').textContent = alt.join(' · ');
+    var oran = tp > 0 ? Math.round(tm / tp * 100) : (gk > 0 ? 100 : 0);
+    if (kapi) { kapi.style.width = oran + '%'; }
     var rozet = document.getElementById('deg-durum-rozet');
     rozet.className = 'rozet ' + rozetSinif(j.deg_durum);
     rozet.textContent = j.deg_durum_metin || j.deg_durum;
+    // Evrak sil butonları durum geçişinde kilitli kalmasın
+    satir.querySelectorAll('.evrak-sil').forEach(function (s) { s.disabled = false; });
     BT.bildir(j.mesaj || 'Durum güncellendi.', j.yeni_durum === 'TAMAM' ? 'basari' : 'bilgi');
   }
 
@@ -241,6 +300,63 @@ $rol = $aktifKullanici['rol'] ?? 'personel';
       var satir = b.closest('.todo-satir');
       istekGonder(satir, b.getAttribute('data-islem'));
     });
+  });
+
+  // ---------- TODO EVRAKLARI ----------
+  // Yükleme: etiket (label) tıklanınca gizli dosya kutusu açılır
+  document.querySelectorAll('.evrak-dosya').forEach(function (inp) {
+    inp.addEventListener('change', function () {
+      var gorev = inp.getAttribute('data-gorev');
+      var dosya = inp.files && inp.files[0];
+      if (!dosya) { return; }
+      var kap = document.querySelector('[data-evrak-kap="' + gorev + '"]');
+      var ekle = kap ? kap.querySelector('.evrak-ekle') : null;
+      if (ekle) { ekle.style.pointerEvents = 'none'; ekle.style.opacity = '.55'; }
+      BT.post('<?= site_url('sicil/evrak-yukle') ?>', { gorev_id: gorev, dosya: dosya })
+        .then(function (j) {
+          if (!j.durum) throw new Error(j.mesaj || 'Yükleme başarısız.');
+          if (kap) {
+            var c = document.createElement('span');
+            c.className = 'evrak-cip';
+            c.setAttribute('data-evrak-cip', j.id);
+            var a = document.createElement('a');
+            a.href = j.indir; a.title = j.dosya_adi;
+            a.textContent = '📎 ' + j.dosya_adi;
+            var s = document.createElement('button');
+            s.type = 'button'; s.className = 'evrak-sil';
+            s.setAttribute('data-id', j.id); s.title = 'Evrakı sil';
+            s.textContent = '×';
+            c.appendChild(a); c.appendChild(s);
+            kap.insertBefore(c, ekle);
+          }
+          BT.bildir('Evrak yüklendi.', 'basari');
+        })
+        .catch(function (e) { BT.bildir(e.message, 'hata'); })
+        .finally(function () {
+          inp.value = '';
+          if (ekle) { ekle.style.pointerEvents = ''; ekle.style.opacity = ''; }
+        });
+    });
+  });
+
+  // Silme (chips sonradan eklendiği için delegasyon)
+  document.addEventListener('click', function (e) {
+    var s = e.target.closest('.evrak-sil');
+    if (!s || s.disabled) { return; }
+    var id = s.getAttribute('data-id');
+    if (!confirm('Bu evrak silinsin mi?')) { return; }
+    var cip = s.closest('[data-evrak-cip]');
+    s.disabled = true;
+    BT.post('<?= site_url('sicil/evrak-sil') ?>/' + id, {})
+      .then(function (j) {
+        if (!j.durum) throw new Error(j.mesaj || 'Silinemedi.');
+        if (cip) { cip.remove(); }
+        BT.bildir('Evrak silindi.', 'basari');
+      })
+      .catch(function (err) {
+        s.disabled = false;
+        BT.bildir(err.message, 'hata');
+      });
   });
 })();
 </script>

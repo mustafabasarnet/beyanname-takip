@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\MukellefModel;
 use App\Models\KullaniciModel;
+use App\Models\SicilBelgeModel;
 use App\Models\SicilDegisiklikModel;
 use App\Models\SicilGorevModel;
 use App\Models\SicilKuralModel;
@@ -24,15 +25,23 @@ class Sicil extends BaseController
     protected SicilDegisiklikModel $degModel;
     protected SicilGorevModel $gorevModel;
     protected SicilTurModel $turModel;
+    protected SicilBelgeModel $belgeModel;
 
     /** Dashboard hızlı filtrelerinden gelen izinli aralıklar. */
     protected const ARALIKLAR = ['gecikti', 'bugun', 'ic7', 'ic15', 'tamamlanan'];
 
+    /** Todo evrakı için izinli dosya türleri (ek kanıt). */
+    public const EVRAK_UZANTI = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'xlsx', 'xls', 'csv', 'docx', 'doc', 'txt', 'zip'];
+
+    /** Todo evrakı için üst boyut (KB). */
+    public const EVRAK_BOYUT_KB = 5120;
+
     public function __construct()
     {
-        $this->degModel   = new SicilDegisiklikModel();
-        $this->gorevModel = new SicilGorevModel();
-        $this->turModel   = new SicilTurModel();
+        $this->degModel    = new SicilDegisiklikModel();
+        $this->gorevModel  = new SicilGorevModel();
+        $this->turModel    = new SicilTurModel();
+        $this->belgeModel  = new SicilBelgeModel();
     }
 
     /** Giriş yapan kullanıcı id */
@@ -248,7 +257,127 @@ class Sicil extends BaseController
             'degisiklik' => $detay,
             'mukellef'   => (new MukellefModel())->find((int) $degisiklik['mukellef_id']),
             'durumlar'   => SicilGorevModel::DURUMLAR,
+            'belgeler'   => $this->belgeModel->islemEvraklari($id),
         ], 'İşlem Detayı');
+    }
+
+    // =================================================================
+    //  TODO EVRAKLARI (görev tamamlandığına dair kanıt dosyası)
+    // =================================================================
+
+    /**
+     * Todo'ya evrak yükler (AJAX, multipart).
+     * Yalnız yetkili (işleme erişen) kullanıcılar yükleyebilir.
+     */
+    public function evrakYukle()
+    {
+        $todoId = (int) $this->request->getPost('gorev_id');
+
+        $todo = $this->gorevModel->find($todoId);
+
+        if ($todo === null) {
+            return $this->jsonHata('Todo bulunamadı.', 404);
+        }
+
+        $degisiklik = $this->degModel->find((int) $todo['sicil_degisikligi_id']);
+
+        if ($degisiklik === null || ! $this->degisiklikYetkisi($degisiklik)) {
+            return $this->jsonHata('Bu kayda erişemezsiniz.', 403);
+        }
+
+        $dosya = $this->request->getFile('dosya');
+
+        if ($dosya === null || ! $dosya->isValid()) {
+            return $this->jsonHata('Dosya seçilmedi veya yüklenemedi.');
+        }
+
+        $uzanti = strtolower($dosya->getClientExtension());
+
+        if (! in_array($uzanti, self::EVRAK_UZANTI, true)) {
+            return $this->jsonHata('Bu dosya türü desteklenmiyor (' . $uzanti . ').');
+        }
+
+        if ($dosya->getSize() > self::EVRAK_BOYUT_KB * 1024) {
+            return $this->jsonHata('Dosya boyutu ' . self::EVRAK_BOYUT_KB . ' KB üzerinde olamaz.');
+        }
+
+        $klasor = WRITEPATH . 'uploads/sicil';
+
+        if (! is_dir($klasor)) {
+            mkdir($klasor, 0o775, true);
+        }
+
+        $yeniAd  = $dosya->getRandomName();
+        $dosya->move($klasor, $yeniAd);
+
+        $sonuc = $this->belgeModel->ekle([
+            'sicil_degisikligi_id' => (int) $degisiklik['id'],
+            'gorev_id'             => $todoId,
+            'dosya_adi'            => $dosya->getClientName(),
+            'saklanan'             => $yeniAd,
+            'boyut'                => $dosya->getSize(),
+            'tur'                  => $dosya->getClientMimeType(),
+        ], $this->ben());
+
+        if (! $sonuc['durum']) {
+            @unlink($klasor . '/' . $yeniAd);
+
+            return $this->jsonHata($sonuc['hata'] ?? 'Evrak kaydedilemedi.');
+        }
+
+        return $this->jsonBasarili('Evrak yüklendi.', [
+            'id'        => $sonuc['id'],
+            'dosya_adi' => mb_substr($dosya->getClientName(), 0, 120),
+            'indir'     => site_url('sicil/evrak-indir/' . $sonuc['id']),
+        ]);
+    }
+
+    /** Evrakı indirir (erişim kontrolü işlem üzerinden). */
+    public function evrakIndir(int $id)
+    {
+        $belge = $this->belgeModel->bul($id);
+
+        if ($belge === null) {
+            return redirect()->to(site_url('sicil'))->with('hata', 'Evrak bulunamadı.');
+        }
+
+        $degisiklik = $this->degModel->find((int) ($belge['sicil_degisikligi_id'] ?? 0));
+
+        if ($degisiklik === null || ! $this->degisiklikYetkisi($degisiklik)) {
+            return redirect()->to(site_url('sicil'))->with('hata', 'Bu evraka erişemezsiniz.');
+        }
+
+        $yol = WRITEPATH . 'uploads/sicil/' . $belge['saklanan'];
+
+        if (! is_file($yol)) {
+            return redirect()->to(site_url('sicil'))->with('hata', 'Evrak diskte bulunamadı.');
+        }
+
+        return $this->response->download($yol, null)->setFileName($belge['dosya_adi']);
+    }
+
+    /** Evrakı siler (AJAX) — işleme erişen herkes silebilir. */
+    public function evrakSil(int $id)
+    {
+        $belge = $this->belgeModel->bul($id);
+
+        if ($belge === null) {
+            return $this->jsonHata('Evrak bulunamadı.', 404);
+        }
+
+        $degisiklik = $this->degModel->find((int) ($belge['sicil_degisikligi_id'] ?? 0));
+
+        if ($degisiklik === null || ! $this->degisiklikYetkisi($degisiklik)) {
+            return $this->jsonHata('Bu evraka erişemezsiniz.', 403);
+        }
+
+        $yol = WRITEPATH . 'uploads/sicil/' . $belge['saklanan'];
+
+        if ($this->belgeModel->belgeSil($id, $yol)) {
+            return $this->jsonBasarili('Evrak silindi.');
+        }
+
+        return $this->jsonHata('Evrak silinemedi.');
     }
 
     /** İşlemi sil (soft delete) — yalnız admin */
@@ -299,14 +428,21 @@ class Sicil extends BaseController
         $yeni = $sonuc['kayit'];
         $det  = $this->degModel->detay((int) $degisiklik['id']);
 
-        $toplam = is_array($det['todolar'] ?? null) ? count($det['todolar']) : 0;
-        $tamam  = 0;
+        // İlerleme: "Takip dışı" (GEREKSIZ) todolar paydaya girmez.
+        $tamam = 0;
+        $acik  = 0;
+        $gerek = 0;
 
         foreach ($det['todolar'] ?? [] as $t) {
             if ($t['durum'] === 'TAMAM') {
                 $tamam++;
+            } elseif (in_array($t['durum'], ['BEKLIYOR', 'HAZIR', 'GONDERILDI'], true)) {
+                $acik++;
+            } else {
+                $gerek++;
             }
         }
+        $hedef = $tamam + $acik; // GEREKSIZ hariç değerlendirilen
 
         $yapanAd = $yeni['yapan_id']
             ? ((new KullaniciModel())->find((int) $yeni['yapan_id'])['ad_soyad'] ?? null)
@@ -327,7 +463,9 @@ class Sicil extends BaseController
             'deg_durum'          => $degDurum,
             'deg_durum_metin'    => SicilDegisiklikModel::DURUMLAR[$degDurum] ?? '',
             'tamam'              => $tamam,
-            'toplam'             => $toplam,
+            'toplam'             => $hedef,
+            'acik'               => $acik,
+            'gerek'              => $gerek,
         ]);
     }
 

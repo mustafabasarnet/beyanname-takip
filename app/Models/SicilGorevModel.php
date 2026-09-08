@@ -286,6 +286,7 @@ class SicilGorevModel extends Model
             ->join('sicil_degisiklikleri d', 'd.id = g.sicil_degisikligi_id')
             ->join('mukellefler m', 'm.id = d.mukellef_id')
             ->where('m.deleted_at', null)
+            ->where('d.deleted_at', null)
             ->where('g.deleted_at', null);
 
         $this->kapsamUygula($b, $musavirIdler);

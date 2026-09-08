@@ -247,6 +247,10 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
         $routes->post('kaydet', 'Sicil::kaydet');          // AJAX (todo üretimi)
         $routes->post('todo-durum', 'Sicil::todoDurum');   // AJAX (checkbox)
         $routes->get('sil/(:num)', 'Sicil::sil/$1');
+        // Todo evrakları (görev tamamlandığına dair kanıt dosyası)
+        $routes->post('evrak-yukle', 'Sicil::evrakYukle'); // AJAX (multipart)
+        $routes->get('evrak-indir/(:num)', 'Sicil::evrakIndir/$1');
+        $routes->post('evrak-sil/(:num)', 'Sicil::evrakSil/$1');
     });
 
     // Sicil şablon yönetimi (yalnız yönetici ve müşavir)
