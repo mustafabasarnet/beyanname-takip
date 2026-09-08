@@ -6,17 +6,24 @@ use App\Libraries\SicilSureHesaplayici;
 use CodeIgniter\Model;
 
 /**
- * SİCİL — BİLDİRİM GÖREVLERİ
+ * SİCİL — İŞLEM TODO'LARI (sicil_bildirim_gorevleri)
  *
- * Bir sicil değişikliğinden kurallar aracılığıyla üretilen, durumu takip
- * edilen görevler.
+ * Sade modül kavramında bu tablo, bir işlemin (sicil_degisiklikleri)
+ * altında otomatik üretilen TODO listesidir:
+ *
+ *   sicil_degisikligi_id → hangi işlemden üretildi
+ *   kural_id             → üretim kaynağı şablon todo tanımı
+ *   ad                   → üretim ANINDA kopyalanan todo adı (şablon sonradan
+ *                          değişse bile geçmiş işlem bozulmaz)
+ *   son_tarih            → süre kuralıyla hesaplanmış son bildirim tarihi
  *
  * Temel ilkeler:
  *   - Mükerrer koruma: DB unique (sicil_degisikligi_id, kural_id) + üretim
- *     öncesi kontrol (idempotent — tekrar üretimde çoğalmaz).
- *   - Son tarih üretim anında hesaplanıp YAZILIR (kural değişse bozulmaz).
- *   - "Süresi geçti/bugün/..." veri değil; görüntülemede türetilen
- *     hesaplanmış durumdur (sayaç/filtre olarak burada üretilir).
+ *     öncesi kontrol → aynı tanım bir işlemde iki kez üretilemez.
+ *   - Durum: yalnız BEKLIYOR (yapılmadı) ↔ TAMAM (yapıldı); opsiyonel
+ *     GEREKSIZ (takip dışı). Eski HAZIR/GONDERILDI değerleri "açık" sayılır.
+ *   - "Süresi geçti/bugün/yaklaşan" veri değil; görüntüleme anında tarihten
+ *     türetilir (sayaç/filtre burada üretilir).
  */
 class SicilGorevModel extends Model
 {
@@ -26,74 +33,58 @@ class SicilGorevModel extends Model
     protected $useTimestamps = true;
 
     protected $allowedFields = [
-        'sicil_degisikligi_id', 'kural_id', 'kurum_id', 'gorev_no', 'son_tarih',
+        'sicil_degisikligi_id', 'kural_id', 'ad', 'son_tarih',
         'asil_tarih', 'kaydirma_nedeni', 'durum', 'tamamlanma_tarihi',
         'yapan_id', 'not_metni',
     ];
 
+    /** Görev durumu görünen adları (eski HAZIR/GONDERILDI gizlenir). */
     public const DURUMLAR = [
-        'BEKLIYOR'   => 'Bekliyor',
-        'HAZIR'      => 'Hazır',
-        'GONDERILDI' => 'Gönderildi',
-        'TAMAM'      => 'Tamamlandı',
-        'GEREKSIZ'   => 'Gereksiz',
+        'BEKLIYOR'   => 'Yapılmadı',
+        'TAMAM'      => 'Yapıldı',
+        'GEREKSIZ'   => 'Takip dışı',
     ];
 
-    /** Açık (henüz kapanmamış) görev durumları */
+    /** Açık (henüz kapanmamış) durumlar — eski sürüm değerleri de dahil. */
     public const ACIK_DURUMLAR = ['BEKLIYOR', 'HAZIR', 'GONDERILDI'];
-
-    /** Durum geçiş haritası: kaynak → izinli hedefler */
-    public const GECISLER = [
-        'BEKLIYOR'   => ['HAZIR', 'GEREKSIZ'],
-        'HAZIR'      => ['BEKLIYOR', 'GONDERILDI', 'GEREKSIZ'],
-        'GONDERILDI' => ['HAZIR', 'TAMAM', 'GEREKSIZ'],
-        'TAMAM'      => ['GONDERILDI'],
-        'GEREKSIZ'   => ['BEKLIYOR'],
-    ];
 
     // =================================================================
     //  ÜRETİM
     // =================================================================
 
     /**
-     * Değişiklik için aktif kuralları işler ve görevleri üretir (idempotent).
+     * İşlem için şablonun AKTİF todo tanımlarını işler, todo satırlarını üretir
+     * (idempotent — tekrar çağrıldığında çoğalmaz).
      *
      * @param array $degisiklik sicil_degisiklikleri satırı (id, turu_id, degisiklik_tarihi)
      *
-     * @return array üretilen görevler [{id, kurum_id, kurum_ad, kurum_kisa, son_tarih}]
+     * @return array üretilen todolar [{id, ad, son_tarih, durum}]
      */
-    public function degisiklikIcinUret(array $degisiklik, int $kaydedenId): array
+    public function islemIcinUret(array $degisiklik, int $kaydedenId): array
     {
         $degId     = (int) $degisiklik['id'];
-        $turId     = (int) $degisiklik['turu_id'];
+        $sablonId  = (int) $degisiklik['turu_id'];
         $baslangic = (string) $degisiklik['degisiklik_tarihi'];
 
-        $kurallar = (new SicilKuralModel())->aktifKurallar($turId);
+        $tanimlar = (new SicilKuralModel())->aktifTodoTanimlari($sablonId);
         $olusan   = [];
-        $hesap    = new SicilSureHesaplayici();
 
-        foreach ($kurallar as $kural) {
+        foreach ($tanimlar as $tanim) {
             // Mükerrer kontrol (unique öncesi anlaşılır biçimde atla)
-            if ($this->gorevVarMi($degId, (int) $kural['id'])) {
+            if ($this->todoVarMi($degId, (int) $tanim['id'])) {
                 continue;
             }
 
-            try {
-                $sonuc = $hesap->hesapla(
-                    $baslangic,
-                    (string) $kural['sure_tipi'],
-                    $kural['sure_deger'] !== null ? (int) $kural['sure_deger'] : null,
-                    $kural['belirli_tarih']
-                );
-            } catch (\Throwable $e) {
-                continue; // geçersiz kural → atla (yönetici düzeltir)
+            $sonuc = self::tarihHesapla($baslangic, $tanim);
+
+            if ($sonuc === null) {
+                continue; // geçersiz tanım → atla (yönetici düzeltir)
             }
 
             $id = (int) $this->insert([
                 'sicil_degisikligi_id' => $degId,
-                'kural_id'             => (int) $kural['id'],
-                'kurum_id'             => (int) $kural['kurum_id'],
-                'gorev_no'             => 'SG-' . date('Y') . '-' . str_pad((string) $degId, 5, '0', STR_PAD_LEFT),
+                'kural_id'             => (int) $tanim['id'],
+                'ad'                   => $tanim['ad'] ?: 'Todo',
                 'son_tarih'            => $sonuc['son_tarih'],
                 'asil_tarih'           => $sonuc['asil_tarih'],
                 'kaydirma_nedeni'      => $sonuc['neden'],
@@ -103,11 +94,10 @@ class SicilGorevModel extends Model
 
             if ($id > 0) {
                 $olusan[] = [
-                    'id'         => $id,
-                    'kurum_id'   => (int) $kural['kurum_id'],
-                    'kurum_ad'   => $kural['kurum_ad'] ?? (string) $kural['kurum_id'],
-                    'kurum_kisa' => $kural['kurum_kisa'] ?? null,
-                    'son_tarih'  => $sonuc['son_tarih'],
+                    'id'        => $id,
+                    'ad'        => $tanim['ad'] ?: 'Todo',
+                    'son_tarih' => $sonuc['son_tarih'],
+                    'durum'     => 'BEKLIYOR',
                 ];
             }
         }
@@ -115,11 +105,55 @@ class SicilGorevModel extends Model
         return $olusan;
     }
 
-    /** Aynı (değişiklik, kural) için görev var mı? */
-    public function gorevVarMi(int $degisiklikId, int $kuralId): bool
+    /**
+     * Bir şablon todo tanımından son tarihi hesaplar (tek nokta).
+     *
+     * BELIRLI_TARIH özel kuralı: tanımda ay.gün sabittir, YIL işlemin
+     * yılından alınır — böylece şablon çok yıllık kullanılabilir
+     * (örn. "30.09" tanımı her işlem yılında o yılın 30 Eylül'ünü verir).
+     *
+     * @return array{son_tarih:string, asil_tarih:?string, neden:?string}|null
+     */
+    public static function tarihHesapla(string $baslangic, array $tanim): ?array
+    {
+        try {
+            $hesap = new SicilSureHesaplayici();
+            $tip   = (string) ($tanim['sure_tipi'] ?? 'GUN');
+            $deger = isset($tanim['sure_deger']) && $tanim['sure_deger'] !== null
+                ? (int) $tanim['sure_deger'] : null;
+
+            if ($tip === 'BELIRLI_TARIH') {
+                $hedef = self::belirliTarihBirlestir($baslangic, (string) ($tanim['belirli_tarih'] ?? ''));
+
+                return $hesap->hesapla($baslangic, $tip, null, $hedef);
+            }
+
+            return $hesap->hesapla($baslangic, $tip, $deger);
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /** Ay.gün tanımını işlem yılıyla birleştirir (29 Şubat taşması son güne çekilir). */
+    protected static function belirliTarihBirlestir(string $baslangic, string $hedef): string
+    {
+        if (! preg_match('/^\d{4}-(\d{2})-(\d{2})$/', $hedef, $m)) {
+            return $hedef;
+        }
+
+        $yil    = (int) substr($baslangic, 0, 4);
+        $ay     = (int) $m[1];
+        $gun    = (int) $m[2];
+        $sonGun = (int) date('t', mktime(0, 0, 0, $ay, 1, $yil));
+
+        return sprintf('%04d-%02d-%02d', $yil, $ay, min($gun, $sonGun));
+    }
+
+    /** Aynı (işlem, todo tanımı) çifti için satır var mı? */
+    public function todoVarMi(int $degisiklikId, int $tanimId): bool
     {
         return $this->where('sicil_degisikligi_id', $degisiklikId)
-            ->where('kural_id', $kuralId)
+            ->where('kural_id', $tanimId)
             ->countAllResults() > 0;
     }
 
@@ -128,158 +162,74 @@ class SicilGorevModel extends Model
     // =================================================================
 
     /**
-     * Görev listesi — kapsam + durum + zaman aralığı filtresiyle.
-     *
-     * @param array $f ['durum'(string|string[]),'aralik'(gecikti|bugun|ic3|ic7|ic15),
-     *                  'kurum_id','mukellef_id','musavir_id','q']
+     * Bir işlemin todo listesi (şablon sırası korunur: id artan).
+     * Yapan kullanıcı adı eklenir; kurum bilgisi kullanılmaz.
      */
-    public function listele(array $f = []): array
+    public function islemTodoListesi(int $degisiklikId): array
     {
-        $b = $this->db->table('sicil_bildirim_gorevleri g')
-            ->select("g.*, d.degisiklik_tarihi, d.konu AS deg_konu,
-                      t.ad AS tur_ad, t.kod AS tur_kod,
-                      m.unvan AS mukellef_unvan, m.vergi_kimlik_no, m.tc_kimlik_no,
-                      m.musavir_id,
-                      krm.ad AS kurum_ad, krm.kisa_ad AS kurum_kisa,
-                      mus.ad_soyad AS musavir_adi, mus.renk AS musavir_renk,
-                      kk.ad_soyad AS yapan_adi")
-            ->join('sicil_degisiklikleri d', 'd.id = g.sicil_degisikligi_id')
-            ->join('sicil_degisiklik_turleri t', 't.id = d.turu_id')
-            ->join('mukellefler m', 'm.id = d.mukellef_id')
-            ->join('musavirler mus', 'mus.id = m.musavir_id', 'left')
-            ->join('kurumlar krm', 'krm.id = g.kurum_id')
+        return $this->db->table('sicil_bildirim_gorevleri g')
+            ->select("g.*, kk.ad_soyad AS yapan_adi,
+                      (g.durum IN ('BEKLIYOR','HAZIR','GONDERILDI')) AS acik_mi")
             ->join('kullanicilar kk', 'kk.id = g.yapan_id', 'left')
-            ->where('m.deleted_at', null)
-            ->where('g.deleted_at', null);
-
-        $this->kapsamUygula($b, $f['musavir_id'] ?? null);
-
-        if (! empty($f['durum'])) {
-            if (is_array($f['durum'])) {
-                $b->whereIn('g.durum', array_values($f['durum']));
-            } else {
-                $b->where('g.durum', $f['durum']);
-            }
-        }
-
-        if (! empty($f['kurum_id'])) {
-            if (is_array($f['kurum_id'])) {
-                $b->whereIn('g.kurum_id', array_map('intval', $f['kurum_id']));
-            } else {
-                $b->where('g.kurum_id', (int) $f['kurum_id']);
-            }
-        }
-
-        if (! empty($f['mukellef_id'])) {
-            $b->where('d.mukellef_id', (int) $f['mukellef_id']);
-        }
-
-        if (! empty($f['degisiklik_id'])) {
-            $b->where('g.sicil_degisikligi_id', (int) $f['degisiklik_id']);
-        }
-
-        if (! empty($f['q'])) {
-            $b->groupStart()
-                ->like('m.unvan', $f['q'])
-                ->orLike('krm.ad', $f['q'])
-                ->orLike('m.vergi_kimlik_no', $f['q'])
-                ->orLike('m.tc_kimlik_no', $f['q'])
-              ->groupEnd();
-        }
-
-        $aralik = $f['aralik'] ?? null;
-
-        if ($aralik !== null && $aralik !== '' && $aralik !== 'tumu') {
-            $bugun = date('Y-m-d');
-            $b->whereIn('g.durum', self::ACIK_DURUMLAR);
-
-            switch ($aralik) {
-                case 'gecikti':
-                    $b->where('g.son_tarih <', $bugun);
-                    break;
-                case 'bugun':
-                    $b->where('g.son_tarih', $bugun);
-                    break;
-                case 'ic3':
-                    $b->where('g.son_tarih >=', $bugun)->where('g.son_tarih <=', date('Y-m-d', strtotime('+3 days')));
-                    break;
-                case 'ic7':
-                    $b->where('g.son_tarih >=', $bugun)->where('g.son_tarih <=', date('Y-m-d', strtotime('+7 days')));
-                    break;
-                case 'ic15':
-                    $b->where('g.son_tarih >=', $bugun)->where('g.son_tarih <=', date('Y-m-d', strtotime('+15 days')));
-                    break;
-            }
-        }
-
-        return $b->orderBy('(g.durum = "TAMAM" OR g.durum = "GEREKSIZ")', 'ASC', false)
-            ->orderBy('g.son_tarih IS NULL', 'ASC', false)
-            ->orderBy('g.son_tarih', 'ASC')
-            ->orderBy('g.id', 'DESC')
+            ->where('g.sicil_degisikligi_id', $degisiklikId)
+            ->where('g.deleted_at', null)
+            ->orderBy('g.id', 'ASC')
             ->get()->getResultArray();
     }
 
-    /** Tek görev (tüm bağlı adlarla). */
-    public function detay(int $id): ?array
-    {
-        return $this->db->table('sicil_bildirim_gorevleri g')
-            ->select("g.*, d.degisiklik_tarihi, d.konu AS deg_konu,
-                      d.yeni_deger AS deg_yeni, d.eski_deger AS deg_eski,
-                      t.ad AS tur_ad, t.kod AS tur_kod,
-                      m.unvan AS mukellef_unvan, m.vergi_kimlik_no, m.tc_kimlik_no,
-                      m.musavir_id,
-                      krm.ad AS kurum_ad, krm.kisa_ad AS kurum_kisa,
-                      mus.ad_soyad AS musavir_adi, mus.renk AS musavir_renk,
-                      kk.ad_soyad AS yapan_adi")
-            ->join('sicil_degisiklikleri d', 'd.id = g.sicil_degisikligi_id')
-            ->join('sicil_degisiklik_turleri t', 't.id = d.turu_id')
-            ->join('mukellefler m', 'm.id = d.mukellef_id')
-            ->join('musavirler mus', 'mus.id = m.musavir_id', 'left')
-            ->join('kurumlar krm', 'krm.id = g.kurum_id')
-            ->join('kullanicilar kk', 'kk.id = g.yapan_id', 'left')
-            ->where('g.id', $id)
-            ->where('g.deleted_at', null)
-            ->get()->getRowArray();
-    }
-
     // =================================================================
-    //  DURUM GEÇİŞLERİ
+    //  DURUM GEÇİŞLERİ (checkbox + takip dışı)
     // =================================================================
 
     /**
-     * Durumu değiştirir; geçiş kuralları + otomatik damgalar.
-     * GONDERILDI/TAMAM → yapan_id; TAMAM → tamamlanma; TAMAM'dan çıkış → temizle.
+     * Todo durumunu değiştirir.
+     *
+     * İzinli geçişler (sade modül):
+     *   herhangi bir açık durum → TAMAM      (yapıldı)
+     *   TAMAM / GEREKSIZ        → BEKLIYOR   (geri aç)
+     *   açık durum               → GEREKSIZ   (takip dışı)
+     *   aynı durum tekrarı → noop (başarılı)
+     *
+     * @return array{durum:bool, mesaj:string, kayit:?array}
      */
     public function durumDegistir(int $id, string $hedef, int $kullaniciId): array
     {
         $g = $this->find($id);
 
         if ($g === null) {
-            return ['durum' => false, 'mesaj' => 'Görev bulunamadı.', 'kayit' => null];
+            return ['durum' => false, 'mesaj' => 'Todo bulunamadı.', 'kayit' => null];
         }
 
-        if (! isset(self::DURUMLAR[$hedef])) {
+        if (! in_array($hedef, ['BEKLIYOR', 'TAMAM', 'GEREKSIZ'], true)) {
             return ['durum' => false, 'mesaj' => 'Geçersiz durum.', 'kayit' => null];
         }
 
         $kaynak = (string) $g['durum'];
-        $izin   = self::GECISLER[$kaynak] ?? [];
+        $acik   = in_array($kaynak, self::ACIK_DURUMLAR, true);
 
-        if ($kaynak !== $hedef && ! in_array($hedef, $izin, true)) {
-            return ['durum' => false,
-                    'mesaj' => "Bu geçiş yapılamaz ({$kaynak} → {$hedef}).",
-                    'kayit' => null];
+        if ($kaynak !== $hedef) {
+            $izinli = match ($hedef) {
+                'TAMAM'    => $acik || $kaynak === 'GEREKSIZ',
+                'BEKLIYOR' => $kaynak === 'TAMAM' || $kaynak === 'GEREKSIZ',
+                'GEREKSIZ' => $acik,
+                default    => false,
+            };
+
+            if (! $izinli) {
+                return ['durum' => false,
+                        'mesaj' => "Bu geçiş yapılamaz ({$kaynak} → {$hedef}).",
+                        'kayit' => null];
+            }
         }
 
         $veri = ['durum' => $hedef];
 
-        if (in_array($hedef, ['GONDERILDI', 'TAMAM'], true)) {
-            $veri['yapan_id'] = $kullaniciId;
-        }
-
-        if ($hedef === 'TAMAM') {
-            $veri['tamamlanma_tarihi'] = date('Y-m-d H:i:s');
-        } elseif ($kaynak === 'TAMAM') {
+        if ($hedef === 'TAMAM' || $hedef === 'GEREKSIZ') {
+            $veri['yapan_id']           = $kullaniciId;
+            $veri['tamamlanma_tarihi']  = $hedef === 'TAMAM' ? date('Y-m-d H:i:s') : null;
+        } elseif ($hedef === 'BEKLIYOR') {
+            // geri açıldı → yapan/tamamlanma temizlenir
+            $veri['yapan_id']          = null;
             $veri['tamamlanma_tarihi'] = null;
         }
 
@@ -290,55 +240,49 @@ class SicilGorevModel extends Model
         return ['durum' => true, 'mesaj' => 'Durum güncellendi.', 'kayit' => $this->find($id)];
     }
 
-    /** Görevi tamamla. */
+    /** Todo'yu tamamlar (checkbox işaretlenince). */
     public function tamamla(int $id, int $kullaniciId): array
     {
         return $this->durumDegistir($id, 'TAMAM', $kullaniciId);
     }
 
-    /** Görevi iptal/gereksiz yap. */
-    public function iptalEt(int $id, int $kullaniciId): array
+    /** Todo'yu takip dışı yapar. */
+    public function gereksizYap(int $id, int $kullaniciId): array
     {
         return $this->durumDegistir($id, 'GEREKSIZ', $kullaniciId);
     }
 
-    /** Not güncelle (yetki controller'da). */
-    public function notKaydet(int $id, ?string $not): bool
-    {
-        return $this->update($id, ['not_metni' => trim((string) $not) ?: null]);
-    }
-
     // =================================================================
-    //  SAYAÇLAR / YAKLAŞAN / GEÇEN
+    //  SAYAÇLAR (dashboard + liste üstü kartlar)
     // =================================================================
 
     /**
-     * Günlük sayaçlar — gecikti/bugün/3/7/15/bekleyen/tamamlanan.
+     * Günlük sayaçlar — gecikti / bugün / 3 / 7 / 15 / açık / tamamlanan.
      *
      * @param int[]|null $musavirIdler kapsam (null = admin tümü)
      */
     public function sayaclar($musavirIdler = null): array
     {
-        $bugun  = date('Y-m-d');
-        $b3     = date('Y-m-d', strtotime('+3 days'));
-        $b7     = date('Y-m-d', strtotime('+7 days'));
-        $b15    = date('Y-m-d', strtotime('+15 days'));
+        $bugun = date('Y-m-d');
+        $b3    = date('Y-m-d', strtotime('+3 days'));
+        $b7    = date('Y-m-d', strtotime('+7 days'));
+        $b15   = date('Y-m-d', strtotime('+15 days'));
 
         $b = $this->db->table('sicil_bildirim_gorevleri g')
             ->select("
-                COUNT(*)                                        AS toplam,
-                SUM(g.durum IN ('BEKLIYOR','HAZIR','GONDERILDI'))      AS bekleyen,
-                SUM(g.durum = 'TAMAM')                          AS tamamlanan,
+                COUNT(*)                                             AS toplam,
+                SUM(g.durum IN ('BEKLIYOR','HAZIR','GONDERILDI'))            AS bekleyen,
+                SUM(g.durum = 'TAMAM')                               AS tamamlanan,
                 SUM(g.durum IN ('BEKLIYOR','HAZIR','GONDERILDI')
-                    AND g.son_tarih < '{$bugun}')               AS gecikti,
+                    AND g.son_tarih IS NOT NULL AND g.son_tarih < '{$bugun}') AS gecikti,
                 SUM(g.durum IN ('BEKLIYOR','HAZIR','GONDERILDI')
-                    AND g.son_tarih = '{$bugun}')               AS bugun,
+                    AND g.son_tarih = '{$bugun}')                    AS bugun,
                 SUM(g.durum IN ('BEKLIYOR','HAZIR','GONDERILDI')
-                    AND g.son_tarih >= '{$bugun}' AND g.son_tarih <= '{$b3}')   AS ic3,
+                    AND g.son_tarih >= '{$bugun}' AND g.son_tarih <= '{$b3}')  AS ic3,
                 SUM(g.durum IN ('BEKLIYOR','HAZIR','GONDERILDI')
-                    AND g.son_tarih >= '{$bugun}' AND g.son_tarih <= '{$b7}')   AS ic7,
+                    AND g.son_tarih >= '{$bugun}' AND g.son_tarih <= '{$b7}')  AS ic7,
                 SUM(g.durum IN ('BEKLIYOR','HAZIR','GONDERILDI')
-                    AND g.son_tarih >= '{$bugun}' AND g.son_tarih <= '{$b15}')  AS ic15")
+                    AND g.son_tarih >= '{$bugun}' AND g.son_tarih <= '{$b15}') AS ic15")
             ->join('sicil_degisiklikleri d', 'd.id = g.sicil_degisikligi_id')
             ->join('mukellefler m', 'm.id = d.mukellef_id')
             ->where('m.deleted_at', null)
@@ -358,52 +302,6 @@ class SicilGorevModel extends Model
             'ic7'        => (int) $r['ic7'],
             'ic15'       => (int) $r['ic15'],
         ];
-    }
-
-    /** Yaklaşan (bugün + N gün) açık görevler — dashboard. */
-    public function yaklasanlar($musavirIdler = null, int $gun = 7, int $limit = 10): array
-    {
-        $b = $this->db->table('sicil_bildirim_gorevleri g')
-            ->select("g.*, d.degisiklik_tarihi, t.ad AS tur_ad,
-                      m.unvan AS mukellef_unvan,
-                      krm.ad AS kurum_ad, krm.kisa_ad AS kurum_kisa")
-            ->join('sicil_degisiklikleri d', 'd.id = g.sicil_degisikligi_id')
-            ->join('sicil_degisiklik_turleri t', 't.id = d.turu_id')
-            ->join('mukellefler m', 'm.id = d.mukellef_id')
-            ->join('kurumlar krm', 'krm.id = g.kurum_id')
-            ->where('m.deleted_at', null)
-            ->where('g.deleted_at', null)
-            ->whereIn('g.durum', self::ACIK_DURUMLAR)
-            ->where('g.son_tarih <=', date('Y-m-d', strtotime("+{$gun} days")));
-
-        $this->kapsamUygula($b, $musavirIdler);
-
-        return $b->orderBy('g.son_tarih', 'ASC')->limit($limit)->get()->getResultArray();
-    }
-
-    /** Geciken açık görevler. */
-    public function gecikmisler($musavirIdler = null, int $limit = 50): array
-    {
-        $b = $this->db->table('sicil_bildirim_gorevleri g')
-            ->select("g.*, m.unvan AS mukellef_unvan,
-                      krm.ad AS kurum_ad, krm.kisa_ad AS kurum_kisa")
-            ->join('sicil_degisiklikleri d', 'd.id = g.sicil_degisikligi_id')
-            ->join('mukellefler m', 'm.id = d.mukellef_id')
-            ->join('kurumlar krm', 'krm.id = g.kurum_id')
-            ->where('m.deleted_at', null)
-            ->where('g.deleted_at', null)
-            ->whereIn('g.durum', self::ACIK_DURUMLAR)
-            ->where('g.son_tarih <', date('Y-m-d'));
-
-        $this->kapsamUygula($b, $musavirIdler);
-
-        return $b->orderBy('g.son_tarih', 'ASC')->limit($limit)->get()->getResultArray();
-    }
-
-    /** Yumuşak silme (yetki controller'da). */
-    public function gorevSil(int $id): bool
-    {
-        return $this->update($id, ['deleted_at' => date('Y-m-d H:i:s')]);
     }
 
     // =================================================================

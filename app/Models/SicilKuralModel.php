@@ -5,15 +5,23 @@ namespace App\Models;
 use CodeIgniter\Model;
 
 /**
- * SİCİL — BİLDİRİM KURALLARI
+ * SİCİL — ŞABLON TODO TANIMLARI (sicil_bildirim_kurallari)
  *
- * "Hangi değişiklik türü → hangi kuruma → hangi sürede bildirilmeli"
- * eşlemesi. SÜRELER YALNIZCA BU TABLODA TUTULUR.
+ * Sade modül kavramında bu tablo, bir şablonun altında önceden tanımlı
+ * yapılacak işleri ("todo tanımı") tutar:
+ *
+ *   degisiklik_turu_id → hangi şablonun altında
+ *   ad                → todo adı (serbest metin: "Vergi Dairesine Bildirim")
+ *   sure_tipi/deger   → son tarih hesaplama kuralı (süreler KODDA SABİT DEĞİL)
+ *   aktif             → yeni işlemde üretilir mi
  *
  * Bütünlük:
- *   - Aynı (degisiklik_turu_id, kurum_id) ikinci kez tanımlanamaz
- *     (DB unique + kaydet öncesi kontrol).
- *   - Kural pasife alınınca yeni görev üretilmez; geçmiş görevler durur.
+ *   - Todo adı serbesttir; kurum bağı yoktur (kurum_id eski sürüm uyumu için
+ *     nullable durur, UI/kod kullanmaz).
+ *   - Mükerrer koruma görev üretimindedir: (islem, kural) unique → aynı tanım
+ *     bir işlemde iki kez todo üretemez.
+ *   - Bir tanım hiçbir işlemde kullanılmadıysa silinebilir; kullanıldıysa
+ *     pasife alınır (geçmiş bozulmaz).
  */
 class SicilKuralModel extends Model
 {
@@ -23,130 +31,162 @@ class SicilKuralModel extends Model
     protected $useTimestamps = true;
 
     protected $allowedFields = [
-        'degisiklik_turu_id', 'kurum_id', 'sure_tipi', 'sure_deger',
+        'degisiklik_turu_id', 'ad', 'sure_tipi', 'sure_deger',
         'belirli_tarih', 'oncelik', 'aciklama', 'aktif', 'olusturan_id',
     ];
 
     /** SicilSureHesaplayici::TIPLER ile aynı; ENUM tutarlılığı için sabit. */
     public const SURE_TIPLERI = ['GUN', 'IS_GUNU', 'TAKVIM_GUNU', 'AY', 'BELIRLI_TARIH'];
 
-    protected $validationRules = [
-        'degisiklik_turu_id' => 'required|is_natural_no_zero',
-        'kurum_id'           => 'required|is_natural_no_zero',
-        'sure_tipi'          => 'required|in_list[GUN,IS_GUNU,TAKVIM_GUNU,AY,BELIRLI_TARIH]',
-        'sure_deger'         => 'permit_empty|is_natural',
-        'belirli_tarih'      => 'permit_empty|valid_date[Y-m-d]',
-        'aktif'              => 'permit_empty|in_list[0,1]',
+    /** Süre tipi görünen adları (form + ipucu). */
+    public const SURE_TIP_ADLARI = [
+        'GUN'         => 'Gün',
+        'IS_GUNU'     => 'İş Günü',
+        'TAKVIM_GUNU' => 'Takvim Günü',
+        'AY'          => 'Ay',
+        'BELIRLI_TARIH' => 'Belirli Tarih',
     ];
 
-    /** Kural listesi (tür + kurum adlarıyla). */
-    public function listele(array $f = []): array
+    /** Şablonun todo tanımları (sırayla). */
+    public function sablonTodoTanimlari(int $sablonId, bool $sadeceAktif = false): array
     {
-        $b = $this->db->table('sicil_bildirim_kurallari k')
-            ->select('k.*, t.ad AS tur_ad, t.kod AS tur_kod,
-                      krm.ad AS kurum_ad, krm.kisa_ad AS kurum_kisa,
-                      kk.ad_soyad AS olusturan_adi')
-            ->join('sicil_degisiklik_turleri t', 't.id = k.degisiklik_turu_id')
-            ->join('kurumlar krm', 'krm.id = k.kurum_id')
-            ->join('kullanicilar kk', 'kk.id = k.olusturan_id', 'left');
+        $b = $this->where('degisiklik_turu_id', $sablonId);
 
-        if (! empty($f['degisiklik_turu_id'])) {
-            if (is_array($f['degisiklik_turu_id'])) {
-                $b->whereIn('k.degisiklik_turu_id', array_map('intval', $f['degisiklik_turu_id']));
-            } else {
-                $b->where('k.degisiklik_turu_id', (int) $f['degisiklik_turu_id']);
-            }
+        if ($sadeceAktif) {
+            $b->where('aktif', 1);
         }
 
-        if (! empty($f['kurum_id'])) {
-            if (is_array($f['kurum_id'])) {
-                $b->whereIn('k.kurum_id', array_map('intval', $f['kurum_id']));
-            } else {
-                $b->where('k.kurum_id', (int) $f['kurum_id']);
-            }
-        }
-
-        if (array_key_exists('aktif', $f) && $f['aktif'] !== null && $f['aktif'] !== '') {
-            $b->where('k.aktif', (int) $f['aktif']);
-        }
-
-        return $b->orderBy('t.sira', 'ASC')
-            ->orderBy('krm.ad', 'ASC')
-            ->get()->getResultArray();
+        return $b->orderBy('oncelik', 'ASC')->orderBy('id', 'ASC')->findAll();
     }
 
     /**
-     * Bir tür için AKTİF kurallar (görev üretiminde kullanılır).
+     * Görev üretimi için şablonun AKTİF todo tanımları (sıralı liste).
      *
-     * @return array<int,array> kurum_id anahtarlı (rapor/tekilleştirme kolay)
+     * @return array<int,array>
      */
-    public function aktifKurallar(int $degisiklikTuruId): array
+    public function aktifTodoTanimlari(int $sablonId): array
     {
-        $rows = $this->db->table('sicil_bildirim_kurallari k')
-            ->select('k.*, krm.ad AS kurum_ad, krm.kisa_ad AS kurum_kisa')
-            ->join('kurumlar krm', 'krm.id = k.kurum_id')
-            ->where('k.degisiklik_turu_id', $degisiklikTuruId)
-            ->where('k.aktif', 1)
-            ->orderBy('k.oncelik', 'ASC')
-            ->get()->getResultArray();
-
-        $harita = [];
-
-        foreach ($rows as $r) {
-            $harita[(int) $r['kurum_id']] = $r;
-        }
-
-        return $harita;
-    }
-
-    /** Aynı (tür, kurum) çifti zaten var mı? (unique öncesi anlaşılır hata) */
-    public function ciftVarMi(int $turId, int $kurumId, ?int $haricId = null): bool
-    {
-        $b = $this->where('degisiklik_turu_id', $turId)
-            ->where('kurum_id', $kurumId);
-
-        if ($haricId !== null) {
-            $b->where('id !=', $haricId);
-        }
-
-        return $b->countAllResults() > 0;
+        return $this->where('degisiklik_turu_id', $sablonId)
+            ->where('aktif', 1)
+            ->orderBy('oncelik', 'ASC')
+            ->orderBy('id', 'ASC')
+            ->findAll();
     }
 
     /**
-     * Kuralı kaydeder; (tür,kurum) çakışmasında false döner (mesaj verir).
+     * Bir şablonun todo tanımlarını formdan gelen satır setiyle senkronlar.
      *
-     * @return array{durum:bool, id:?int, hata:?string}
+     * Tasarım (Şablonlar ekranı):
+     *   - Satırlar sırayla işlenir; boş adlı satırlar atlanır.
+     *   - Satır id'si mevcut tanımla eşleşirse GÜNCELLENİR, eşleşmezse EKLENİR.
+     *   - Formda olmayan mevcut tanımlar: hiçbir işlemde kullanılmadıysa
+     *     SİLİNİR, kullanıldıysa PASİFE ALINIR (geçmiş korunur).
+     *
+     * Transaction DIŞINDA çağrılır — çağıran (SicilTurModel::sablonKaydet)
+     * tek transaction yönetir.
+     *
+     * @param array $satirlar [ ['id','ad','sure_tipi','sure_deger','belirli_tarih','aktif'] ]
+     *
+     * @return array{durum:bool, hata:?string}
      */
-    public function kaydet(array $veri, ?int $id = null): array
+    public function senkronla(int $sablonId, array $satirlar, int $kullaniciId): array
     {
-        $turId  = (int) ($veri['degisiklik_turu_id'] ?? 0);
-        $kurId  = (int) ($veri['kurum_id'] ?? 0);
+        $db       = $this->db;
+        $mevcut   = $this->where('degisiklik_turu_id', $sablonId)->findAll();
+        $mevcutMap = [];
 
-        if ($turId > 0 && $kurId > 0 && $this->ciftVarMi($turId, $kurId, $id)) {
-            return ['durum' => false, 'id' => null,
-                    'hata'  => 'Bu değişiklik türü için bu kurum zaten tanımlı.'];
+        foreach ($mevcut as $m) {
+            $mevcutMap[(int) $m['id']] = $m;
         }
 
-        // BELIRLI_TARIH dışında süre değeri zorunlu; belirli tarihte değer anlamsız
-        $tip = $veri['sure_tipi'] ?? 'GUN';
+        $hatalar = [];
+        $sira    = 10;
 
-        if ($tip === 'BELIRLI_TARIH') {
-            $veri['sure_deger'] = null;
-        } elseif (empty($veri['sure_deger'])) {
-            return ['durum' => false, 'id' => null, 'hata' => 'Süre değeri gerekli.'];
+        foreach ($satirlar as $i => $s) {
+            $ad = trim((string) ($s['ad'] ?? ''));
+
+            if ($ad === '') {
+                continue; // boş şablon satırı — yok sayılır
+            }
+
+            $satirId = (int) ($s['id'] ?? 0);
+            $tip     = (string) ($s['sure_tipi'] ?? 'GUN');
+
+            if (! in_array($tip, self::SURE_TIPLERI, true)) {
+                $hatalar[] = ($i + 1) . '. satır: geçersiz süre türü.';
+                continue;
+            }
+
+            $hamDeger = trim((string) ($s['sure_deger'] ?? ''));
+            $belirli  = trim((string) ($s['belirli_tarih'] ?? ''));
+
+            if ($tip === 'BELIRLI_TARIH') {
+                if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $belirli)) {
+                    $hatalar[] = ($i + 1) . '. satır: "Belirli Tarih" türünde hedef tarih gerekir.';
+                    continue;
+                }
+                $deger = null;
+            } else {
+                $deger   = $hamDeger === '' ? null : (int) $hamDeger;
+                $belirli = null;
+
+                if ($deger === null || $deger < 1) {
+                    $hatalar[] = ($i + 1) . '. satır: süre değeri gerekli (1 veya daha büyük).';
+                    continue;
+                }
+            }
+
+            $alan = [
+                'degisiklik_turu_id' => $sablonId,
+                'ad'                 => $ad,
+                'sure_tipi'          => $tip,
+                'sure_deger'         => $deger,
+                'belirli_tarih'      => $belirli,
+                'oncelik'            => $sira,
+                'aktif'              => empty($s['aktif']) ? 0 : 1,
+                'aciklama'           => null,
+                'olusturan_id'       => $kullaniciId,
+            ];
+            $sira += 10;
+
+            if ($satirId > 0 && isset($mevcutMap[$satirId])) {
+                unset($mevcutMap[$satirId]);
+
+                if (! $this->update($satirId, $alan)) {
+                    $hatalar[] = ($i + 1) . '. satır güncellenemedi.';
+                }
+            } elseif (! $this->insert($alan)) {
+                $hatalar[] = ($i + 1) . '. satır eklenemedi.';
+            }
         }
 
-        if ($id > 0) {
-            $ok = $this->update($id, $veri);
-        } else {
-            $ok = (bool) $this->insert($veri);
-            $id = $ok ? (int) $this->getInsertID() : null;
+        // Kaldırılmış satırlar
+        foreach ($mevcutMap as $mId => $m) {
+            $kullanilan = (int) $db->table('sicil_bildirim_gorevleri')
+                ->where('kural_id', $mId)
+                ->countAllResults();
+
+            if ($kullanilan === 0) {
+                $this->delete($mId);
+            } else {
+                $this->update($mId, ['aktif' => 0]);
+            }
         }
 
-        return ['durum' => $ok, 'id' => $id, 'hata' => $ok ? null : ($this->errors() ?: null)];
+        return $hatalar === []
+            ? ['durum' => true, 'hata' => null]
+            : ['durum' => false, 'hata' => implode(' ', $hatalar)];
     }
 
-    /** Kuralı silmek yerine pasife alır (geçmiş görevler korunur). */
+    /** Tanım kullanılıyor mu? (silme kararı için) */
+    public function kullaniliyorMu(int $id): bool
+    {
+        return $this->db->table('sicil_bildirim_gorevleri')
+            ->where('kural_id', $id)
+            ->countAllResults() > 0;
+    }
+
+    /** Pasife al (geçmiş üretim korunur). */
     public function pasifeAl(int $id): bool
     {
         return $this->update($id, ['aktif' => 0]);

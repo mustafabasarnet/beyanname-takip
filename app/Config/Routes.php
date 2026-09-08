@@ -238,37 +238,24 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
         $routes->get('yazdir', 'Karsit::yazdir');
     });
 
-    // ----------------- SİCİL DEĞİŞİKLİKLERİ & BİLDİRİM TAKİP -----------------
+    // ----------------- SİCİL İŞLEMLERİ (şablon → işlem → todo) -----------------
     $routes->group('sicil', static function ($routes) {
-        $routes->get('/', 'Sicil::index');                 // değişiklik listesi
-        $routes->get('ekle', 'Sicil::ekle');               // yeni değişiklik
+        $routes->get('/', 'Sicil::index');                 // işlem listesi
+        $routes->get('ekle', 'Sicil::ekle');               // yeni işlem (şablon + tarih)
         $routes->get('duzenle/(:num)', 'Sicil::duzenle/$1');
-        $routes->get('detay/(:num)', 'Sicil::detay/$1');
-        $routes->post('kaydet', 'Sicil::kaydet');          // AJAX
+        $routes->get('detay/(:num)', 'Sicil::detay/$1');   // işlem + todo listesi
+        $routes->post('kaydet', 'Sicil::kaydet');          // AJAX (todo üretimi)
+        $routes->post('todo-durum', 'Sicil::todoDurum');   // AJAX (checkbox)
         $routes->get('sil/(:num)', 'Sicil::sil/$1');
-        // Bildirim görevleri
-        $routes->get('gorevler', 'Sicil::gorevler');
-        $routes->get('gorev/(:num)', 'Sicil::gorev/$1');
-        $routes->post('gorev-durum', 'Sicil::gorevDurum'); // AJAX
-        $routes->post('gorev-not', 'Sicil::gorevNot');     // AJAX
-        $routes->get('gorev-sil/(:num)', 'Sicil::gorevSil/$1');
-        // Belgeler
-        $routes->post('belge-yukle', 'Sicil::belgeYukle');
-        $routes->get('belge-indir/(:num)', 'Sicil::belgeIndir/$1');
-        $routes->post('belge-sil', 'Sicil::belgeSil');
     });
 
-    // Sicil tanım yönetimi (türler, kurumlar, kurallar)
-    $routes->group('sicil-tanim', ['filter' => 'auth:admin,musavir'], static function ($routes) {
-        $routes->get('turler', 'SicilTanim::turler');
-        $routes->get('kurumlar', 'SicilTanim::kurumlar');
-        $routes->get('kurallar', 'SicilTanim::kurallar');
-        $routes->post('tur-kaydet', 'SicilTanim::turKaydet');
-        $routes->post('kurum-kaydet', 'SicilTanim::kurumKaydet');
-        $routes->post('kural-kaydet', 'SicilTanim::kuralKaydet');
-        $routes->get('tur-pasif/(:num)', 'SicilTanim::turPasif/$1');
-        $routes->get('kurum-pasif/(:num)', 'SicilTanim::kurumPasif/$1');
-        $routes->get('kural-pasif/(:num)', 'SicilTanim::kuralPasif/$1');
+    // Sicil şablon yönetimi (yalnız yönetici ve müşavir)
+    $routes->group('sicil-sablon', ['filter' => 'auth:admin,musavir'], static function ($routes) {
+        $routes->get('/', 'SicilSablon::index');
+        $routes->get('yeni', 'SicilSablon::yeni');
+        $routes->get('duzenle/(:num)', 'SicilSablon::duzenle/$1');
+        $routes->post('kaydet', 'SicilSablon::kaydet');
+        $routes->get('pasif/(:num)', 'SicilSablon::pasif/$1');
     });
 
     // ----------------- TANIMLAR -----------------

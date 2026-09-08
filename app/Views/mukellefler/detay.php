@@ -110,31 +110,39 @@ $terkli = ! empty($mukellef['terk_tarihi']);
   </div>
 </div>
 
-<!-- ============ SİCİL DEĞİŞİKLİKLERİ (bu mükellef) ============ -->
+<!-- ============ SİCİL İŞLEMLERİ (bu mükellef) ============ -->
 <div class="kart">
-  <div class="kart-baslik"><h2>🧾 Sicil Değişiklikleri</h2>
-    <div class="sag"><a href="<?= site_url('sicil/ekle?mukellef_id=' . (int) $mukellef['id']) ?>" class="btn yesil kucuk">+ Sicil Değişikliği Ekle</a></div>
+  <div class="kart-baslik"><h2>🧾 Sicil İşlemleri</h2>
+    <div class="sag"><a href="<?= site_url('sicil/ekle?mukellef_id=' . (int) $mukellef['id']) ?>" class="btn yesil kucuk">+ Yeni İşlem</a></div>
   </div>
   <div class="kart-govde sikisik">
     <?php if (empty($sicilGecmis)): ?>
-      <div class="kucuk-yazi" style="padding:10px">Bu mükellef için sicil değişikliği kaydı yok.</div>
+      <div class="kucuk-yazi" style="padding:10px">Bu mükellef için sicil işlemi kaydı yok.</div>
     <?php else: ?>
       <div class="tablo-sar">
         <table class="tablo">
-          <thead><tr><th>Tarih</th><th>Tür</th><th>Yeni Bilgi</th><th>Açık Bildirim</th><th>Durum</th><th class="sag">İşlem</th></tr></thead>
+          <thead><tr><th>Tarih</th><th>Şablon</th><th>İlerleme</th><th>Durum</th><th class="sag">İşlem</th></tr></thead>
           <tbody>
-          <?php foreach (array_slice($sicilGecmis, 0, 8) as $s): ?>
+          <?php
+          $bugun = date('Y-m-d');
+          foreach (array_slice($sicilGecmis, 0, 8) as $s):
+              $sTop = (int) $s['toplam_todo'];
+              $sTm  = (int) $s['tamam_todo'];
+              $sAc  = (int) $s['acik_todo'];
+              $sGecikti = $sAc > 0 && $s['en_yakin_son'] !== null && $s['en_yakin_son'] < $bugun;
+              $durumSinif = $s['durum'] === 'TAMAM' ? 'yesil' : ($s['durum'] === 'ISLEMDE' ? 'sari' : 'gri');
+          ?>
             <tr>
               <td class="kalin"><?= trTarih($s['degisiklik_tarihi']) ?></td>
               <td><span class="rozet mavi"><?= esc(kisalt($s['tur_ad'], 22)) ?></span></td>
-              <td class="kucuk-yazi"><?= esc(kisalt((string) $s['yeni_deger'] ?: $s['konu'], 40)) ?></td>
-              <td class="orta">
-                <?php if ((int) $s['acik_gorev'] > 0): ?>
-                  <span class="rozet turuncu"><?= (int) $s['acik_gorev'] ?> ⏳</span>
+              <td>
+                <?php if ($sTop > 0): ?>
+                  <span class="kucuk-yazi kalin"><?= $sTm ?>/<?= $sTop ?></span>
+                  <?php if ($sGecikti): ?><span class="rozet kirmizi">⚠</span><?php endif; ?>
                 <?php else: ?><span class="kucuk-yazi">—</span><?php endif; ?>
               </td>
-              <td><span class="rozet <?= $s['durum'] === 'TAMAM' ? 'yesil' : ($s['durum'] === 'ISLEMDE' ? 'sari' : 'gri') ?>">
-                <?= esc($s['durum']) ?></span></td>
+              <td><span class="rozet <?= $durumSinif ?>">
+                <?= esc(\App\Models\SicilDegisiklikModel::DURUMLAR[$s['durum']] ?? $s['durum']) ?></span></td>
               <td class="sag"><a href="<?= site_url('sicil/detay/' . (int) $s['id']) ?>" class="btn ikincil mini">Detay</a></td>
             </tr>
           <?php endforeach; ?>

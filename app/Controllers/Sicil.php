@@ -3,40 +3,36 @@
 namespace App\Controllers;
 
 use App\Models\MukellefModel;
-use App\Models\SicilBelgeModel;
+use App\Models\KullaniciModel;
 use App\Models\SicilDegisiklikModel;
 use App\Models\SicilGorevModel;
 use App\Models\SicilKuralModel;
-use App\Models\SicilKurumModel;
 use App\Models\SicilTurModel;
 
 /**
- * SİCİL DEĞİŞİKLİKLERİ & BİLDİRİM TAKİP — kullanıcı arayüzü
+ * SİCİL — İŞLEMLER (sade şablon / işlem / todo)
  *
  * Ekranlar:
- *   /sicil                → değişiklik listesi
- *   /sicil/ekle           → yeni değişiklik (mükellef seçimi)
- *   /sicil/duzenle/(:num) → değişiklik düzenle (tarih/adres bilgileri)
- *   /sicil/detay/(:num)   → değişiklik detayı + görevleri
- *   /sicil/gorevler       → görev listesi (günlük iş)
- *   /sicil/gorev/(:num)   → tek görev detayı (belge + durum)
- *   AJAX: kaydet, durum, not, gorev-sil, belge ekle/indir/sil
+ *   /sicil                 → işlem listesi (Şablon seç → Tarih gir → Todo üretilir)
+ *   /sicil/ekle            → yeni işlem (mükellef + şablon + tarih)
+ *   /sicil/duzenle/(:num)  → işlem düzenle (tarih/açıklama)
+ *   /sicil/detay/(:num)    → işlem detayı + TODO listesi (checkbox)
+ *   AJAX: kaydet, todo-durum
  */
 class Sicil extends BaseController
 {
     protected SicilDegisiklikModel $degModel;
     protected SicilGorevModel $gorevModel;
     protected SicilTurModel $turModel;
-    protected SicilKurumModel $kurumModel;
-    protected SicilBelgeModel $belgeModel;
+
+    /** Dashboard hızlı filtrelerinden gelen izinli aralıklar. */
+    protected const ARALIKLAR = ['gecikti', 'bugun', 'ic7', 'ic15', 'tamamlanan'];
 
     public function __construct()
     {
         $this->degModel   = new SicilDegisiklikModel();
         $this->gorevModel = new SicilGorevModel();
         $this->turModel   = new SicilTurModel();
-        $this->kurumModel = new SicilKurumModel();
-        $this->belgeModel = new SicilBelgeModel();
     }
 
     /** Giriş yapan kullanıcı id */
@@ -46,30 +42,38 @@ class Sicil extends BaseController
     }
 
     // =================================================================
-    //  SİCİL DEĞİŞİKLİK LİSTESİ
+    //  İŞLEM LİSTESİ
     // =================================================================
     public function index()
     {
+        $aralik = (string) $this->request->getGet('aralik');
+
+        if (! in_array($aralik, self::ARALIKLAR, true)) {
+            $aralik = '';
+        }
+
         $filtre = [
-            'yil'        => $this->request->getGet('yil') ?: null,
-            'turu_id'    => $this->cokluAl('tur'),
-            'durum'      => $this->request->getGet('durum') ?: null,
-            'mukellef_id'=> (int) $this->request->getGet('mukellef_id') ?: null,
-            'musavir_id' => $this->kapsamBelirle($this->request->getGet('musavir_id')),
-            'q'          => $this->request->getGet('q') ?: null,
+            'yil'         => $this->request->getGet('yil') ?: null,
+            'turu_id'     => $this->cokluAl('tur'),
+            'durum'       => $this->request->getGet('durum') ?: null,
+            'mukellef_id' => (int) $this->request->getGet('mukellef_id') ?: null,
+            'musavir_id'  => $this->kapsamBelirle($this->request->getGet('musavir_id')),
+            'q'           => $this->request->getGet('q') ?: null,
+            'aralik'      => $aralik,
         ];
 
         $kayitlar = $this->degModel->listele($filtre);
+        $kapsam   = $this->musavirFiltresi();
 
         return $this->goster('sicil/index', [
-            'kayitlar'    => $kayitlar,
-            'filtre'      => $filtre,
-            'ozet'        => $this->degModel->ozet($this->musavirFiltresi()),
-            'turler'      => $this->turModel->secenekler(),
-            'durumlar'    => SicilDegisiklikModel::DURUMLAR,
-            'musavirler'  => $this->secilebilirMusavirler(),
-            'gorevSayilar'=> $this->gorevModel->sayaclar($this->musavirFiltresi()),
-        ], 'Sicil Değişiklikleri');
+            'kayitlar'   => $kayitlar,
+            'filtre'     => $filtre,
+            'ozet'       => $this->degModel->ozet($kapsam),
+            'sayac'      => $this->gorevModel->sayaclar($kapsam),
+            'turler'     => $this->turModel->secenekler(),
+            'durumlar'   => SicilDegisiklikModel::DURUMLAR,
+            'musavirler' => $this->secilebilirMusavirler(),
+        ], 'Sicil İşlemleri');
     }
 
     // =================================================================
@@ -78,13 +82,12 @@ class Sicil extends BaseController
     public function ekle()
     {
         return $this->goster('sicil/form', [
-            'degisiklik'   => null,
-            'mukellefId'   => (int) $this->request->getGet('mukellef_id') ?: 0,
-            'turler'       => $this->turModel->secenekler(),
-            'turBilgi'     => $this->turModel->aktifler(),
-            'baslik'       => '➕ Sicil Değişikliği Ekle',
-            'kurallarOz'   => $this->turIpuclari(),
-        ], 'Sicil Değişikliği Ekle');
+            'degisiklik'  => null,
+            'mukellefId'  => (int) $this->request->getGet('mukellef_id') ?: 0,
+            'turler'      => $this->turModel->secenekler(),
+            'sablonOz'    => $this->sablonIpuclari(),
+            'baslik'      => '➕ Yeni Sicil İşlemi',
+        ], 'Yeni Sicil İşlemi');
     }
 
     public function duzenle(int $id)
@@ -92,57 +95,75 @@ class Sicil extends BaseController
         $degisiklik = $this->degModel->find($id);
 
         if ($degisiklik === null) {
-            return redirect()->to(site_url('sicil'))->with('hata', 'Değişiklik bulunamadı.');
+            return redirect()->to(site_url('sicil'))->with('hata', 'İşlem bulunamadı.');
         }
 
-        // Erişim kontrolü
         if (! $this->degisiklikYetkisi($degisiklik)) {
             return redirect()->to(site_url('sicil'))->with('hata', 'Bu kayda erişemezsiniz.');
         }
 
         return $this->goster('sicil/form', [
-            'degisiklik'   => $degisiklik,
-            'mukellefId'   => (int) $degisiklik['mukellef_id'],
-            'turler'       => $this->turModel->secenekler(),
-            'turBilgi'     => $this->turModel->aktifler(),
-            'baslik'       => '✏️ Sicil Değişikliği Düzenle',
-            'kurallarOz'   => $this->turIpuclari(),
-        ], 'Sicil Değişikliği Düzenle');
+            'degisiklik'  => $degisiklik,
+            'mukellefId'  => (int) $degisiklik['mukellef_id'],
+            'turler'      => $this->turModel->secenekler(),
+            'sablonOz'    => $this->sablonIpuclari(),
+            'baslik'      => '✏️ İşlemi Düzenle',
+        ], 'Sicil İşlemi Düzenle');
     }
 
-    /** Tür bazında kural ipuçları (formda canlı gösterim için) */
-    protected function turIpuclari(): array
+    /**
+     * Şablon seçilince formda gösterilecek todo önizlemesi.
+     * [şablon_id => [['ad','sure_tipi','sure_deger','belirli_tarih','ozet']]]
+     */
+    protected function sablonIpuclari(): array
     {
-        $kurallar = (new SicilKuralModel())->listele([]);
-        $out      = [];
+        $out = [];
 
-        foreach ($kurallar as $k) {
-            $out[(int) $k['degisiklik_turu_id']][] = [
-                'kurum'    => $k['kurum_ad'],
-                'sure_tipi'=> $k['sure_tipi'],
-                'sure_deger' => $k['sure_deger'],
-                'belirli_tarih' => $k['belirli_tarih'],
-            ];
+        foreach ($this->turModel->aktifler() as $sablon) {
+            $sid  = (int) $sablon['id'];
+            $rows = [];
+
+            foreach ((new SicilKuralModel())->aktifTodoTanimlari($sid) as $t) {
+                $rows[] = [
+                    'ad'            => $t['ad'],
+                    'sure_tipi'     => $t['sure_tipi'],
+                    'sure_deger'    => $t['sure_deger'],
+                    'belirli_tarih' => $t['belirli_tarih'],
+                    'ozet'          => $this->sureOzeti($t),
+                ];
+            }
+
+            $out[$sid] = $rows;
         }
 
         return $out;
     }
 
-    /** Sicil değişikliğini kaydet (yeni veya güncelleme) — AJAX */
+    /** Todo tanımı için kısa "10 gün / 1 ay / 31.12.2026" özet metni. */
+    protected function sureOzeti(array $t): string
+    {
+        return match ($t['sure_tipi']) {
+            'BELIRLI_TARIH' => 'belirli tarih: ' . trTarih($t['belirli_tarih']),
+            'AY'            => (int) $t['sure_deger'] . ' ay',
+            'IS_GUNU'       => (int) $t['sure_deger'] . ' iş günü',
+            'TAKVIM_GUNU'   => (int) $t['sure_deger'] . ' takvim günü',
+            default         => (int) $t['sure_deger'] . ' gün',
+        };
+    }
+
+    // =================================================================
+    //  KAYDET (AJAX) — ŞABLON SEÇ → TARİH GİR → TODO LİSTESİ ÜRETİLİR
+    // =================================================================
     public function kaydet()
     {
         $id = (int) $this->request->getPost('id');
 
-        // Eski değer opsiyonel, yeni değer + tarih + tür zorunlu
         $veri = [
-            'mukellef_id'        => (int) $this->request->getPost('mukellef_id'),
-            'turu_id'            => (int) $this->request->getPost('turu_id'),
-            'degisiklik_tarihi'  => $this->request->getPost('degisiklik_tarihi'),
-            'eski_deger'         => trim((string) $this->request->getPost('eski_deger')) ?: null,
-            'yeni_deger'         => trim((string) $this->request->getPost('yeni_deger')) ?: null,
-            'aciklama'           => trim((string) $this->request->getPost('aciklama')) ?: null,
-            'referans_no'        => trim((string) $this->request->getPost('referans_no')) ?: null,
-            'konu'               => trim((string) $this->request->getPost('konu')) ?: null,
+            'mukellef_id'       => (int) $this->request->getPost('mukellef_id'),
+            'turu_id'           => (int) $this->request->getPost('turu_id'),
+            'degisiklik_tarihi' => $this->request->getPost('degisiklik_tarihi'),
+            'aciklama'          => trim((string) $this->request->getPost('aciklama')) ?: null,
+            'konu'              => trim((string) $this->request->getPost('konu')) ?: null,
         ];
 
         // Doğrulama
@@ -157,22 +178,24 @@ class Sicil extends BaseController
         }
 
         if ($veri['turu_id'] <= 0) {
-            return $this->jsonHata('Değişiklik türü zorunludur.');
+            return $this->jsonHata('Şablon seçimi zorunludur.');
+        }
+
+        $sablon = $this->turModel->find($veri['turu_id']);
+
+        if ($sablon === null || (int) $sablon['aktif'] !== 1) {
+            return $this->jsonHata('Seçilen şablon bulunamadı veya pasif.');
         }
 
         if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $veri['degisiklik_tarihi'])) {
-            return $this->jsonHata('Geçerli bir değişiklik tarihi giriniz.');
+            return $this->jsonHata('Geçerli bir işlem tarihi giriniz.');
         }
 
         if ((string) $veri['degisiklik_tarihi'] > date('Y-m-d')) {
-            return $this->jsonHata('Değişiklik tarihi bugünden ileri olamaz.');
+            return $this->jsonHata('İşlem tarihi bugünden ileri olamaz.');
         }
 
-        if (empty($veri['yeni_deger']) && empty($veri['aciklama'])) {
-            return $this->jsonHata('Yeni bilgi veya açıklamadan en az biri gerekli.');
-        }
-
-        // Yeni kayıt: transaction ile görev üretimi
+        // Yeni işlem: transaction ile şablonun todo listesini üret
         if ($id <= 0) {
             $sonuc = $this->degModel->olustur($veri, $this->ben());
 
@@ -180,14 +203,15 @@ class Sicil extends BaseController
                 return $this->jsonHata($sonuc['hata'] ?? 'Kayıt başarısız.');
             }
 
-            return $this->jsonBasarili('Değişiklik kaydedildi.', [
+            return $this->jsonBasarili('İşlem kaydedildi.', [
                 'id'        => $sonuc['id'],
-                'gorevler'  => $sonuc['olusan_gorevler'],
-                'kuralYok'  => $sonuc['kural_yoksa'],
+                'todolar'   => $sonuc['olusan_todolar'],
+                'todoYok'   => $sonuc['todo_yoksa'],
+                'sablon'    => $sablon['ad'],
             ]);
         }
 
-        // Güncelleme (değişiklik kaydı + açık görevlerin yeniden hesaplanması)
+        // Güncelleme (işlem + açık todo'ların yeniden hesaplanması)
         $degisiklik = $this->degModel->find($id);
 
         if ($degisiklik === null || ! $this->degisiklikYetkisi($degisiklik)) {
@@ -200,128 +224,64 @@ class Sicil extends BaseController
             return $this->jsonHata($sonuc['hata'] ?? 'Güncelleme başarısız.');
         }
 
-        return $this->jsonBasarili('Değişiklik güncellendi.', ['id' => $id]);
+        return $this->jsonBasarili('İşlem güncellendi.', ['id' => $id]);
     }
 
     // =================================================================
-    //  DETAY (değişiklik + görevler)
+    //  DETAY (işlem + TODO listesi)
     // =================================================================
     public function detay(int $id)
     {
         $degisiklik = $this->degModel->find($id);
 
         if ($degisiklik === null) {
-            return redirect()->to(site_url('sicil'))->with('hata', 'Değişiklik bulunamadı.');
+            return redirect()->to(site_url('sicil'))->with('hata', 'İşlem bulunamadı.');
         }
 
         if (! $this->degisiklikYetkisi($degisiklik)) {
             return redirect()->to(site_url('sicil'))->with('hata', 'Bu kayda erişemezsiniz.');
         }
 
-        $gorevler = $this->gorevModel->listele(['degisiklik_id' => $id]);
+        $detay = $this->degModel->detay($id);
 
         return $this->goster('sicil/detay', [
-            'degisiklik' => $degisiklik,
-            'mukellef'   => (new MukellefModel())->find($degisiklik['mukellef_id']),
-            'turAd'      => $this->turModel->find($degisiklik['turu_id'])['ad'] ?? '',
-            'gorevler'   => $gorevler,
+            'degisiklik' => $detay,
+            'mukellef'   => (new MukellefModel())->find((int) $degisiklik['mukellef_id']),
             'durumlar'   => SicilGorevModel::DURUMLAR,
-            'belgeler'   => $this->belgeModel->listele($id, null),
-        ], 'Sicil Değişikliği Detay');
+        ], 'İşlem Detayı');
     }
 
-    /** Değişikliği sil (soft delete) — yalnız admin */
+    /** İşlemi sil (soft delete) — yalnız admin */
     public function sil(int $id)
     {
         if (! $this->adminMi()) {
             return redirect()->back()->with('hata', 'Yalnız yönetici silebilir.');
         }
 
-        $this->degModel->sicilSil($id);
+        $degisiklik = $this->degModel->find($id);
 
-        return redirect()->to(site_url('sicil'))->with('basari', 'Değişiklik silindi.');
+        if ($degisiklik !== null) {
+            $this->degModel->sicilSil($id);
+        }
+
+        return redirect()->to(site_url('sicil'))->with('basari', 'İşlem silindi.');
     }
 
     // =================================================================
-    //  GÖREVLER
+    //  TODO DURUMU (AJAX) — checkbox: yapıldı / geri aç / takip dışı
     // =================================================================
-    public function gorevler()
-    {
-        // Zaman aralığı (sayaç kartından gelir) + özel "tamamlanan"
-        $aralik = (string) $this->request->getGet('aralik');
-
-        if (! in_array($aralik, ['gecikti', 'bugun', 'ic3', 'ic7', 'ic15', 'bekleyen', 'tamamlanan', ''], true)) {
-            $aralik = '';
-        }
-
-        $filtre = [
-            'durum'      => $this->cokluAl('durum', array_keys(SicilGorevModel::DURUMLAR)),
-            'kurum_id'   => $this->cokluAl('kurum'),
-            'aralik'     => $aralik,
-            'mukellef_id'=> (int) $this->request->getGet('mukellef_id') ?: null,
-            'musavir_id' => $this->kapsamBelirle($this->request->getGet('musavir_id')),
-            'q'          => $this->request->getGet('q') ?: null,
-        ];
-
-        // Sayaç kartları durum/aralık kombinasyonuna çevrilir
-        if ($aralik === 'tamamlanan' && empty($filtre['durum'])) {
-            $filtre['durum'] = 'TAMAM';
-            $filtre['aralik'] = '';
-        } elseif ($aralik === 'bekleyen' && empty($filtre['durum'])) {
-            $filtre['durum'] = SicilGorevModel::ACIK_DURUMLAR;
-            $filtre['aralik'] = '';
-        }
-
-        return $this->goster('sicil/gorevler', [
-            'kayitlar'   => $this->gorevModel->listele($filtre),
-            'filtre'     => $filtre,
-            'sayac'      => $this->gorevModel->sayaclar($this->musavirFiltresi()),
-            'durumlar'   => SicilGorevModel::DURUMLAR,
-            'kurumlar'   => $this->kurumModel->secenekler(),
-            'musavirler' => $this->secilebilirMusavirler(),
-        ], 'Bildirim Görevleri');
-    }
-
-    /** Tek görev detayı (belgelerle) */
-    public function gorev(int $id)
-    {
-        $gorev = $this->gorevModel->detay($id);
-
-        if ($gorev === null) {
-            return redirect()->to(site_url('sicil/gorevler'))->with('hata', 'Görev bulunamadı.');
-        }
-
-        $degisiklik = $this->degModel->find((int) $gorev['sicil_degisikligi_id']);
-
-        if ($degisiklik === null || ! $this->degisiklikYetkisi($degisiklik)) {
-            return redirect()->to(site_url('sicil/gorevler'))->with('hata', 'Bu kayda erişemezsiniz.');
-        }
-
-        return $this->goster('sicil/gorev_detay', [
-            'gorev'      => $gorev,
-            'degisiklik' => $degisiklik,
-            'durumlar'   => SicilGorevModel::DURUMLAR,
-            'belgeler'   => $this->belgeModel->listele(null, $id),
-            'ilgiliBelgeler' => $this->belgeModel->listele((int) $degisiklik['id'], null),
-        ], 'Bildirim Görevi Detay');
-    }
-
-    // =================================================================
-    //  AJAX İŞLEMLERİ
-    // =================================================================
-    /** Görev durumunu değiştir */
-    public function gorevDurum()
+    public function todoDurum()
     {
         $id    = (int) $this->request->getPost('id');
         $durum = (string) $this->request->getPost('durum');
 
-        $gorev = $this->gorevModel->find($id);
+        $todo = $this->gorevModel->find($id);
 
-        if ($gorev === null) {
-            return $this->jsonHata('Görev bulunamadı.', 404);
+        if ($todo === null) {
+            return $this->jsonHata('Todo bulunamadı.', 404);
         }
 
-        $degisiklik = $this->degModel->find((int) $gorev['sicil_degisikligi_id']);
+        $degisiklik = $this->degModel->find((int) $todo['sicil_degisikligi_id']);
 
         if ($degisiklik === null || ! $this->degisiklikYetkisi($degisiklik)) {
             return $this->jsonHata('Bu kayda erişemezsiniz.', 403);
@@ -333,205 +293,48 @@ class Sicil extends BaseController
             return $this->jsonHata($sonuc['mesaj'] ?? 'Durum güncellenemedi.');
         }
 
-        // Üst değişiklik durumunu görevlerden türet
+        // Üst işlem durumunu todo'lardan türet
         $this->degModel->durumTure((int) $degisiklik['id']);
 
         $yeni = $sonuc['kayit'];
+        $det  = $this->degModel->detay((int) $degisiklik['id']);
+
+        $toplam = is_array($det['todolar'] ?? null) ? count($det['todolar']) : 0;
+        $tamam  = 0;
+
+        foreach ($det['todolar'] ?? [] as $t) {
+            if ($t['durum'] === 'TAMAM') {
+                $tamam++;
+            }
+        }
+
+        $yapanAd = $yeni['yapan_id']
+            ? ((new KullaniciModel())->find((int) $yeni['yapan_id'])['ad_soyad'] ?? null)
+            : null;
+
+        $degDurum = $this->degModel->find((int) $degisiklik['id'])['durum'];
 
         return $this->jsonBasarili('Durum güncellendi.', [
             'id'                 => (int) $yeni['id'],
             'yeni_durum'         => $yeni['durum'],
             'durum_metin'        => SicilGorevModel::DURUMLAR[$yeni['durum']] ?? $yeni['durum'],
-            'yapan_adi'          => $yeni['yapan_id'] ? ($yeni['yapan_id'] . '') : '',
+            'etik'               => todoKalanEtiketi($yeni['son_tarih'], (string) $yeni['durum']),
+            'son_tarih'          => $yeni['son_tarih'] ? trTarih($yeni['son_tarih']) : null,
+            'yapan_adi'          => $yapanAd,
             'tamamlanma_tarihi'  => $yeni['tamamlanma_tarihi']
                 ? date('d.m.Y H:i', strtotime($yeni['tamamlanma_tarihi'])) : null,
-            'deg_durum'          => $this->degModel->find((int) $degisiklik['id'])['durum'],
+            'deg_id'             => (int) $degisiklik['id'],
+            'deg_durum'          => $degDurum,
+            'deg_durum_metin'    => SicilDegisiklikModel::DURUMLAR[$degDurum] ?? '',
+            'tamam'              => $tamam,
+            'toplam'             => $toplam,
         ]);
     }
 
-    /** Görev notunu kaydet */
-    public function gorevNot()
-    {
-        $id = (int) $this->request->getPost('id');
-
-        $gorev = $this->gorevModel->find($id);
-
-        if ($gorev === null) {
-            return $this->jsonHata('Görev bulunamadı.', 404);
-        }
-
-        $degisiklik = $this->degModel->find((int) $gorev['sicil_degisikligi_id']);
-
-        if ($degisiklik === null || ! $this->degisiklikYetkisi($degisiklik)) {
-            return $this->jsonHata('Bu kayda erişemezsiniz.', 403);
-        }
-
-        $this->gorevModel->notKaydet($id, $this->request->getPost('not'));
-
-        return $this->jsonBasarili('Not kaydedildi.');
-    }
-
-    /** Görev sil (soft) — yönetici + onay */
-    public function gorevSil(int $id)
-    {
-        if (! $this->adminMi()) {
-            return redirect()->to(site_url('sicil/gorevler'))->with('hata', 'Yalnız yönetici silebilir.');
-        }
-
-        $gorev = $this->gorevModel->find($id);
-
-        if ($gorev !== null) {
-            $degisiklik = $this->degModel->find((int) $gorev['sicil_degisikligi_id']);
-
-            if ($degisiklik !== null) {
-                $this->gorevModel->gorevSil($id);
-                $this->degModel->durumTure((int) $degisiklik['id']);
-            }
-        }
-
-        return redirect()->to(site_url('sicil/gorevler'))->with('basari', 'Görev silindi.');
-    }
-
     // =================================================================
-    //  BELGELER
+    //  YETKİ
     // =================================================================
-    public function belgeYukle()
-    {
-        $degId   = (int) $this->request->getPost('sicil_degisikligi_id') ?: null;
-        $gorevId = (int) $this->request->getPost('gorev_id') ?: null;
-
-        // Yetki: bağlı olduğu değişiklik üzerinden
-        if ($gorevId > 0) {
-            $gorev = $this->gorevModel->find($gorevId);
-
-            if ($gorev === null) {
-                return $this->jsonHata('Görev bulunamadı.', 404);
-            }
-
-            $degId = (int) $gorev['sicil_degisikligi_id'];
-        }
-
-        $degisiklik = $degId > 0 ? $this->degModel->find($degId) : null;
-
-        if ($degisiklik === null || ! $this->degisiklikYetkisi($degisiklik)) {
-            return $this->jsonHata('Bu kayda erişemezsiniz.', 403);
-        }
-
-        $dosya = $this->request->getFile('dosya');
-
-        if ($dosya === null || ! $dosya->isValid() || $dosya->hasMoved()) {
-            return $this->jsonHata('Dosya seçilmedi veya geçersiz.');
-        }
-
-        // Güvenlik: uzantı + boyut
-        $izinli = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'xlsx', 'xls', 'doc', 'docx', 'csv', 'txt', 'zip'];
-        $uzanti = strtolower($dosya->getExtension());
-
-        if (! in_array($uzanti, $izinli, true)) {
-            return $this->jsonHata("Bu dosya türü eklenemez (izinli: " . implode(', ', $izinli) . ').');
-        }
-
-        if ($dosya->getSize() > 10 * 1024 * 1024) {
-            return $this->jsonHata('Dosya en fazla 10 MB olabilir.');
-        }
-
-        $klasor = WRITEPATH . 'uploads/sicil';
-
-        if (! is_dir($klasor)) {
-            @mkdir($klasor, 0775, true);
-        }
-
-        $saklanan = $dosya->getRandomName();
-        $dosya->move($klasor, $saklanan);
-
-        $sonuc = $this->belgeModel->ekle([
-            'sicil_degisikligi_id' => $degId > 0 ? $degId : null,
-            'gorev_id'             => $gorevId > 0 ? $gorevId : null,
-            'dosya_adi'            => $dosya->getClientName(),
-            'saklanan'             => $saklanan,
-            'boyut'                => $dosya->getSize(),
-            'tur'                  => $dosya->getMime(),
-        ], $this->ben());
-
-        if (! $sonuc['durum']) {
-            @unlink($klasor . '/' . $saklanan);
-
-            return $this->jsonHata($sonuc['hata'] ?? 'Belge kaydedilemedi.');
-        }
-
-        return $this->jsonBasarili('Belge eklendi.', ['id' => $sonuc['id']]);
-    }
-
-    public function belgeIndir(int $id)
-    {
-        $belge = $this->belgeModel->bul($id);
-
-        if ($belge === null) {
-            return redirect()->back()->with('hata', 'Belge bulunamadı.');
-        }
-
-        // Yetki (değişiklik üzerinden)
-        $degId = $belge['sicil_degisikligi_id'] ?? null;
-
-        if ($degId !== null) {
-            $deg = $this->degModel->find((int) $degId);
-
-            if ($deg === null || ! $this->degisiklikYetkisi($deg)) {
-                return redirect()->back()->with('hata', 'Bu belgeye erişemezsiniz.');
-            }
-        } else {
-            $gorev = $this->gorevModel->find((int) $belge['gorev_id']);
-
-            if ($gorev === null) {
-                return redirect()->back()->with('hata', 'Belge bulunamadı.');
-            }
-
-            $deg = $this->degModel->find((int) $gorev['sicil_degisikligi_id']);
-
-            if ($deg === null || ! $this->degisiklikYetkisi($deg)) {
-                return redirect()->back()->with('hata', 'Bu belgeye erişemezsiniz.');
-            }
-        }
-
-        $yol = WRITEPATH . 'uploads/sicil/' . $belge['saklanan'];
-
-        if (! is_file($yol)) {
-            return redirect()->back()->with('hata', 'Belge dosyası bulunamadı.');
-        }
-
-        return $this->response->download($yol, null)->setFileName($belge['dosya_adi']);
-    }
-
-    public function belgeSil(int $id)
-    {
-        $belge = $this->belgeModel->bul($id);
-
-        if ($belge === null) {
-            return $this->jsonHata('Belge bulunamadı.', 404);
-        }
-
-        $degId = $belge['sicil_degisikligi_id'] ?? null;
-
-        if ($degId !== null) {
-            $deg = $this->degModel->find((int) $degId);
-        } else {
-            $gorev = $this->gorevModel->find((int) $belge['gorev_id']);
-            $deg   = $gorev !== null ? $this->degModel->find((int) $gorev['sicil_degisikligi_id']) : null;
-        }
-
-        if ($deg === null || ! $this->degisiklikYetkisi($deg)) {
-            return $this->jsonHata('Bu belgeye erişemezsiniz.', 403);
-        }
-
-        $this->belgeModel->belgeSil($id, WRITEPATH . 'uploads/sicil/' . $belge['saklanan']);
-
-        return $this->jsonBasarili('Belge silindi.');
-    }
-
-    // =================================================================
-    //  YARDIMCILAR
-    // =================================================================
-    /** Değişiklik kaydına erişim yetkisi */
+    /** Kayıt bazlı erişim: admin → tümü; diğerleri → mükellefin müşaviri. */
     protected function degisiklikYetkisi(array $degisiklik): bool
     {
         if ($this->adminMi()) {

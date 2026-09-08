@@ -85,11 +85,8 @@ $aktifUrl = trim(uri_string(), '/');
     <a href="<?= site_url('karsit') ?>" class="<?= aktifMenu('karsit') ?>">
       <span class="ikon">🔍</span> Karşıt İnceleme
     </a>
-    <a href="<?= site_url('sicil') ?>" class="<?= aktifMenu('sicil') ?: aktifMenu('sicil/gorevler') ?>">
-      <span class="ikon">🧾</span> Sicil Değişiklikleri
-    </a>
-    <a href="<?= site_url('sicil/gorevler') ?>" class="<?= aktifMenu('sicil/gorevler') ?>">
-      <span class="ikon">📤</span> Bildirim Görevleri
+    <a href="<?= site_url('sicil') ?>" class="<?= (! aktifMenu('sicil-sablon') && aktifMenu('sicil')) ? 'aktif' : '' ?>">
+      <span class="ikon">🧾</span> Sicil İşlemleri
     </a>
 
     <div class="menu-baslik">Kayıtlar</div>
@@ -135,14 +132,8 @@ $aktifUrl = trim(uri_string(), '/');
       <a href="<?= site_url('tanimlar/ayarlar') ?>" class="<?= aktifMenu('tanimlar/ayarlar') ?>">
         <span class="ikon">⚙️</span> Ayarlar
       </a>
-      <a href="<?= site_url('sicil-tanim/kurallar') ?>" class="<?= aktifMenu('sicil-tanim/kurallar') ?>">
-        <span class="ikon">🔔</span> Bildirim Kuralları
-      </a>
-      <a href="<?= site_url('sicil-tanim/turler') ?>" class="<?= aktifMenu('sicil-tanim/turler') ?>">
-        <span class="ikon">🧩</span> Değişiklik Türleri
-      </a>
-      <a href="<?= site_url('sicil-tanim/kurumlar') ?>" class="<?= aktifMenu('sicil-tanim/kurumlar') ?>">
-        <span class="ikon">🏛️</span> Bildirim Kurumları
+      <a href="<?= site_url('sicil-sablon') ?>" class="<?= aktifMenu('sicil-sablon') ?>">
+        <span class="ikon">🧩</span> Sicil Şablonları
       </a>
     <?php endif; ?>
 

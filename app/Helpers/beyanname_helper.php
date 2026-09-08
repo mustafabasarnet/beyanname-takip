@@ -137,6 +137,61 @@ if (! function_exists('kalanGunMetni')) {
     }
 }
 
+if (! function_exists('todoKalanEtiketi')) {
+    /**
+     * SİCİL TODO — satır etiketi + renk sınıfları.
+     *
+     * Sade modülün renk kuralı (tek nokta):
+     *   ☑ Yapıldı               → yeşil
+     *   ⊘ Takip dışı            → gri
+     *   Süresi geçen (açık)     → kırmızı
+     *   Bugün / ≤3 gün (açık)   → turuncu
+     *   4-7 gün (açık)          → sarı
+     *   > 7 gün (açık)          → normal (renksiz)
+     *
+     * 'arka' değeri görünümde satır zeminine uygulanır
+     * (kirmizi|turuncu|sari|gri|'' ).
+     *
+     * @return array{metin:string,sinif:string,arka:string,bitti:bool,gun:?int}
+     */
+    function todoKalanEtiketi(?string $sonTarih, string $durum): array
+    {
+        if ($durum === 'TAMAM') {
+            return ['metin' => '✓ Yapıldı', 'sinif' => 'yesil', 'arka' => 'yesil', 'bitti' => true, 'gun' => 0];
+        }
+
+        if ($durum === 'GEREKSIZ') {
+            return ['metin' => 'Takip dışı', 'sinif' => 'gri', 'arka' => 'gri', 'bitti' => true, 'gun' => 0];
+        }
+
+        if (empty($sonTarih)) {
+            return ['metin' => 'Son tarih yok', 'sinif' => '', 'arka' => '', 'bitti' => false, 'gun' => null];
+        }
+
+        $bugun = new DateTime(date('Y-m-d'));
+        $son   = new DateTime(substr((string) $sonTarih, 0, 10));
+        $fark  = (int) $bugun->diff($son)->format('%r%a');
+
+        if ($fark < 0) {
+            return ['metin' => abs($fark) . ' gün gecikti', 'sinif' => 'kirmizi', 'arka' => 'kirmizi', 'bitti' => false, 'gun' => $fark];
+        }
+
+        if ($fark === 0) {
+            return ['metin' => 'BUGÜN SON GÜN', 'sinif' => 'turuncu', 'arka' => 'turuncu', 'bitti' => false, 'gun' => 0];
+        }
+
+        if ($fark <= 3) {
+            return ['metin' => $fark . ' gün kaldı', 'sinif' => 'turuncu', 'arka' => 'turuncu', 'bitti' => false, 'gun' => $fark];
+        }
+
+        if ($fark <= 7) {
+            return ['metin' => $fark . ' gün kaldı', 'sinif' => 'sari', 'arka' => 'sari', 'bitti' => false, 'gun' => $fark];
+        }
+
+        return ['metin' => $fark . ' gün kaldı', 'sinif' => '', 'arka' => '', 'bitti' => false, 'gun' => $fark];
+    }
+}
+
 if (! function_exists('paraFormat')) {
     function paraFormat($tutar, string $simge = '₺'): string
     {
