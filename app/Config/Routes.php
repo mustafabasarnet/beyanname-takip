@@ -53,6 +53,7 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
         $routes->post('gecmisi-kapat/(:num)', 'Mukellefler::gecmisiKapat/$1');
         $routes->get('donem-uret/(:num)', 'Mukellefler::donemUret/$1');
         $routes->get('cizelge/(:num)', 'Mukellefler::cizelge/$1');
+        $routes->get('ara', 'Mukellefler::ara');                  // AJAX — sicil formu mükellef arama
 
         // Excel/CSV'den toplu aktarma (yalnızca admin ve müşavir)
         $routes->get('ice-aktar', 'Mukellefler::iceAktar', ['filter' => 'auth:admin,musavir']);
@@ -235,6 +236,39 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
         $routes->get('sil/(:num)', 'Karsit::sil/$1');
         $routes->get('excel', 'Karsit::excel');
         $routes->get('yazdir', 'Karsit::yazdir');
+    });
+
+    // ----------------- SİCİL DEĞİŞİKLİKLERİ & BİLDİRİM TAKİP -----------------
+    $routes->group('sicil', static function ($routes) {
+        $routes->get('/', 'Sicil::index');                 // değişiklik listesi
+        $routes->get('ekle', 'Sicil::ekle');               // yeni değişiklik
+        $routes->get('duzenle/(:num)', 'Sicil::duzenle/$1');
+        $routes->get('detay/(:num)', 'Sicil::detay/$1');
+        $routes->post('kaydet', 'Sicil::kaydet');          // AJAX
+        $routes->get('sil/(:num)', 'Sicil::sil/$1');
+        // Bildirim görevleri
+        $routes->get('gorevler', 'Sicil::gorevler');
+        $routes->get('gorev/(:num)', 'Sicil::gorev/$1');
+        $routes->post('gorev-durum', 'Sicil::gorevDurum'); // AJAX
+        $routes->post('gorev-not', 'Sicil::gorevNot');     // AJAX
+        $routes->get('gorev-sil/(:num)', 'Sicil::gorevSil/$1');
+        // Belgeler
+        $routes->post('belge-yukle', 'Sicil::belgeYukle');
+        $routes->get('belge-indir/(:num)', 'Sicil::belgeIndir/$1');
+        $routes->post('belge-sil', 'Sicil::belgeSil');
+    });
+
+    // Sicil tanım yönetimi (türler, kurumlar, kurallar)
+    $routes->group('sicil-tanim', ['filter' => 'auth:admin,musavir'], static function ($routes) {
+        $routes->get('turler', 'SicilTanim::turler');
+        $routes->get('kurumlar', 'SicilTanim::kurumlar');
+        $routes->get('kurallar', 'SicilTanim::kurallar');
+        $routes->post('tur-kaydet', 'SicilTanim::turKaydet');
+        $routes->post('kurum-kaydet', 'SicilTanim::kurumKaydet');
+        $routes->post('kural-kaydet', 'SicilTanim::kuralKaydet');
+        $routes->get('tur-pasif/(:num)', 'SicilTanim::turPasif/$1');
+        $routes->get('kurum-pasif/(:num)', 'SicilTanim::kurumPasif/$1');
+        $routes->get('kural-pasif/(:num)', 'SicilTanim::kuralPasif/$1');
     });
 
     // ----------------- TANIMLAR -----------------

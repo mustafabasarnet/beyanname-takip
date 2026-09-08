@@ -78,6 +78,10 @@ class Panel extends BaseController
             'karsitOzet'   => (new KarsitIncelemeModel())->ozet($musavirId),
             'karsitYaklasan' => (new KarsitIncelemeModel())->yaklasanlar(
                 (int) ((new \App\Models\AyarModel())->oku('karsit_uyari_gun', 7)), $musavirId, 8),
+            // Sicil bildirim görevleri (tablo kuruluysa; yoksa sessizce null)
+            'sicilBildirim' => \Config\Database::connect()->tableExists('sicil_bildirim_gorevleri')
+                ? (new \App\Models\SicilGorevModel())->sayaclar($musavirId)
+                : null,
         ], 'Kontrol Paneli');
     }
 

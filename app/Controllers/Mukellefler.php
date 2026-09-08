@@ -186,6 +186,13 @@ class Mukellefler extends BaseController
         $yil    = (int) ($this->request->getGet('yil') ?? date('Y'));
         $takip  = new BeyannameTakipModel();
 
+        // Sicil değişiklikleri geçmişi (bu modülün tablosu yoksa boş döner)
+        $sicilGecmis = [];
+
+        if (\Config\Database::connect()->tableExists('sicil_degisiklikleri')) {
+            $sicilGecmis = (new \App\Models\SicilDegisiklikModel())->gecmis($id, null);
+        }
+
         return $this->goster('mukellefler/detay', [
             'mukellef' => $mukellef,
             'musavir'  => (new MusavirModel())->find($mukellef['musavir_id']),
@@ -197,6 +204,7 @@ class Mukellefler extends BaseController
             'yil'      => $yil,
             'durumlar' => BeyannameTakipModel::DURUMLAR,
             'maliYetki'    => $this->maliYetkiVarMi(),
+            'sicilGecmis'  => $sicilGecmis,
         ], $mukellef['unvan']);
     }
 
@@ -257,6 +265,36 @@ class Mukellefler extends BaseController
         $this->model->delete($id);
 
         return redirect()->to(site_url('mukellefler'))->with('basari', 'Mükellef silindi.');
+    }
+
+    /** AJAX: Sicil formu için hızlı mükellef arama (yetki kapsamlı) */
+    public function ara()
+    {
+        $q = trim((string) $this->request->getGet('q'));
+
+        if ($q === '') {
+            return $this->response->setJSON(['durum' => false, 'sonuclar' => []]);
+        }
+
+        $satirlar = $this->model->listele([
+            'q'          => $q,
+            'durum'      => 'hepsi',
+            'musavir_id' => $this->musavirFiltresi(),
+            'harf'       => '',
+        ]);
+
+        $sonuclar = [];
+
+        foreach (array_slice($satirlar, 0, 10) as $m) {
+            $sonuclar[] = [
+                'id'             => (int) $m['id'],
+                'unvan'          => $m['unvan'],
+                'vergi_kimlik_no'=> $m['vergi_kimlik_no'],
+                'tc_kimlik_no'   => $m['tc_kimlik_no'],
+            ];
+        }
+
+        return $this->response->setJSON(['durum' => true, 'sonuclar' => $sonuclar]);
     }
 
     /**

@@ -707,6 +707,35 @@ $edOzet = $edefterOzet ?? null;
 </div>
 <?php endif; ?>
 
+<!-- ============ SİCİL BİLDİRİM TAKİBİ ============ -->
+<?php if (! empty($sicilBildirim) && ((int) $sicilBildirim['bekleyen'] > 0 || (int) $sicilBildirim['gecikti'] > 0)): ?>
+<div class="kart">
+  <div class="kart-baslik">
+    <h2>📤 Sicil Bildirim Takibi</h2>
+    <div class="sag"><a href="<?= site_url('sicil/gorevler') ?>" class="btn ikincil mini">Bildirim Görevleri →</a></div>
+  </div>
+  <div class="kart-govde">
+    <div class="stat-grid">
+      <a class="stat kirmizi" style="text-decoration:none;color:inherit" href="<?= site_url('sicil/gorevler?aralik=gecikti') ?>">
+        <div class="etiket">Süresi Geçti</div><div class="deger"><?= (int) $sicilBildirim['gecikti'] ?></div></a>
+      <a class="stat turuncu" style="text-decoration:none;color:inherit" href="<?= site_url('sicil/gorevler?aralik=bugun') ?>">
+        <div class="etiket">Bugün Son Gün</div><div class="deger"><?= (int) $sicilBildirim['bugun'] ?></div></a>
+      <a class="stat sari" style="text-decoration:none;color:inherit" href="<?= site_url('sicil/gorevler?aralik=ic7') ?>">
+        <div class="etiket">≤ 7 Gün</div><div class="deger"><?= (int) $sicilBildirim['ic7'] ?></div></a>
+      <a class="stat mavi" style="text-decoration:none;color:inherit" href="<?= site_url('sicil/gorevler?aralik=ic15') ?>">
+        <div class="etiket">≤ 15 Gün</div><div class="deger"><?= (int) $sicilBildirim['ic15'] ?></div></a>
+      <a class="stat yesil" style="text-decoration:none;color:inherit" href="<?= site_url('sicil/gorevler?aralik=tamamlanan') ?>">
+        <div class="etiket">✓ Tamamlanan</div><div class="deger"><?= (int) $sicilBildirim['tamamlanan'] ?></div></a>
+    </div>
+    <?php if ((int) $sicilBildirim['gecikti'] > 0): ?>
+      <div class="kucuk-yazi" style="margin-top:8px;color:var(--kirmizi,#dc2626)">
+        ⚠ <?= (int) $sicilBildirim['gecikti'] ?> bildirimin süresi geçti — acil işlem gerekir.
+      </div>
+    <?php endif; ?>
+  </div>
+</div>
+<?php endif; ?>
+
 <!-- ============ AYLIK GRAFİK ============ -->
 <div class="kart">
   <div class="kart-baslik">

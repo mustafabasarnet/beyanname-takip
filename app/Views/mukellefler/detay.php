@@ -110,6 +110,44 @@ $terkli = ! empty($mukellef['terk_tarihi']);
   </div>
 </div>
 
+<!-- ============ SİCİL DEĞİŞİKLİKLERİ (bu mükellef) ============ -->
+<div class="kart">
+  <div class="kart-baslik"><h2>🧾 Sicil Değişiklikleri</h2>
+    <div class="sag"><a href="<?= site_url('sicil/ekle?mukellef_id=' . (int) $mukellef['id']) ?>" class="btn yesil kucuk">+ Sicil Değişikliği Ekle</a></div>
+  </div>
+  <div class="kart-govde sikisik">
+    <?php if (empty($sicilGecmis)): ?>
+      <div class="kucuk-yazi" style="padding:10px">Bu mükellef için sicil değişikliği kaydı yok.</div>
+    <?php else: ?>
+      <div class="tablo-sar">
+        <table class="tablo">
+          <thead><tr><th>Tarih</th><th>Tür</th><th>Yeni Bilgi</th><th>Açık Bildirim</th><th>Durum</th><th class="sag">İşlem</th></tr></thead>
+          <tbody>
+          <?php foreach (array_slice($sicilGecmis, 0, 8) as $s): ?>
+            <tr>
+              <td class="kalin"><?= trTarih($s['degisiklik_tarihi']) ?></td>
+              <td><span class="rozet mavi"><?= esc(kisalt($s['tur_ad'], 22)) ?></span></td>
+              <td class="kucuk-yazi"><?= esc(kisalt((string) $s['yeni_deger'] ?: $s['konu'], 40)) ?></td>
+              <td class="orta">
+                <?php if ((int) $s['acik_gorev'] > 0): ?>
+                  <span class="rozet turuncu"><?= (int) $s['acik_gorev'] ?> ⏳</span>
+                <?php else: ?><span class="kucuk-yazi">—</span><?php endif; ?>
+              </td>
+              <td><span class="rozet <?= $s['durum'] === 'TAMAM' ? 'yesil' : ($s['durum'] === 'ISLEMDE' ? 'sari' : 'gri') ?>">
+                <?= esc($s['durum']) ?></span></td>
+              <td class="sag"><a href="<?= site_url('sicil/detay/' . (int) $s['id']) ?>" class="btn ikincil mini">Detay</a></td>
+            </tr>
+          <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+      <?php if (count($sicilGecmis) > 8): ?>
+        <div style="padding:8px 12px"><a href="<?= site_url('sicil?mukellef_id=' . (int) $mukellef['id']) ?>" class="kucuk-yazi">Tüm geçmişi gör →</a></div>
+      <?php endif; ?>
+    <?php endif; ?>
+  </div>
+</div>
+
 <!-- ============ BEYANNAME TÜRLERİ ============ -->
 <div class="kart">
   <div class="kart-baslik"><h2>🗂️ Verilen Beyannameler</h2></div>
