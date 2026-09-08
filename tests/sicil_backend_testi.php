@@ -217,7 +217,43 @@ t('Silinen işlemin todoları sayaçlara dahil DEĞİL (gecikti azaldı)', ($son
 // Temizlik — soft silinen satırı da kaldır
 $db->query('DELETE FROM sicil_degisiklikleri');                       // işlem (todo cascade)
 
-echo "=== 10) TEMİZLİK ===\n";
+echo "=== 10) ŞABLON DÜZENLEME → TODO TANIMLARI GÜNCELLENİR (kod hatası yok) ===\n";
+$tanimlarA = (new \App\Models\SicilKuralModel())->sablonTodoTanimlari($sablonId);
+$ta0 = $tanimlarA[0];
+$ta1 = $tanimlarA[1];
+$ta2 = $tanimlarA[2];
+
+// Ad + süre değiştir, ikisini aynen bırak, yeni satır ekle (net 3 → 4)
+$gu = $turM->sablonKaydet(['id' => $sablonId, 'ad' => 'Test Şablonu', 'aciklama' => 'güncelleme', 'aktif' => 1], [
+    ['id' => (int) $ta0['id'], 'ad' => 'Vergi Dairesine Bildirim (güncel)', 'sure_tipi' => 'GUN',     'sure_deger' => '20', 'belirli_tarih' => '', 'aktif' => 1],
+    ['id' => (int) $ta1['id'], 'ad' => $ta1['ad'],                      'sure_tipi' => 'IS_GUNU', 'sure_deger' => '5',  'belirli_tarih' => '', 'aktif' => 1],
+    ['id' => (int) $ta2['id'], 'ad' => $ta2['ad'],                      'sure_tipi' => 'GUN',     'sure_deger' => '25', 'belirli_tarih' => '', 'aktif' => 1],
+    ['id' => 0,                'ad' => 'Yeni Aylık Todo',               'sure_tipi' => 'AY',      'sure_deger' => '1',  'belirli_tarih' => '', 'aktif' => 1],
+], 1);
+t('Şablon güncelleme OK ("kod kullanılıyor" hatası YOK)', $gu['durum'] === true, $gu['hata'] ?? '-');
+
+$guTanimlar = (new \App\Models\SicilKuralModel())->sablonTodoTanimlari($sablonId);
+$guMap = [];
+foreach ($guTanimlar as $gt) { $guMap[$gt['ad']] = $gt; }
+t('Todo yeniden adlandırıldı + süre 20', isset($guMap['Vergi Dairesine Bildirim (güncel)'])
+    && (int) $guMap['Vergi Dairesine Bildirim (güncel)']['sure_deger'] === 20, json_encode(array_keys($guMap)));
+t('Değişmeyen todolar aynen duruyor', isset($guMap[$ta1['ad']]) && isset($guMap[$ta2['ad']]));
+t('Yeni todo eklendi (3 → 4)', count($guTanimlar) === 4, 'gelen: ' . count($guTanimlar));
+$siraListe = array_map('intval', array_column($guTanimlar, 'oncelik'));
+t('Sıralama korundu (10,20,30,40)', $siraListe === [10, 20, 30, 40], json_encode($siraListe));
+
+// Formdan bir satırı çıkar → kullanılmamışsa SİLİNİR
+$gu2 = $turM->sablonKaydet(['id' => $sablonId, 'ad' => 'Test Şablonu', 'aciklama' => 'güncelleme', 'aktif' => 1], [
+    ['id' => (int) $ta0['id'], 'ad' => 'Vergi Dairesine Bildirim (güncel)', 'sure_tipi' => 'GUN', 'sure_deger' => '20', 'belirli_tarih' => '', 'aktif' => 1],
+    ['id' => (int) $ta2['id'], 'ad' => $ta2['ad'], 'sure_tipi' => 'GUN', 'sure_deger' => '25', 'belirli_tarih' => '', 'aktif' => 1],
+    ['id' => 0,                'ad' => 'Yeni Aylık Todo', 'sure_tipi' => 'AY', 'sure_deger' => '1', 'belirli_tarih' => '', 'aktif' => 1],
+], 1);
+t('Satır çıkarmalı güncelleme OK', $gu2['durum'] === true, $gu2['hata'] ?? '-');
+$ta1Kaldi = (new \App\Models\SicilKuralModel())->find((int) $ta1['id']);
+t('Formdan çıkarılan kullanılmamış todo silindi', $ta1Kaldi === null);
+t('Kalan todo sayısı 3', count((new \App\Models\SicilKuralModel())->sablonTodoTanimlari($sablonId)) === 3);
+
+echo "=== 11) TEMİZLİK ===\n";
 $db->query('DELETE FROM sicil_bildirim_kurallari WHERE degisiklik_turu_id = ' . $sablonId);
 $db->query('DELETE FROM sicil_degisiklik_turleri WHERE id = ' . $sablonId);
 t('Temizlendi', true);

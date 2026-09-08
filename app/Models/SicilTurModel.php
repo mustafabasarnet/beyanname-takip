@@ -24,7 +24,7 @@ class SicilTurModel extends Model
     protected $allowedFields = ['kod', 'ad', 'aciklama', 'sira', 'aktif'];
 
     protected $validationRules = [
-        'kod' => 'required|alpha_dash|max_length[50]|is_unique[sicil_degisiklik_turleri.kod,id,{id}]',
+        'kod' => 'required|alpha_dash|max_length[50]|is_unique[sicil_degisiklik_turleri.kod]',
         'ad'  => 'required|max_length[150]',
     ];
 
@@ -143,7 +143,20 @@ class SicilTurModel extends Model
 
                 $temiz['kod'] = $mevcut['kod']; // kod değişmez (geçmiş kayıtlar ona bağlıdır)
 
-                if (! $this->update($id, $temiz)) {
+                // is_unique: güncellenen satırın KENDİSİ "kullanılıyor" sayılmasın.
+                // Proje deseni (BeyannameTuru/Kullanici/Tatil) — kural, gerçek
+                // id ile çalışma anında kurulur ({id} yer tutucusu kullanılmaz).
+                $oncekiKurallar = $this->validationRules;
+                $this->validationRules['kod'] = 'required|alpha_dash|max_length[50]'
+                    . '|is_unique[sicil_degisiklik_turleri.kod,id,' . $id . ']';
+
+                try {
+                    $guncellendi = $this->update($id, $temiz);
+                } finally {
+                    $this->validationRules = $oncekiKurallar;
+                }
+
+                if (! $guncellendi) {
                     $db->transRollback();
 
                     return ['durum' => false, 'id' => null,
