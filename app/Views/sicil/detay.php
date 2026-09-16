@@ -37,6 +37,11 @@ $degDurumRozet = match ($deg['durum']) {
     default   => 'gri',
 };
 $rol = $aktifKullanici['rol'] ?? 'personel';
+
+// Şablona sonradan eklenip bu işleme henüz aktarılmamış todo tanımları
+$eksikTanimlar = $eksikTanimlar ?? [];
+$eksikSayi     = count($eksikTanimlar);
+$eksikAdlar    = implode(', ', array_map(static fn ($t) => (string) ($t['ad'] ?? ''), $eksikTanimlar));
 ?>
 
 <style>
@@ -127,6 +132,17 @@ $rol = $aktifKullanici['rol'] ?? 'personel';
   <div class="kart-baslik">
     <h2>📋 Todo Listesi (<?= $toplam ?>)</h2>
     <div class="sag kucuk-yazi">
+      <?php if ($eksikSayi > 0): ?>
+        <form method="post" style="display:inline"
+              action="<?= site_url('sicil/todo-guncelle/' . (int) $deg['id']) ?>"
+              data-onay="Şablona sonradan eklenen <?= $eksikSayi ?> todo bu işleme eklenecek: <?= esc($eksikAdlar) ?>. Mevcut ve tamamlanmış todolara dokunulmaz. Devam edilsin mi?">
+          <?= csrf_field() ?>
+          <button type="submit" class="btn mini"
+                  title="Şablona sonradan eklenen todo'ları bu işleme ekle (mevcut todolara dokunmaz)">
+            🔄 Şablondan <?= $eksikSayi ?> yeni todo ekle
+          </button>
+        </form>
+      <?php endif; ?>
       <span class="rozet yesil">☑ Yapıldı</span>
       <span class="rozet sari">⚠ Yaklaşıyor</span>
       <span class="rozet kirmizi">✖ Geçti</span>
@@ -137,6 +153,16 @@ $rol = $aktifKullanici['rol'] ?? 'personel';
       <div class="tablo-bos"><span class="ikon">📭</span>
         Bu işlem için todo üretilmedi.
         <div class="mt8 kucuk-yazi">Şablonun aktif todo tanımı yok veya kayıt eski sürümle açılmış.</div>
+        <?php if ($eksikSayi > 0): ?>
+          <div class="mt16">
+            <form method="post" style="display:inline"
+                  action="<?= site_url('sicil/todo-guncelle/' . (int) $deg['id']) ?>"
+                  data-onay="Şablona sonradan eklenen <?= $eksikSayi ?> todo bu işleme eklenecek: <?= esc($eksikAdlar) ?>. Devam edilsin mi?">
+              <?= csrf_field() ?>
+              <button type="submit" class="btn kucuk">🔄 Şablondan <?= $eksikSayi ?> todo ekle</button>
+            </form>
+          </div>
+        <?php endif; ?>
       </div>
     <?php else: ?>
       <?php foreach ($todolar as $t): ?>
@@ -188,6 +214,14 @@ $rol = $aktifKullanici['rol'] ?? 'personel';
           </div>
         </div>
       <?php endforeach; ?>
+    <?php endif; ?>
+  </div>
+  <div class="kucuk-yazi" style="padding:8px 16px;border-top:1px solid var(--gri-100,#f1f5f9);color:var(--gri-500,#64748b)">
+    <?php if ($eksikSayi > 0): ?>
+      🔄 Şablona sonradan eklenen <?= $eksikSayi ?> todo (<?= esc(kisalt($eksikAdlar, 90)) ?>) henüz bu işleme
+      aktarılmadı. <b>Şablondan … yeni todo ekle</b> butonu yalnız eksikleri ekler; mevcut ve tamamlanmış todolara dokunmaz.
+    <?php else: ?>
+      ✓ Şablondaki tüm aktif todolar bu işleme aktarılmış.
     <?php endif; ?>
   </div>
 </div>

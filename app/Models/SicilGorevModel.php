@@ -56,53 +56,192 @@ class SicilGorevModel extends Model
      * İşlem için şablonun AKTİF todo tanımlarını işler, todo satırlarını üretir
      * (idempotent — tekrar çağrıldığında çoğalmaz).
      *
+     * Transaction'ı ÇAĞIRAN yönetir (SicilDegisiklikModel::olustur).
+     *
      * @param array $degisiklik sicil_degisiklikleri satırı (id, turu_id, degisiklik_tarihi)
      *
      * @return array üretilen todolar [{id, ad, son_tarih, durum}]
      */
     public function islemIcinUret(array $degisiklik, int $kaydedenId): array
     {
-        $degId     = (int) $degisiklik['id'];
-        $sablonId  = (int) $degisiklik['turu_id'];
-        $baslangic = (string) $degisiklik['degisiklik_tarihi'];
+        return $this->eksikleriEkle($degisiklik, $kaydedenId, false)['eklenen'];
+    }
+
+    /**
+     * Şablona SONRADAN eklenen todo tanımlarını MEVCUT bir işleme ekler.
+     *
+     * Kullanım: işlem açıldıktan sonra şablona yeni todo eklenirse, kullanıcı
+     * işlem detayında "Şablondan … yeni todo ekle" dediğinde yalnız EKSİKLER
+     * eklenir (silinen/pasif tanımlar geri getirilmez).
+     *
+     * Kurallar:
+     *   - Mevcut todolara (açık / TAMAM / GEREKSIZ) HİÇ dokunulmaz → geçmiş bozulmaz.
+     *   - Mükerrer koruma: aynı tanım (kural_id) ya da aynı AD işlemde zaten
+     *     varsa satır üretilmez (şablonda silinip yeniden eklenen todo, kural_id
+     *     değişse bile ikinci kez düşmez).
+     *   - Idempotent: tekrar çağrıldığında yeni satır oluşmaz.
+     *   - Son tarih, İŞLEM tarihinden ve tanımın süresinden yeniden hesaplanır.
+     *
+     * @param bool $transaction çağıran zaten transaction açtıysa false verilir
+     *
+     * @return array{durum:bool, eklenen:array, eklenen_sayi:int, hata:?string}
+     */
+    public function eksikleriEkle(array $degisiklik, int $kaydedenId, bool $transaction = true): array
+    {
+        $degId     = (int) ($degisiklik['id'] ?? 0);
+        $sablonId  = (int) ($degisiklik['turu_id'] ?? 0);
+        $baslangic = (string) ($degisiklik['degisiklik_tarihi'] ?? '');
+
+        $bos = ['durum' => true, 'eklenen' => [], 'eklenen_sayi' => 0, 'hata' => null];
+
+        if ($degId <= 0 || $sablonId <= 0 || $baslangic === '') {
+            return ['durum' => false, 'eklenen' => [], 'eklenen_sayi' => 0,
+                    'hata'  => 'İşlem bilgisi eksik (mükellef/şablon/tarih).'];
+        }
 
         $tanimlar = (new SicilKuralModel())->aktifTodoTanimlari($sablonId);
-        $olusan   = [];
 
-        foreach ($tanimlar as $tanim) {
-            // Mükerrer kontrol (unique öncesi anlaşılır biçimde atla)
-            if ($this->todoVarMi($degId, (int) $tanim['id'])) {
+        if ($tanimlar === []) {
+            return $bos; // şablonda aktif todo tanımı yok — eklenecek bir şey yok
+        }
+
+        $mevcut = $this->mevcutAnahtarlar($degId);
+        $olusan = [];
+        $db     = $this->db;
+
+        if ($transaction) {
+            $db->transBegin();
+        }
+
+        try {
+            foreach ($tanimlar as $tanim) {
+                $kuralId = (int) $tanim['id'];
+                $ad      = trim((string) ($tanim['ad'] ?? '')) ?: 'Todo';
+
+                // Mükerrer kontrol: aynı tanım ya da aynı ad işlemde varsa atla
+                if (isset($mevcut['kural'][$kuralId]) || isset($mevcut['ad'][self::adAnahtar($ad)])) {
+                    continue;
+                }
+
+                $sonuc = self::tarihHesapla($baslangic, $tanim);
+
+                if ($sonuc === null) {
+                    continue; // geçersiz tanım → atla (yönetici düzeltir)
+                }
+
+                $id = (int) $this->insert([
+                    'sicil_degisikligi_id' => $degId,
+                    'kural_id'             => $kuralId,
+                    'ad'                   => $ad,
+                    'son_tarih'            => $sonuc['son_tarih'],
+                    'asil_tarih'           => $sonuc['asil_tarih'],
+                    'kaydirma_nedeni'      => $sonuc['neden'],
+                    'durum'                => 'BEKLIYOR',
+                    'yapan_id'             => null,
+                ]);
+
+                if ($id > 0) {
+                    $olusan[] = [
+                        'id'        => $id,
+                        'ad'        => $ad,
+                        'son_tarih' => $sonuc['son_tarih'],
+                        'durum'     => 'BEKLIYOR',
+                    ];
+
+                    // Aynı turda iki kez üretilmesin
+                    $mevcut['kural'][$kuralId]            = true;
+                    $mevcut['ad'][self::adAnahtar($ad)]   = true;
+                }
+            }
+
+            if ($transaction) {
+                $db->transCommit();
+            }
+
+            return ['durum' => true, 'eklenen' => $olusan,
+                    'eklenen_sayi' => count($olusan), 'hata' => null];
+        } catch (\Throwable $e) {
+            if ($transaction) {
+                $db->transRollback();
+            }
+
+            return ['durum' => false, 'eklenen' => [], 'eklenen_sayi' => 0,
+                    'hata'  => $e->getMessage()];
+        }
+    }
+
+    /**
+     * İşlemde HENÜZ todo satırı olmayan aktif şablon tanımları.
+     * (Detay ekranındaki "Şablondan N yeni todo ekle" butonu için — DB'ye yazmaz.)
+     *
+     * @param string|null $baslangic işlem tarihi verilirse, son tarihi
+     *                               hesaplanamayan geçersiz tanımlar sayılmaz
+     *                               (buton sayısı ile gerçek ekleme birebir uyar)
+     *
+     * @return array<int,array> tanım satırları
+     */
+    public function eksikTanimlar(int $degisiklikId, int $sablonId, ?string $baslangic = null): array
+    {
+        if ($degisiklikId <= 0 || $sablonId <= 0) {
+            return [];
+        }
+
+        $mevcut = $this->mevcutAnahtarlar($degisiklikId);
+        $out    = [];
+
+        foreach ((new SicilKuralModel())->aktifTodoTanimlari($sablonId) as $tanim) {
+            $kuralId = (int) $tanim['id'];
+            $ad      = trim((string) ($tanim['ad'] ?? '')) ?: 'Todo';
+
+            if (isset($mevcut['kural'][$kuralId]) || isset($mevcut['ad'][self::adAnahtar($ad)])) {
                 continue;
             }
 
-            $sonuc = self::tarihHesapla($baslangic, $tanim);
-
-            if ($sonuc === null) {
-                continue; // geçersiz tanım → atla (yönetici düzeltir)
+            if ($baslangic !== null && self::tarihHesapla($baslangic, $tanim) === null) {
+                continue; // geçersiz süre tanımı → üretilemez, kullanıcıya gösterilmez
             }
 
-            $id = (int) $this->insert([
-                'sicil_degisikligi_id' => $degId,
-                'kural_id'             => (int) $tanim['id'],
-                'ad'                   => $tanim['ad'] ?: 'Todo',
-                'son_tarih'            => $sonuc['son_tarih'],
-                'asil_tarih'           => $sonuc['asil_tarih'],
-                'kaydirma_nedeni'      => $sonuc['neden'],
-                'durum'                => 'BEKLIYOR',
-                'yapan_id'             => null,
-            ]);
+            $out[] = $tanim;
+        }
 
-            if ($id > 0) {
-                $olusan[] = [
-                    'id'        => $id,
-                    'ad'        => $tanim['ad'] ?: 'Todo',
-                    'son_tarih' => $sonuc['son_tarih'],
-                    'durum'     => 'BEKLIYOR',
-                ];
+        return $out;
+    }
+
+    /**
+     * İşlemdeki todo satırlarının mükerrer koruma anahtarları.
+     * (Yumuşak silinmiş satırlar da sayılır — aynı todo iki kez düşmesin.)
+     *
+     * @return array{kural:array<int,bool>, ad:array<string,bool>}
+     */
+    protected function mevcutAnahtarlar(int $degisiklikId): array
+    {
+        $satirlar = $this->select('kural_id, ad')
+            ->where('sicil_degisikligi_id', $degisiklikId)
+            ->findAll();
+
+        $out = ['kural' => [], 'ad' => []];
+
+        foreach ($satirlar as $s) {
+            if (! empty($s['kural_id'])) {
+                $out['kural'][(int) $s['kural_id']] = true;
+            }
+
+            $ad = trim((string) ($s['ad'] ?? ''));
+
+            if ($ad !== '') {
+                $out['ad'][self::adAnahtar($ad)] = true;
             }
         }
 
-        return $olusan;
+        return $out;
+    }
+
+    /** Todo adı karşılaştırma anahtarı (büyük/küçük harf + çoklu boşluk duyarsız). */
+    public static function adAnahtar(string $ad): string
+    {
+        $sade = preg_replace('/\s+/u', ' ', trim($ad)) ?? trim($ad);
+
+        return mb_strtolower($sade, 'UTF-8');
     }
 
     /**

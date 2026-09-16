@@ -258,7 +258,64 @@ class Sicil extends BaseController
             'mukellef'   => (new MukellefModel())->find((int) $degisiklik['mukellef_id']),
             'durumlar'   => SicilGorevModel::DURUMLAR,
             'belgeler'   => $this->belgeModel->islemEvraklari($id),
+            // Şablona sonradan eklenip bu işleme henüz düşmemiş todo tanımları
+            'eksikTanimlar' => $this->gorevModel->eksikTanimlar(
+                $id,
+                (int) $degisiklik['turu_id'],
+                (string) $degisiklik['degisiklik_tarihi']
+            ),
         ], 'İşlem Detayı');
+    }
+
+    // =================================================================
+    //  ŞABLONDAN TODO GÜNCELLE (eksik todo'ları işleme ekle)
+    // =================================================================
+
+    /**
+     * Şablona SONRADAN eklenen todo tanımlarını bu işleme ekler.
+     *
+     * Mevcut todo satırlarına (açık / yapıldı / takip dışı) DOKUNULMAZ; yalnız
+     * eksikler eklenir. Bu yüzden işlem geçmişi ve tamamlanmış kayıtlar bozulmaz.
+     * Klasik form POST → flash mesajı + detay sayfasına dönüş.
+     */
+    public function todoGuncelle(int $id)
+    {
+        $degisiklik = $this->degModel->find($id);
+
+        if ($degisiklik === null) {
+            return redirect()->to(site_url('sicil'))->with('hata', 'İşlem bulunamadı.');
+        }
+
+        if (! $this->degisiklikYetkisi($degisiklik)) {
+            return redirect()->to(site_url('sicil'))->with('hata', 'Bu kayda erişemezsiniz.');
+        }
+
+        $donus = site_url('sicil/detay/' . $id);
+
+        if ($this->turModel->find((int) $degisiklik['turu_id']) === null) {
+            return redirect()->to($donus)->with('hata', 'İşlemin şablonu bulunamadı.');
+        }
+
+        $sonuc = $this->gorevModel->eksikleriEkle($degisiklik, $this->ben());
+
+        if (! $sonuc['durum']) {
+            return redirect()->to($donus)->with('hata', $sonuc['hata'] ?? 'Todo eklenemedi.');
+        }
+
+        if ((int) $sonuc['eklenen_sayi'] === 0) {
+            return redirect()->to($donus)->with('basari', 'Şablonda bu işleme eklenecek yeni todo yok.');
+        }
+
+        // Üst durum yeni todo'lardan türetilir (tamamlanmış işlem yeniden açılır)
+        $this->degModel->durumTure($id);
+
+        $adlar = implode(', ', array_map(static fn ($t) => (string) $t['ad'], $sonuc['eklenen']));
+
+        return redirect()->to($donus)->with(
+            'basari',
+            (int) $sonuc['eklenen_sayi'] . ' yeni todo eklendi: ' . $adlar
+                . '. Mevcut ve tamamlanmış todolara dokunulmadı.'
+        );
     }
 
     // =================================================================

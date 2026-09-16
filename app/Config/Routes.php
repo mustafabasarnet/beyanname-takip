@@ -246,6 +246,7 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
         $routes->get('detay/(:num)', 'Sicil::detay/$1');   // işlem + todo listesi
         $routes->post('kaydet', 'Sicil::kaydet');          // AJAX (todo üretimi)
         $routes->post('todo-durum', 'Sicil::todoDurum');   // AJAX (checkbox)
+        $routes->post('todo-guncelle/(:num)', 'Sicil::todoGuncelle/$1'); // şablondaki yeni todo'ları işleme ekle
         $routes->get('sil/(:num)', 'Sicil::sil/$1');
         // Todo evrakları (görev tamamlandığına dair kanıt dosyası)
         $routes->post('evrak-yukle', 'Sicil::evrakYukle'); // AJAX (multipart)

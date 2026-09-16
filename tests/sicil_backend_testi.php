@@ -6,8 +6,14 @@
  * Yalnız sicil tablolarına + TEST_SABLONU şablonuna dokunur; temizlik testin
  * sonunda yapılır.
  */
-require __DIR__ . '/beyanname-takip/vendor/autoload.php';
-require __DIR__ . '/beyanname-takip/app/Config/Paths.php';
+// Test hem proje kökünden (php tests/...) hem de yanında 'beyanname-takip'
+// klasörü bulunan bir koşum dizininden çalışabilsin.
+$kok = is_file(__DIR__ . '/beyanname-takip/vendor/autoload.php')
+    ? __DIR__ . '/beyanname-takip'
+    : dirname(__DIR__);
+
+require $kok . '/vendor/autoload.php';
+require $kok . '/app/Config/Paths.php';
 
 use Config\Paths;
 use Config\Services;
@@ -19,7 +25,7 @@ if (! defined('ENVIRONMENT')) {
 }
 
 if (! defined('FCPATH')) {
-    define('FCPATH', __DIR__ . '/beyanname-takip/public/');
+    define('FCPATH', $kok . '/public/');
 }
 
 \CodeIgniter\Boot::bootConsole($paths);
@@ -34,6 +40,8 @@ function t($ad, $sart, $detay = '') {
 }
 
 // ---------- ÖN TEMİZLİK (önceki koşum kalıntısı) ----------
+$db->query("DELETE FROM sicil_degisiklikleri WHERE turu_id IN
+             (SELECT id FROM sicil_degisiklik_turleri WHERE kod = 'TEST_SABLONU')");
 $db->query("DELETE FROM sicil_bildirim_kurallari WHERE degisiklik_turu_id IN
              (SELECT id FROM sicil_degisiklik_turleri WHERE kod = 'TEST_SABLONU')");
 $db->query("DELETE FROM sicil_degisiklik_turleri WHERE kod = 'TEST_SABLONU'");
@@ -253,7 +261,123 @@ $ta1Kaldi = (new \App\Models\SicilKuralModel())->find((int) $ta1['id']);
 t('Formdan çıkarılan kullanılmamış todo silindi', $ta1Kaldi === null);
 t('Kalan todo sayısı 3', count((new \App\Models\SicilKuralModel())->sablonTodoTanimlari($sablonId)) === 3);
 
-echo "=== 11) TEMİZLİK ===\n";
+echo "=== 11) ŞABLONA SONRADAN EKLENEN TODO → İŞLEME AKTARMA (mevcutlara dokunmaz) ===\n";
+
+// Temiz sayfa: yeni bir işlem aç (şablonda 3 aktif tanım var)
+$db->query('DELETE FROM sicil_degisiklikleri');
+$s11 = $degM->olustur([
+    'mukellef_id'       => $mkId,
+    'turu_id'           => $sablonId,
+    'degisiklik_tarihi' => '2026-09-07',
+    'aciklama'          => 'aktarma testi',
+], 1);
+t('Yeni işlem + 3 todo üretildi', $s11['durum'] === true && count($s11['olusan_todolar']) === 3, $s11['hata'] ?? '-');
+$d11   = (int) $s11['id'];
+$gM11  = new \App\Models\SicilGorevModel();
+
+// Bir todo TAMAM, bir todo GEREKSIZ — aktarma bunlara dokunmamalı
+$liste11 = $gM11->islemTodoListesi($d11);
+$gTamam  = $liste11[0];
+$gGerek  = $liste11[1];
+$gM11->tamamla((int) $gTamam['id'], 2);
+$gM11->gereksizYap((int) $gGerek['id'], 2);
+$tamamOnce  = $gM11->find((int) $gTamam['id']);
+$gerekOnce  = $gM11->find((int) $gGerek['id']);
+
+// Şablona YENİ todo ekle (10 gün) + pasif bir todo ekle (üretilmemeli)
+$sonTanim = end($guTanimlar);
+$sy = $turM->sablonKaydet(['id' => $sablonId, 'ad' => 'Test Şablonu', 'aciklama' => 'yeni todo', 'aktif' => 1], [
+    ['id' => (int) $ta0['id'],  'ad' => 'Vergi Dairesine Bildirim (güncel)', 'sure_tipi' => 'GUN', 'sure_deger' => '20', 'belirli_tarih' => '', 'aktif' => 1],
+    ['id' => (int) $ta2['id'],  'ad' => 'Oda Kaydı', 'sure_tipi' => 'GUN', 'sure_deger' => '25', 'belirli_tarih' => '', 'aktif' => 1],
+    ['id' => (int) $sonTanim['id'], 'ad' => 'Yeni Aylık Todo', 'sure_tipi' => 'AY', 'sure_deger' => '1', 'belirli_tarih' => '', 'aktif' => 1],
+    ['id' => 0, 'ad' => 'Yeni Eklenen Bildirim', 'sure_tipi' => 'GUN', 'sure_deger' => '10', 'belirli_tarih' => '', 'aktif' => 1],
+    ['id' => 0, 'ad' => 'Pasif Todo', 'sure_tipi' => 'GUN', 'sure_deger' => '5', 'belirli_tarih' => '', 'aktif' => 0],
+], 1);
+t('Şablona yeni todo eklendi', $sy['durum'] === true, $sy['hata'] ?? '-');
+
+// Önizleme: eksik tanım sayısı 1 (pasif sayılmaz), DB'ye yazmaz
+$eksikler = $gM11->eksikTanimlar($d11, $sablonId);
+t('eksikTanimlar: 1 tanım (yalnız aktif yeni todo)', count($eksikler) === 1
+    && ($eksikler[0]['ad'] ?? '') === 'Yeni Eklenen Bildirim', json_encode(array_column($eksikler, 'ad')));
+t('eksikTanimlar DB\'ye yazmaz (hâlâ 3 todo)', count($gM11->islemTodoListesi($d11)) === 3);
+
+// Aktar
+$deg11 = $degM->find($d11);
+$ak    = $gM11->eksikleriEkle($deg11, 1);
+t('Aktarma başarılı, 1 yeni todo', $ak['durum'] === true && $ak['eklenen_sayi'] === 1, json_encode($ak));
+t('Eklenen todo: Yeni Eklenen Bildirim', ($ak['eklenen'][0]['ad'] ?? '') === 'Yeni Eklenen Bildirim');
+
+$liste11b = $gM11->islemTodoListesi($d11);
+t('Toplam todo 3 → 4', count($liste11b) === 4, 'gelen: ' . count($liste11b));
+
+$map11 = [];
+foreach ($liste11b as $x) { $map11[$x['ad']] = $x; }
+t('Yeni todo son tarihi işlem tarihinden hesaplandı (07.09 + 10 g = 17.09)',
+    ($map11['Yeni Eklenen Bildirim']['son_tarih'] ?? '') === '2026-09-17', $map11['Yeni Eklenen Bildirim']['son_tarih'] ?? 'yok');
+t('Pasif todo üretilmedi', ! isset($map11['Pasif Todo']));
+
+// Mevcut todolara dokunulmadı
+t('TAMAM todo durumu korundu', ($map11[$tamamOnce['ad']]['durum'] ?? '') === 'TAMAM');
+t('TAMAM todo tamamlanma tarihi korundu',
+    ($map11[$tamamOnce['ad']]['tamamlanma_tarihi'] ?? null) === $tamamOnce['tamamlanma_tarihi']);
+t('TAMAM todo yapan kullanıcı korundu', (int) ($map11[$tamamOnce['ad']]['yapan_id'] ?? 0) === 2);
+t('TAMAM todo son tarihi değişmedi', ($map11[$tamamOnce['ad']]['son_tarih'] ?? '') === $tamamOnce['son_tarih']);
+t('GEREKSIZ todo takip dışı kaldı', ($map11[$gerekOnce['ad']]['durum'] ?? '') === 'GEREKSIZ');
+t('GEREKSIZ todo son tarihi değişmedi', ($map11[$gerekOnce['ad']]['son_tarih'] ?? '') === $gerekOnce['son_tarih']);
+
+// Idempotent
+$ak2 = $gM11->eksikleriEkle($deg11, 1);
+t('Tekrar aktarma 0 yeni todo (idempotent)', $ak2['durum'] === true && $ak2['eklenen_sayi'] === 0, json_encode($ak2));
+t('Tekrar sonrası hâlâ 4 todo', count($gM11->islemTodoListesi($d11)) === 4);
+
+// Aynı AD ile yeniden eklenen tanım (kural_id değişir) mükerrer satır üretmez
+$yeniTanimId = 0;
+foreach ((new \App\Models\SicilKuralModel())->sablonTodoTanimlari($sablonId) as $tt) {
+    if ($tt['ad'] === 'Yeni Eklenen Bildirim') { $yeniTanimId = (int) $tt['id']; }
+}
+$aktifListe = [];
+foreach ((new \App\Models\SicilKuralModel())->sablonTodoTanimlari($sablonId) as $tt) {
+    if ((int) $tt['id'] === $yeniTanimId) { continue; }          // satırı çıkar
+    $aktifListe[] = ['id' => (int) $tt['id'], 'ad' => $tt['ad'], 'sure_tipi' => $tt['sure_tipi'],
+                     'sure_deger' => $tt['sure_deger'], 'belirli_tarih' => '', 'aktif' => (int) $tt['aktif']];
+}
+$aktifListe[] = ['id' => 0, 'ad' => 'Yeni Eklenen Bildirim', 'sure_tipi' => 'GUN', 'sure_deger' => '12', 'belirli_tarih' => '', 'aktif' => 1];
+$turM->sablonKaydet(['id' => $sablonId, 'ad' => 'Test Şablonu', 'aciklama' => 'aynı ad tekrar', 'aktif' => 1], $aktifListe, 1);
+t('Aynı adlı todo işlemde zaten var → mükerrer üretilmez',
+    $gM11->eksikleriEkle($degM->find($d11), 1)['eklenen_sayi'] === 0);
+$adSayisi = 0;
+foreach ($gM11->islemTodoListesi($d11) as $x) { if ($x['ad'] === 'Yeni Eklenen Bildirim') { $adSayisi++; } }
+t('Aynı adlı todo işlemde tek satır', $adSayisi === 1, 'gelen: ' . $adSayisi);
+
+// Tamamlanmış işlem, yeni todo aktarılınca yeniden "Devam Ediyor" olur
+foreach ($gM11->islemTodoListesi($d11) as $x) {
+    if (in_array($x['durum'], \App\Models\SicilGorevModel::ACIK_DURUMLAR, true)) {
+        $gM11->durumDegistir((int) $x['id'], 'TAMAM', 1);
+    }
+}
+t('Tüm todo bitince işlem TAMAM', $degM->durumTure($d11) === 'TAMAM');
+
+$sonTanimlar2 = (new \App\Models\SicilKuralModel())->sablonTodoTanimlari($sablonId);
+$hepsiListe = [];
+foreach ($sonTanimlar2 as $tt) {
+    $hepsiListe[] = ['id' => (int) $tt['id'], 'ad' => $tt['ad'], 'sure_tipi' => $tt['sure_tipi'],
+                     'sure_deger' => $tt['sure_deger'], 'belirli_tarih' => '', 'aktif' => (int) $tt['aktif']];
+}
+$hepsiListe[] = ['id' => 0, 'ad' => 'Sonradan Gelen Todo', 'sure_tipi' => 'GUN', 'sure_deger' => '3', 'belirli_tarih' => '', 'aktif' => 1];
+$turM->sablonKaydet(['id' => $sablonId, 'ad' => 'Test Şablonu', 'aciklama' => 'son', 'aktif' => 1], $hepsiListe, 1);
+$ak3 = $gM11->eksikleriEkle($degM->find($d11), 1);
+t('Tamamlanmış işleme yeni todo aktarıldı', $ak3['eklenen_sayi'] === 1, json_encode($ak3));
+t('İşlem yeniden ISLEMDE (Devam Ediyor)', $degM->durumTure($d11) === 'ISLEMDE');
+$sonTodo = null;
+foreach ($gM11->islemTodoListesi($d11) as $x) { if ($x['ad'] === 'Sonradan Gelen Todo') { $sonTodo = $x; } }
+t('Yeni todo açık (BEKLIYOR) doğdu', ($sonTodo['durum'] ?? '') === 'BEKLIYOR');
+
+// Hatalı çağrı: eksik işlem bilgisi
+$akH = $gM11->eksikleriEkle(['id' => 0, 'turu_id' => 0, 'degisiklik_tarihi' => ''], 1);
+t('Eksik işlem bilgisi → kontrollü hata (exception yok)', $akH['durum'] === false && $akH['hata'] !== null);
+
+echo "=== 12) TEMİZLİK ===\n";
+$db->query('DELETE FROM sicil_degisiklikleri');   // şablona bağlı işlemler (todo cascade)
 $db->query('DELETE FROM sicil_bildirim_kurallari WHERE degisiklik_turu_id = ' . $sablonId);
 $db->query('DELETE FROM sicil_degisiklik_turleri WHERE id = ' . $sablonId);
 t('Temizlendi', true);
