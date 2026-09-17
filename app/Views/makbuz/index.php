@@ -31,6 +31,22 @@
 .mk-mus-satir b{font-variant-numeric:tabular-nums}
 .mk-kaydir{padding:14px;text-align:center;background:var(--gri-50,#f8fafc);
   border-top:1px solid var(--gri-200,#e2e8f0)}
+/* Makbuz Ekle modalı — mükellef arama + canlı önizleme */
+.mk-sec{position:relative}
+.mk-liste{position:absolute;top:calc(100%+4px);left:0;right:0;z-index:70;background:#fff;
+  border:1px solid var(--gri-300,#cbd5e1);border-radius:10px;box-shadow:var(--golge-lg);max-height:220px;
+  overflow-y:auto;display:none}
+.mk-liste.goster{display:block}
+.mk-liste .oge{padding:8px 12px;cursor:pointer;font-size:13px}
+.mk-liste .oge:hover{background:var(--gri-50,#f8fafc)}
+.mk-onizleme{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;
+  margin-top:12px;padding:11px 13px;background:var(--gri-50,#f8fafc);
+  border:1px solid var(--gri-200,#e2e8f0);border-radius:10px}
+.mk-onizleme div{display:flex;flex-direction:column;gap:2px}
+.mk-onizleme span{font-size:11px;color:var(--gri-500,#64748b);text-transform:uppercase;
+  letter-spacing:.3px;font-weight:700}
+.mk-onizleme b{font-size:14px;font-variant-numeric:tabular-nums}
+.mk-onizleme .vurgu b{color:var(--yesil,#059669);font-size:16px}
 </style>
 
 <!-- ============ FİLTRE ============ -->
@@ -95,6 +111,11 @@
     <a href="<?= site_url('makbuz/ice-aktar?kip=makbuz&yil=' . (int) $filtre['yil']) ?>" class="btn mor kucuk">
       📥 Makbuz Yükle
     </a>
+    <!-- Formdan tek tek makbuz girişi (Excel'siz) -->
+    <button type="button" class="btn yesil kucuk" id="mk-ekle-ac"
+            title="Formdan serbest meslek makbuzu girin">
+      ➕ Makbuz Ekle
+    </button>
     <button type="button" class="btn ikincil kucuk" onclick="BT.modalAc('kopya-modal')">📋 Ücret Kopyala</button>
     <?php
       // Yazdırma bağlantısı: ekrandaki filtre çıktıya taşınır
@@ -297,6 +318,127 @@
   </div>
 </div>
 
+<!-- ============ MAKBUZ EKLE MODALI (formdan giriş) ============
+     Tutar hesabı DEĞİŞMEZ: brüt/stopaj/KDV/net MakbuzModel::tutarHesapla()
+     ile hesaplanır (net = brüt − stopaj + KDV). Buradaki önizleme yalnız
+     kullanıcıya fikir verir; kaydı sunucu hesaplar.
+     Kaydet: POST makbuz/kaydet (mükellef detayındaki modalla aynı uç). -->
+<div class="modal-arka" id="mk-ekle-modal">
+  <div class="modal genis">
+    <form method="post" action="<?= site_url('makbuz/kaydet') ?>" id="mk-ekle-form">
+      <?= csrf_field() ?>
+      <input type="hidden" name="id" value="0">
+      <input type="hidden" name="donus" value="liste">
+      <div class="modal-baslik">
+        <h3>🧾 Makbuz Ekle</h3>
+        <button type="button" class="modal-kapat" data-modal-kapat>&times;</button>
+      </div>
+      <div class="modal-govde">
+        <div class="form-grid">
+          <!-- Mükellef (aranarak seçilir) -->
+          <div class="form-grup tam mk-sec">
+            <label>Mükellef <span class="zorunlu">*</span></label>
+            <input type="text" id="mk-ara" class="girdi" autocomplete="off"
+                   placeholder="Mükellef ünvanı veya VKN yazın…">
+            <input type="hidden" name="mukellef_id" id="mk-mukellef-id">
+            <div class="mk-liste" id="mk-liste"></div>
+            <span class="yardim" id="mk-secili">Henüz mükellef seçilmedi.</span>
+          </div>
+
+          <div class="form-grup">
+            <label>Yıl <span class="zorunlu">*</span></label>
+            <select name="yil" id="mk-yil">
+              <?php foreach (yilSecenekleri() as $y): ?>
+                <option value="<?= $y ?>" <?= (int) $filtre['yil'] === $y ? 'selected' : '' ?>><?= $y ?></option>
+              <?php endforeach; ?>
+            </select>
+            <span class="yardim">Liste filtresiyle aynı yıl seçili.</span>
+          </div>
+          <div class="form-grup">
+            <label>Makbuz Tarihi <span class="zorunlu">*</span></label>
+            <input type="date" name="tarih" id="mk-tarih" class="girdi" required
+                   value="<?= date('Y-m-d') ?>">
+          </div>
+          <div class="form-grup">
+            <label>Makbuz No</label>
+            <input type="text" name="makbuz_no" id="mk-no" class="girdi" maxlength="40"
+                   placeholder="Örn: 2026/0001">
+          </div>
+          <div class="form-grup">
+            <label>Brüt Tutar (₺) <span class="zorunlu">*</span></label>
+            <input type="text" name="brut" id="mk-brut" class="girdi" required inputmode="decimal"
+                   style="text-align:right;font-weight:700" placeholder="0,00">
+            <span class="yardim">Stopaj matrahı (KDV hariç).</span>
+          </div>
+          <div class="form-grup">
+            <label>Stopaj (₺)</label>
+            <input type="text" name="stopaj" id="mk-stopaj" class="girdi" inputmode="decimal"
+                   style="text-align:right" placeholder="otomatik">
+            <span class="yardim">Boş bırakılırsa %<?= rtrim(rtrim(number_format((float) $stopajOran, 2, ',', '.'), '0'), ',') ?> hesaplanır.</span>
+          </div>
+          <div class="form-grup">
+            <label>KDV (₺)</label>
+            <input type="text" name="kdv" id="mk-kdv" class="girdi" inputmode="decimal"
+                   style="text-align:right" placeholder="otomatik">
+            <span class="yardim">Boş bırakılırsa %<?= rtrim(rtrim(number_format((float) $kdvOran, 2, ',', '.'), '0'), ',') ?> hesaplanır.</span>
+          </div>
+          <div class="form-grup">
+            <label>Kesen Mali Müşavir</label>
+            <select name="musavir_id" id="mk-musavir">
+              <option value="">— Portföy sahibi —</option>
+              <?php foreach ($musavirler as $mid => $mad): ?>
+                <option value="<?= $mid ?>"><?= esc($mad) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="form-grup">
+            <label class="onay" style="margin-top:22px">
+              <input type="checkbox" name="tahsil_edildi" id="mk-tahsil" value="1">
+              <span>Tahsil edildi</span>
+            </label>
+          </div>
+          <div class="form-grup">
+            <label>Tahsil Tarihi</label>
+            <input type="date" name="tahsil_tarihi" id="mk-tahsil-tarih" class="girdi">
+          </div>
+          <div class="form-grup tam">
+            <label>Açıklama</label>
+            <input type="text" name="aciklama" id="mk-aciklama" class="girdi" maxlength="250">
+          </div>
+          <div class="form-grup tam">
+            <label class="onay">
+              <input type="checkbox" name="zorla" id="mk-zorla" value="1">
+              <span>Mükerrer olsa da kaydet</span>
+            </label>
+            <span class="yardim">Aynı makbuz numarası bu mükellef için zaten kayıtlıysa
+              kayıt engellenir; bilinçli tekrar giriyorsanız işaretleyin.</span>
+          </div>
+        </div>
+
+        <!-- Canlı önizleme (sunucudaki hesapla aynı formül) -->
+        <div class="mk-onizleme" id="mk-onizleme">
+          <div><span>Brüt</span><b id="mk-o-brut">0,00</b></div>
+          <div><span>Stopaj</span><b id="mk-o-stopaj" style="color:var(--turuncu,#ea580c)">0,00</b></div>
+          <div><span>KDV</span><b id="mk-o-kdv" style="color:var(--mor,#7c3aed)">0,00</b></div>
+          <div class="vurgu"><span>Net (tahsil edilecek)</span><b id="mk-o-net">0,00</b></div>
+        </div>
+
+        <div class="uyari bilgi" style="padding:9px 14px;font-size:13px;margin-top:8px">
+          <span class="ik">ℹ</span>
+          <div>
+            <b>Net = Brüt − Stopaj + KDV</b> olarak hesaplanır ve makbuza kaydedilir.
+            Oranlar sonradan değişse bile bu makbuzun tutarları korunur.
+          </div>
+        </div>
+      </div>
+      <div class="modal-alt">
+        <button type="button" class="btn ikincil" data-modal-kapat>İptal</button>
+        <button type="submit" class="btn yesil">💾 Makbuzu Kaydet</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <?= $this->endSection() ?>
 
 <?= $this->section('script') ?>
@@ -375,5 +517,154 @@ window.addEventListener('scroll', function () {
   if (!alan) { return; }
   if (alan.getBoundingClientRect().top < window.innerHeight + 250) { mkDahaFazla(); }
 });
+
+// =====================================================================
+//  MAKBUZ EKLE (formdan giriş)
+//  Sunucudaki hesabın aynısı: net = brüt − stopaj + KDV
+//  Oranlar boş bırakılan alanlar için gösterilir; kesin hesabı sunucu yapar.
+// =====================================================================
+(function () {
+  var ORAN_STOPAJ = <?= (float) $stopajOran ?>;
+  var ORAN_KDV    = <?= (float) $kdvOran ?>;
+  var acBtn  = document.getElementById('mk-ekle-ac');
+  var modal  = document.getElementById('mk-ekle-modal');
+  if (!acBtn || !modal) { return; }
+
+  function sayi(s) {
+    s = String(s == null ? '' : s).trim().replace(/\s/g, '');
+    if (s === '') { return NaN; }
+    if (s.indexOf(',') > -1) { s = s.replace(/\./g, '').replace(',', '.'); }
+    return parseFloat(s);
+  }
+  function bicim(n) {
+    if (isNaN(n)) { n = 0; }
+    return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  var eBrut   = document.getElementById('mk-brut');
+  var eStopaj = document.getElementById('mk-stopaj');
+  var eKdv    = document.getElementById('mk-kdv');
+
+  // Canlı önizleme: net = brüt − stopaj + KDV
+  function onizle() {
+    var brut   = sayi(eBrut.value);
+    var stopaj = sayi(eStopaj.value);
+    var kdv    = sayi(eKdv.value);
+
+    if (isNaN(brut)) { brut = 0; }
+    if (isNaN(stopaj)) { stopaj = brut * ORAN_STOPAJ / 100; }
+    if (isNaN(kdv))    { kdv    = brut * ORAN_KDV / 100; }
+
+    document.getElementById('mk-o-brut').textContent   = bicim(brut);
+    document.getElementById('mk-o-stopaj').textContent = bicim(stopaj);
+    document.getElementById('mk-o-kdv').textContent    = bicim(kdv);
+    document.getElementById('mk-o-net').textContent    = bicim(brut - stopaj + kdv);
+  }
+
+  [eBrut, eStopaj, eKdv].forEach(function (e) {
+    e.addEventListener('input', onizle);
+    // Alan terk edilince 1.234,56 biçimine çevir (detay ekranındaki düzenle aynı)
+    e.addEventListener('blur', function () {
+      var v = sayi(this.value);
+      this.value = isNaN(v) ? '' : bicim(v);
+      onizle();
+    });
+  });
+
+  // ---- Mükellef arama (mevcut /mukellefler/ara ucu; kapsam sunucuda süzülür) ----
+  var mkAra   = document.getElementById('mk-ara');
+  var mkListe = document.getElementById('mk-liste');
+  var mkId    = document.getElementById('mk-mukellef-id');
+  var mkSecili = document.getElementById('mk-secili');
+  var zaman;
+
+  function secimiTemizle() {
+    mkId.value = '';
+    if (mkSecili) {
+      mkSecili.textContent = 'Henüz mükellef seçilmedi.';
+      mkSecili.style.color = '';
+    }
+  }
+
+  mkAra.addEventListener('input', function () {
+    clearTimeout(zaman);
+    secimiTemizle();
+    var q = mkAra.value.trim();
+
+    if (q.length < 2) { mkListe.className = 'mk-liste'; mkListe.innerHTML = ''; return; }
+
+    zaman = setTimeout(function () {
+      fetch('<?= site_url('mukellefler/ara?q=') ?>' + encodeURIComponent(q), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin'
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          mkListe.innerHTML = '';
+          (d.sonuclar || []).forEach(function (m) {
+            var div = document.createElement('div');
+            div.className = 'oge';
+            var vkn = m.vergi_kimlik_no || m.tc_kimlik_no || '';
+            div.innerHTML = '<b></b> <span class="kucuk-yazi"></span>';
+            div.querySelector('b').textContent = m.unvan || '';
+            div.querySelector('span').textContent = vkn;
+
+            div.addEventListener('click', function () {
+              mkId.value = m.id;
+              mkAra.value = m.unvan;
+              if (mkSecili) {
+                mkSecili.textContent = '✓ Seçildi: ' + m.unvan + (vkn ? ' (' + vkn + ')' : '');
+                mkSecili.style.color = 'var(--yesil,#059669)';
+              }
+              mkListe.className = 'mk-liste';
+            });
+            mkListe.appendChild(div);
+          });
+
+          if (!mkListe.children.length) {
+            var bos = document.createElement('div');
+            bos.className = 'oge kucuk-yazi';
+            bos.textContent = 'Eşleşen mükellef bulunamadı.';
+            mkListe.appendChild(bos);
+          }
+          mkListe.className = 'mk-liste goster';
+        })
+        .catch(function () { mkListe.className = 'mk-liste'; });
+    }, 250);
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.mk-sec')) { mkListe.className = 'mk-liste'; }
+  });
+
+  // ---- Modal açma / kapatma ----
+  acBtn.addEventListener('click', function () {
+    // Her açılışta temiz form (yanlışlıkla önceki mükellefe kaydedilmesin)
+    document.getElementById('mk-ekle-form').reset();
+    document.getElementById('mk-tarih').value = '<?= date('Y-m-d') ?>';
+    document.getElementById('mk-yil').value   = String(MK_YIL);
+    secimiTemizle();
+    mkListe.className = 'mk-liste';
+    onizle();
+    BT.modalAc('mk-ekle-modal');
+    setTimeout(function () { mkAra.focus(); }, 100);
+  });
+
+  // ---- Gönderim denetimi ----
+  document.getElementById('mk-ekle-form').addEventListener('submit', function (e) {
+    if (!mkId.value) {
+      e.preventDefault();
+      BT.bildir('Önce mükellef seçin (arama kutusuna yazıp listeden seçin).', 'hata');
+      mkAra.focus();
+      return;
+    }
+    if (isNaN(sayi(eBrut.value)) || sayi(eBrut.value) <= 0) {
+      e.preventDefault();
+      BT.bildir('Brüt tutar 0’dan büyük olmalı.', 'hata');
+      eBrut.focus();
+    }
+  });
+
+  onizle();
+}());
 </script>
 <?= $this->endSection() ?>

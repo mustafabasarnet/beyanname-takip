@@ -20,6 +20,9 @@ Son geliştirme turunda eklenen/düzeltilenler:
 | **Yeni: Kişisel Notlar** | Her kullanıcıya özel **günlük not + to-do list**; yönetici dahil kimse başkasınınkini göremez |
 | **Kişisel To-Do genişletme** | Görevlere **öncelik / etiket / son tarih**; liste **AJAX** ile işlevsel (ekle, tamamla, düzenle, sil) |
 | **Kişisel To-Do giriş hatırlatması** | Son tarihi **geçen (dünden kalanlar)** ve **bugün son gün** olan kişisel görevler, girişte **günde bir kez pencere** olarak hatırlatılır (aşağıda ayrıntı) |
+| **Kişisel Notlar menü rozeti** | Menüde yapılmamış kişisel görev sayısı; görev tamamlanınca sayı **anında düşer** |
+| **Ajanda kişisel gizlilik** | `kişisel` görünürlüklü ajanda kaydını **yönetici dahil kimse** başkası adına göremez/değiştiremez |
+| **Makbuz Takip — formdan giriş** | Makbuzlar artık **➕ Makbuz Ekle** formuyla tek tek de girilebiliyor (Excel'e ek olarak; hesaplama aynı) |
 | **Panel — E-Defter kartı** | E-Defter sayılarına (Yüklenen/Hazır/Kalan…) tıklayınca **açılır liste**; üstte **Takip ekranında aç** → süzülmüş E-Defter Takip |
 
 Ayrıntılar: Makbuz Takip bölümü → "Pasifler dahil" · E-Defter bölümü → "7. Yazdırma" ve
@@ -855,8 +858,40 @@ Stopaj (%20) ve KDV (%20) **Ayarlar**'dan değiştirilebilir. Tutarlar makbuza
 **kaydedilir**, her görüntülemede yeniden hesaplanmaz — oran sonradan
 değişse bile geçmiş makbuzlar bozulmaz.
 
-Makbuz ekranından tek tek girebilir ya da **📥 Makbuz Yükle** ile ay
-sonunda toplu aktarabilirsiniz.
+Makbuzu iki yolla girebilirsiniz:
+
+**a) Formdan giriş — ➕ Makbuz Ekle** (Makbuz Takip ekranının üstündeki yeşil
+düğme). Excel'e ihtiyaç duymadan tek tek giriş:
+
+| Alan | Açıklama |
+|---|---|
+| **Mükellef** | Ünvan veya VKN yazıp açılan listeden seçilir (kapsamınız dışındaki mükellefler gelmez) |
+| **Yıl** | Listenin yıl filtresiyle aynı gelir |
+| **Makbuz Tarihi** | Bugün seçili gelir; yıl ve ay bu tarihten türetilir |
+| **Makbuz No** | Mükerrer koruma bu numaraya göre işler |
+| **Brüt Tutar** | Stopaj matrahı (KDV hariç) |
+| **Stopaj / KDV** | Boş bırakılırsa Ayarlar'daki oranlardan hesaplanır |
+| **Kesen Mali Müşavir** | Boşsa mükellefin portföy sahibi yazılır |
+| **Tahsil edildi / tarihi** | İşaretlenirse listede yeşil satır olur |
+| **Açıklama** | Serbest metin |
+
+Formun altında **canlı önizleme** vardır: brüt/stopaj/KDV girdikçe
+*Net (tahsil edilecek)* tutarı anında gösterilir. Bu önizleme kaydın kendisi
+değildir; kesin hesabı sunucu yapar ve makbuza yazar.
+
+> **Mükerrer koruma:** Aynı mükellef + yıl için aynı **makbuz numarası** zaten
+> kayıtlıysa kayıt engellenir ve uyarı çıkar (Excel içe aktarma da mükerrer
+> satırları atlar). Bilinçli tekrar giriyorsanız **"Mükerrer olsa da kaydet"**
+> kutusunu işaretleyin — bu kutu mükellef detayındaki formda da vardır.
+
+**b) Mükellef detayından giriş:** Çizelgede mükellef adına tıklayın; açılan
+dökümde *Makbuz Ekle / Düzenle* düğmesi aynı formu açar (düzenleme ve silme
+buradadır).
+
+**c) Toplu giriş:** **📥 Makbuz Yükle** ile ay sonunda Excel'den aktarın.
+
+Hangi yolla girilirse girilsin tutar hesabı **aynıdır**
+(`Net = Brüt − Stopaj + KDV`) ve girilen makbuzlar aynı çizelgeye yansır.
 
 ### 3. Excel içe aktarma
 

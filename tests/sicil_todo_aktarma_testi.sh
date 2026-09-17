@@ -177,8 +177,17 @@ ol "CSRF'siz POST reddedildi (403)" "403" "$CS"
 
 echo ""
 echo "=== 9) YETKİ: BAŞKA MÜŞAVİRİN İŞLEMİNE AKTARAMAZ ==="
+# Yetki testi ortama bağımlı olmasın: 'musavir' kullanıcısının ERİŞEMEDİĞİ
+# bir müşavir bulunur, mükellef onun kapsamına konur.
+MUS_ID=$(db "SELECT id FROM kullanicilar WHERE kullanici_adi='musavir' LIMIT 1;")
+IZIN=$(db "SELECT IFNULL(GROUP_CONCAT(musavir_id), '') FROM kullanici_musavirleri WHERE kullanici_id=$MUS_ID;")
+if [ -z "$IZIN" ]; then IZIN=$(db "SELECT IFNULL(musavir_id, 1) FROM kullanicilar WHERE id=$MUS_ID;"); fi
+[ -z "$IZIN" ] && IZIN=1
+DIS_MUS=$(db "SELECT id FROM musavirler WHERE id NOT IN ($IZIN) ORDER BY id LIMIT 1;")
+[ -z "$DIS_MUS" ] && DIS_MUS=2
+
 db "INSERT INTO mukellefler (musavir_id, unvan, mukellef_tipi, vergi_kimlik_no, ise_baslama_tarihi)
-    VALUES (2, 'YETKİ TESTİ (MÜŞAVİR 2)', 'tuzel', '9999999999', '2026-01-01');
+    VALUES ($DIS_MUS, 'YETKİ TESTİ (KAPSAM DIŞI)', 'tuzel', '9999999999', '2026-01-01');
     INSERT INTO sicil_degisiklik_turleri (ad, kod, aciklama, aktif) VALUES ('AKTARMA TEST ŞABLONU 2','AKTARMA_TEST2','test',1);" >/dev/null 2>&1
 MK2=$(db "SELECT id FROM mukellefler WHERE vergi_kimlik_no='9999999999' LIMIT 1")
 SAB2=$(db "SELECT id FROM sicil_degisiklik_turleri WHERE kod='AKTARMA_TEST2'")
@@ -193,12 +202,12 @@ girisYap musavir $J2
 JAR=$J2
 al /sicil
 gonder /sicil/todo-guncelle/$DEG2
-ol "Müşavir 1 kullanıcısı → erişim reddi (listeye döner)" "/sicil" "$(hedef)"
+ol "Kapsam dışı müşavir kullanıcısı → erişim reddi" "/sicil" "$(hedef)"
 al "$(hedef)"
-ol "Müşavir 1: 'Bu kayda erişemezsiniz' flash'ı" "1" "$(grep -c 'Bu kayda erişemezsiniz' $S)"
+ol "  'Bu kayda erişemezsiniz' flash'ı" "1" "$(grep -c 'Bu kayda erişemezsiniz' $S)"
 ol "Yetkisiz aktarma DB'ye yazmadı (0 todo)" "0" "$(db "SELECT COUNT(*) FROM sicil_bildirim_gorevleri WHERE sicil_degisikligi_id=$DEG2")"
 al /sicil/detay/$DEG2
-ol "Müşavir 1 işlem detayını açamaz (listeye döner)" "1" "$(grep -c 'Bu kayda erişemezsiniz' $S)"
+ol "Kapsam dışı işlem detayını açamaz (listeye döner)" "1" "$(grep -c 'Bu kayda erişemezsiniz' $S)"
 
 JAR=$J
 al /sicil

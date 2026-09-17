@@ -137,6 +137,18 @@ class Makbuz extends BaseController
     // -----------------------------------------------------------------
     //  MAKBUZ KAYDI
     // -----------------------------------------------------------------
+    /**
+     * Makbuz kaydeder (ekle veya düzenle).
+     *
+     * Tutar hesabı DEĞİŞMEZ: brüt/stopaj/KDV/net hesabı yine
+     * MakbuzModel::makbuzKaydet() → tutarHesapla() ile yapılır; burada
+     * yalnızca formdan gelen ham değerler hazırlanır.
+     *
+     * İki akış besler (geri dönüş adresi):
+     *   - Mükellef detayındaki modal : detay sayfasına döner (mevcut davranış)
+     *   - Makbuz Takip listesindeki "Makbuz Ekle" modalı : donus=liste ile
+     *     listeye döner (filtre korunur)
+     */
     public function kaydet()
     {
         $id  = (int) $this->request->getPost('id');
@@ -167,12 +179,42 @@ class Makbuz extends BaseController
             $veri['musavir_id'] = $muk['musavir_id'] ?? null;
         }
 
+        // Listeden gelen kayıtta filtre korunarak listeye dönülür
+        $donusListe = $this->request->getPost('donus') === 'liste';
+
+        // MÜKERRER KORUMA (yalnız YENİ kayıtta):
+        // Aynı mükellef + yıl için aynı makbuz numarası girilmişse kayıt
+        // engellenir. Excel içe aktarma da mükerrer satırları atlar; form
+        // girişinde de aynı kural işler. "zorla=1" ile bilinçli olarak aşılır.
+        if ($id <= 0
+            && ! empty($veri['makbuz_no'])
+            && $this->request->getPost('zorla') !== '1'
+            && $this->model->mukerrerMi($mid, (int) $veri['yil'], (string) $veri['makbuz_no'], (string) $veri['tarih'], (float) ($veri['brut'] ?? 0))
+        ) {
+            $mesaj = 'Bu makbuz numarası (' . $veri['makbuz_no'] . ') bu mükellef için '
+                   . $veri['yil'] . ' yılında zaten kayıtlı. Mükerrer kaydı istiyorsanız '
+                   . '"Mükerrer olsa da kaydet" kutusunu işaretleyin.';
+
+            if ($donusListe) {
+                return redirect()->to(site_url('makbuz?yil=' . $veri['yil']))->with('hata', $mesaj);
+            }
+
+            return redirect()->back()->withInput()->with('hata', $mesaj);
+        }
+
         if ($this->model->makbuzKaydet($veri, $id ?: null) === false) {
             return redirect()->back()->withInput()->with('hatalar', $this->model->errors());
         }
 
+        $mesaj = $id > 0 ? 'Makbuz güncellendi.' : 'Makbuz kaydedildi.';
+
+        if ($donusListe) {
+            return redirect()->to(site_url('makbuz?yil=' . $veri['yil']))
+                ->with('basari', $mesaj . ' Mükellef bazında döküm için satırdaki "Makbuz" bağlantısını kullanın.');
+        }
+
         return redirect()->to(site_url('makbuz/detay/' . $mid . '?yil=' . $veri['yil']))
-            ->with('basari', 'Makbuz kaydedildi.');
+            ->with('basari', $mesaj);
     }
 
     public function sil(int $id)

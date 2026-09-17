@@ -204,6 +204,14 @@ $vkn  = $mukellef['vergi_kimlik_no'] ?: $mukellef['tc_kimlik_no'];
             <label>Açıklama</label>
             <input type="text" name="aciklama" id="mb-aciklama" class="girdi" maxlength="250">
           </div>
+          <div class="form-grup tam">
+            <label class="onay">
+              <input type="checkbox" name="zorla" id="mb-zorla" value="1">
+              <span>Mükerrer olsa da kaydet</span>
+            </label>
+            <span class="yardim">Aynı makbuz numarası bu mükellef için zaten kayıtlıysa
+              kayıt engellenir; bilinçli tekrar giriyorsanız işaretleyin.</span>
+          </div>
         </div>
 
         <div class="uyari bilgi" style="padding:9px 14px;font-size:13px;margin-top:8px">
@@ -240,6 +248,7 @@ function makbuzAc(m) {
   document.getElementById('mb-tahsil').checked = String(m.tahsil_edildi) === '1';
   document.getElementById('mb-tahsil-tarih').value = m.tahsil_tarihi ? String(m.tahsil_tarihi).substr(0, 10) : '';
   document.getElementById('mb-aciklama').value = m.aciklama || '';
+  document.getElementById('mb-zorla').checked = false;
   BT.modalAc('makbuz-modal');
 }
 
