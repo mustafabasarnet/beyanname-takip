@@ -4,6 +4,27 @@
  * Beyanname Takip - Ortak yardımcı fonksiyonlar
  */
 
+
+if (! function_exists('isaretCoz')) {
+    /**
+     * GÜNCELLEME MADDELERİ — güvenli mini biçimlendirme.
+     *
+     * Metni HTML'e kaçırır, yalnız **kalın** işaretini <b> etiketine çevirir.
+     * Güncelleme içerikleri yönetici tarafından yazılsa da çıktı XSS'e kapalı
+     * kalır: kullanıcı girdisi asla ham HTML olarak basılmaz.
+     */
+    function isaretCoz(?string $metin): string
+    {
+        $metin = (string) $metin;
+
+        // 1) Tamamını kaçır (güvenlik)
+        $guvenli = esc($metin);
+
+        // 2) Yalnız **kalın** kalıbını <b> yap (kaçıştan sonra yıldızlar durur)
+        return preg_replace('/\*\*([^*]+)\*\*/u', '<b>$1</b>', $guvenli) ?? $guvenli;
+    }
+}
+
 if (! function_exists('trTarih')) {
     /** 2026-03-31 -> 31.03.2026 */
     function trTarih(?string $tarih, string $bicim = 'd.m.Y'): string

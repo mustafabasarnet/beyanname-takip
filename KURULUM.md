@@ -23,6 +23,7 @@ Son geliştirme turunda eklenen/düzeltilenler:
 | **Kişisel Notlar menü rozeti** | Menüde yapılmamış kişisel görev sayısı; görev tamamlanınca sayı **anında düşer** |
 | **Ajanda kişisel gizlilik** | `kişisel` görünürlüklü ajanda kaydını **yönetici dahil kimse** başkası adına göremez/değiştiremez |
 | **Makbuz Takip — formdan giriş** | Makbuzlar artık **➕ Makbuz Ekle** formuyla tek tek de girilebiliyor (Excel'e ek olarak; hesaplama aynı) |
+| **Yeni: Güncelleme Logları** | **🆕 Güncellemeler** ekranı + sürüm notu girildiğinde kullanıcıya **girişte modern pencere**; okunduğunda bir daha gösterilmez (aşağıda ayrıntı) |
 | **Panel — E-Defter kartı** | E-Defter sayılarına (Yüklenen/Hazır/Kalan…) tıklayınca **açılır liste**; üstte **Takip ekranında aç** → süzülmüş E-Defter Takip |
 
 Ayrıntılar: Makbuz Takip bölümü → "Pasifler dahil" · E-Defter bölümü → "7. Yazdırma" ve
@@ -67,6 +68,58 @@ listeyi görmek için **Kişisel Notlar ekranına girmek zorunda kalmamak**.
 
 > Kurulum sonrası tek komut yeterli: `database/migration_kisisel_uyari.sql`
 > (ayarları + okundu tablosunu ekler, tekrar koşulabilir).
+
+---
+
+## 🆕 Güncelleme Logları (Sürüm Notları)
+
+"Programa ne eklendi/değişti?" sorusunun cevabı: hem **kalıcı bir ekran**, hem de
+**girişte bir kez çıkan pencere**.
+
+### Kullanıcı tarafı
+
+| Nerede | Ne olur |
+|---|---|
+| Menü → **🆕 Güncellemeler** | Tüm sürüm notları listesi (her rol okur). Okunmamışlar **YENİ** rozetiyle ve mor çerçeveyle vurgulanır |
+| Menüdeki **mor rozet** | Okunmadığınız güncelleme sayısı; pencereyi okuyunca kaybolur |
+| **Giriş penceresi** | Okumadığınız sürüm notları açılır: sürüm etiketi + tarih + başlık ve **türüne göre renkli** maddeler |
+
+Pencere davranışı:
+
+- **Günde/oturumda bir kez değil, okunana kadar** çıkar: "✓ Okudum, anladım"
+  dediğinizde o kayıt sizin için kapanır ve bir daha görünmez.
+- **Kişi bazlıdır**: bir kullanıcının okuması diğerini etkilemez; herkes kendi
+  okunmamışlarını görür.
+- **Sıraya girer**: Ajanda ve Kişisel hatırlatma pencereleri açıksa önce onlar
+  kapanır, sonra bu pencere açılır — üst üste binmez.
+- Sağ üstteki **×**, pencere dışına tıklama ve **ESC** de "okudum" sayılır.
+
+### Madde biçimi (yönetici girerken)
+
+Her satır bir madde; **satır başındaki işaret** maddenin türünü belirler:
+
+| İşaret | Görünen | Ne zaman kullanılır |
+|---|---|---|
+| `+` | ✨ Eklendi (yeşil) | Yeni özellik/alan |
+| `~` | 🔄 Değişti (mavi) | Var olan davranış değişti |
+| `!` | 🐞 Düzeltildi (turuncu) | Hata giderildi |
+| `-` | 🗑 Kaldırıldı (gri) | Ekran/özellik kaldırıldı |
+| *(işaretsiz)* | • Not (gri) | Serbest açıklama |
+
+Metin içinde `**kalın**` yazarsanız vurgulu gösterilir. İçerik **her zaman
+kaçırılarak** basılır (ham HTML/script çalışmaz).
+
+### Yönetici tarafı
+
+- Ekranın üstündeki **➕ Yeni Güncelleme** ile kayıt eklenir; formda
+  **canlı önizleme** vardır — pencereyi kaydetmeden önce görürsünüz.
+- **Yayında** kutusu kaldırılırsa kayıt kimseye gösterilmez (taslak); liste
+  sayfasında *Yayında Olmayanlar* bölümünde durur.
+- Kayıt düzenlenebilir/silinebilir (silinince okundu kayıtları da temizlenir).
+- Kaydetme/düzenleme/silme **yalnız yöneticiye** açıktır; diğer roller yalnız okur.
+
+> Kurulum sonrası tek komut yeterli: `database/migration_guncelleme.sql`
+> (iki tablo + ilk sürüm kaydı; tekrar koşulabilir).
 
 ---
 

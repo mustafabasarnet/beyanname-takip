@@ -111,6 +111,19 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
         $routes->get('detay-yazdir/(:num)', 'Makbuz::detayYazdir/$1');
     });
 
+    // ----------------- GÜNCELLEME LOGLARI (sürüm notları) -----------------
+    // Her rol okur; kayıt ekleme/düzenleme/silme yalnız yönetici (controller denetler).
+    $routes->group('guncellemeler', ['filter' => 'auth'], static function ($routes) {
+        $routes->get('/', 'Guncellemeler::index');
+        $routes->get('yeni', 'Guncellemeler::yeni');
+        $routes->get('duzenle/(:num)', 'Guncellemeler::duzenle/$1');
+        $routes->post('kaydet', 'Guncellemeler::kaydet');
+        $routes->get('sil/(:num)', 'Guncellemeler::sil/$1');
+        // Giriş uyarısı (okunmamış güncellemeler)
+        $routes->get('giris-uyarisi', 'Guncellemeler::girisUyarisi');  // AJAX
+        $routes->post('uyari-okundu', 'Guncellemeler::uyariOkundu');   // AJAX
+    });
+
     // ----------------- AJANDA / HATIRLATICI -----------------
     // Tüm roller erişir: herkesin kendi işi olur. Görünürlük kayıt bazında.
     $routes->group('ajanda', static function ($routes) {

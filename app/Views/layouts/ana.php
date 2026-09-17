@@ -14,6 +14,8 @@
   text-align:center;margin-left:auto}
 /* Kişisel Notlar rozeti — kişiye özel açık görev sayısı (mavi = bilgi, kırmızı = aciliyet) */
 .menu-rozet.kisisel{background:#2563eb}
+/* Güncellemeler rozeti — okunmamış sürüm notu (mor = yenilik) */
+.menu-rozet.guncelleme{background:#7c3aed}
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
 </head>
@@ -54,6 +56,14 @@ $aktifUrl = trim(uri_string(), '/');
       <span class="menu-rozet kisisel" id="kisisel-menu-rozet"
             title="Yapılmamış kişisel görevler"
             style="<?= ! empty($kisiselRozet) ? '' : 'display:none' ?>"><?= (int) ($kisiselRozet ?? 0) ?></span>
+    </a>
+
+    <!-- Sürüm notları: okunmamış güncelleme sayısı rozet olarak görünür -->
+    <a href="<?= site_url('guncellemeler') ?>" class="<?= aktifMenu('guncellemeler') ?>">
+      <span class="ikon">🆕</span> Güncellemeler
+      <span class="menu-rozet guncelleme" id="guncelleme-menu-rozet"
+            title="Okunmamış güncellemeler"
+            style="<?= ! empty($guncellemeRozet) ? '' : 'display:none' ?>"><?= (int) ($guncellemeRozet ?? 0) ?></span>
     </a>
 
     <div class="menu-baslik">Takip</div>
@@ -354,6 +364,9 @@ window.kisiselRozetGuncelle = function (sayi) {
 
 <!-- Kişisel To-Do giriş hatırlatması (son tarihi geçen / bugün olan görevler) -->
 <?= $this->include('parcalar/kisisel_uyari') ?>
+
+<!-- Güncelleme logları penceresi (okunmamış sürüm notları) -->
+<?= $this->include('parcalar/guncelleme_uyari') ?>
 
 <?= $this->renderSection('script') ?>
 </body>

@@ -210,8 +210,42 @@ abstract class BaseController extends Controller
         $veri['sayfaBasligi']   = $baslik ?: ($veri['sayfaBasligi'] ?? 'Beyanname Takip');
         $veri['ajandaRozet']    = $veri['ajandaRozet'] ?? $this->ajandaRozet();
         $veri['kisiselRozet']   = $veri['kisiselRozet'] ?? $this->kisiselRozet();
+        $veri['guncellemeRozet'] = $veri['guncellemeRozet'] ?? $this->guncellemeRozet();
 
         return view($view, $veri);
+    }
+
+    /**
+     * Menüdeki "Güncellemeler" rozeti: kullanıcının OKUMADIĞI sürüm notu sayısı.
+     *
+     * Kişiye özeldir (okundu bilgisi kullanıcı bazlı). Her sayfada çalıştığı
+     * için istek başına önbelleklenir. Tablo yoksa (migration çalıştırılmamışsa)
+     * 0 döner — eski kurulumlar çökmesin.
+     */
+    protected function guncellemeRozet(): int
+    {
+        static $onbellek = null;
+
+        if ($onbellek !== null) {
+            return $onbellek;
+        }
+
+        if (empty($this->aktifKullanici['id'])) {
+            return $onbellek = 0;
+        }
+
+        try {
+            $db = \Config\Database::connect();
+
+            if (! $db->tableExists('guncellemeler')) {
+                return $onbellek = 0;
+            }
+
+            return $onbellek = (new \App\Models\GuncellemeModel())
+                ->okunmamisSayisi((int) $this->aktifKullanici['id']);
+        } catch (\Throwable $e) {
+            return $onbellek = 0;
+        }
     }
 
     /**
