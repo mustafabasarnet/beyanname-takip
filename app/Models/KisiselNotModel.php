@@ -165,6 +165,24 @@ class KisiselNotModel extends Model
             ->countAllResults();
     }
 
+    /**
+     * Açık (yapılmamış) görev sayısı — menüdeki "Kişisel Notlar" rozeti için.
+     *
+     * Yalnız sayaç döner (satır çekmez): her sayfada çalıştığı için hafiftir.
+     * Görev tamamlandığında/silindiğinde sayı kendiliğinden düşer.
+     */
+    public function acikGorevSayisi(int $kullaniciId): int
+    {
+        if ($kullaniciId <= 0) {
+            return 0;
+        }
+
+        return $this->where('kullanici_id', $kullaniciId)
+            ->where('tur', 'gorev')
+            ->where('tamamlandi', 0)
+            ->countAllResults();
+    }
+
     /** Görev öncelik/etiket/son_tarih girdilerini temizler */
     protected function temizleGorevAlani(string $oncelik, ?string $etiket, ?string $sonTarih): array
     {

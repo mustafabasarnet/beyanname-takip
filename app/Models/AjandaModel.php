@@ -102,15 +102,30 @@ class AjandaModel extends Model
      */
     public function gorunurlukKosulu($b, array $kullanici, array $musavirlar)
     {
-        $kid = (int) ($kullanici['id'] ?? 0);
+        $kid   = (int) ($kullanici['id'] ?? 0);
+        $admin = ($kullanici['rol'] ?? '') === 'admin';
 
-        // Admin her şeyi görür
-        if (($kullanici['rol'] ?? '') === 'admin') {
-            return $b;
+        /*
+         * ÖNEMLİ — "kisisel" kayıtlar SAHİBİNE özeldir.
+         *
+         * Yönetici dahil hiç kimse başkasının kişisel ajanda kaydını göremez
+         * (kişisel notlarla aynı gizlilik ilkesi). Bu yüzden admin için de
+         * koşul yazılır: admin yalnız kendi kişisel kayıtlarını görür; diğer
+         * görünürlük türlerinde (genel / gorev / musavir) tümünü görür.
+         */
+        $b->groupStart();
+
+        if ($admin) {
+            $b->where('ajanda.gorunurluk <>', 'kisisel')
+              ->orGroupStart()
+                  ->where('ajanda.gorunurluk', 'kisisel')
+                  ->where('ajanda.olusturan_id', $kid)
+              ->groupEnd();
+
+            return $b->groupEnd();
         }
 
-        $b->groupStart()
-            ->where('ajanda.gorunurluk', 'genel')
+        $b->where('ajanda.gorunurluk', 'genel')
             ->orGroupStart()
                 ->where('ajanda.gorunurluk', 'kisisel')
                 ->where('ajanda.olusturan_id', $kid)
@@ -134,18 +149,26 @@ class AjandaModel extends Model
         return $b->groupEnd();
     }
 
-    /** Kullanıcı bu kaydı görebilir mi? */
+    /**
+     * Kullanıcı bu kaydı görebilir mi?
+     *
+     * "kisisel" kayıtta tek kural SAHİPLİKTİR: yönetici dahil başkası göremez.
+     * Diğer türlerde admin tümünü görür.
+     */
     public function gorebilirMi(array $kayit, array $kullanici, array $musavirlar): bool
     {
+        $kid = (int) ($kullanici['id'] ?? 0);
+
+        if (($kayit['gorunurluk'] ?? '') === 'kisisel') {
+            return (int) $kayit['olusturan_id'] === $kid;
+        }
+
         if (($kullanici['rol'] ?? '') === 'admin') {
             return true;
         }
 
-        $kid = (int) ($kullanici['id'] ?? 0);
-
         return match ($kayit['gorunurluk']) {
             'genel'   => true,
-            'kisisel' => (int) $kayit['olusturan_id'] === $kid,
             'gorev'   => (int) $kayit['atanan_id'] === $kid || (int) $kayit['olusturan_id'] === $kid,
             'musavir' => in_array((int) $kayit['musavir_id'], $musavirlar, true),
             default   => false,
@@ -154,15 +177,22 @@ class AjandaModel extends Model
 
     /**
      * Kullanıcı bu kaydı DÜZENLEYEBİLİR mi?
-     * Oluşturan, atanan ve admin düzenleyebilir; diğerleri yalnız görür.
+     *
+     * Genel/görev/müşavir kayıtlarında oluşturan, atanan ve admin düzenler.
+     * "kisisel" kaydı İSE YALNIZ SAHİBİ düzenleyebilir — yönetici dahil kimse
+     * (yapıldı işaretleme, erteleme, silme, dosya eki dahil).
      */
     public function duzenleyebilirMi(array $kayit, array $kullanici): bool
     {
+        $kid = (int) ($kullanici['id'] ?? 0);
+
+        if (($kayit['gorunurluk'] ?? '') === 'kisisel') {
+            return (int) $kayit['olusturan_id'] === $kid;
+        }
+
         if (($kullanici['rol'] ?? '') === 'admin') {
             return true;
         }
-
-        $kid = (int) ($kullanici['id'] ?? 0);
 
         return (int) $kayit['olusturan_id'] === $kid
             || (int) ($kayit['atanan_id'] ?? 0) === $kid;

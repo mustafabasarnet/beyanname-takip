@@ -248,6 +248,9 @@ class Kisisel extends BaseController
             'yaklasan' => $cevir($liste['yaklasan']),
             'toplam'   => (int) $liste['toplam'],
             'tarihsiz' => $this->model->tarihsizAcikSayisi($kid),
+            // Menü rozeti için: kullanıcının TÜM açık görevi (pencerede
+            // görünmeyen uzak tarihli/tarihsiz görevler dahil)
+            'acik'     => $this->model->acikGorevSayisi($kid),
             'gun'      => max(0, min(30, $gun)),
         ]);
     }

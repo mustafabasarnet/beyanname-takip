@@ -209,8 +209,42 @@ abstract class BaseController extends Controller
         $veri['aktifKullanici'] = $this->aktifKullanici;
         $veri['sayfaBasligi']   = $baslik ?: ($veri['sayfaBasligi'] ?? 'Beyanname Takip');
         $veri['ajandaRozet']    = $veri['ajandaRozet'] ?? $this->ajandaRozet();
+        $veri['kisiselRozet']   = $veri['kisiselRozet'] ?? $this->kisiselRozet();
 
         return view($view, $veri);
+    }
+
+    /**
+     * Menüdeki "Kişisel Notlar" rozeti: yapılmamış (açık) görev sayısı.
+     *
+     * Kişiye özeldir — yalnız giriş yapan kullanıcının kendi görevlerini sayar.
+     * Her sayfada çalıştığı için istek başına önbelleklenir ve tek COUNT
+     * sorgusu kullanır. Tablo yoksa (migration çalıştırılmamışsa) 0 döner.
+     */
+    protected function kisiselRozet(): int
+    {
+        static $onbellek = null;
+
+        if ($onbellek !== null) {
+            return $onbellek;
+        }
+
+        if (empty($this->aktifKullanici['id'])) {
+            return $onbellek = 0;
+        }
+
+        try {
+            $db = \Config\Database::connect();
+
+            if (! $db->tableExists('kisisel_notlar')) {
+                return $onbellek = 0;
+            }
+
+            return $onbellek = (new \App\Models\KisiselNotModel())
+                ->acikGorevSayisi((int) $this->aktifKullanici['id']);
+        } catch (\Throwable $e) {
+            return $onbellek = 0;
+        }
     }
 
     /**

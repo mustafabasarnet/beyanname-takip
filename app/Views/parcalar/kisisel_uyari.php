@@ -83,6 +83,9 @@
   var CSRF_AD  = <?= json_encode(csrf_token()) ?>;
   var CSRF_DEG = <?= json_encode(csrf_hash()) ?>;
 
+  var veri       = null;   // sunucudan gelen hatırlatma verisi
+  var tamamlanan = 0;      // pencere içinden işaretlenen görev sayısı (rozet için)
+
   // ---- CSRF'li POST yardımcısı (uygulama.js yüklenmeden de çalışır) ----
   function gonder(url, veri) {
     var g = new URLSearchParams();
@@ -196,6 +199,7 @@
       .then(function (j) {
         if (!j.durum) { throw new Error(j.mesaj || 'Güncellenemedi.'); }
 
+        tamamlanan++;
         satir.style.opacity = '.45';
         satir.querySelector('.ad a').style.textDecoration = 'line-through';
         setTimeout(function () {
@@ -211,6 +215,14 @@
 
   function kalanGuncelle() {
     var kalan = ort.querySelectorAll('.ks-is').length;
+
+    // Menüdeki Kişisel Notlar rozeti de anında düşsün.
+    // Sunucu 'acik' alanıyla kullanıcının TÜM açık görevini bildirir
+    // (pencerede listelenmeyen uzak tarihli/tarihsiz görevler dahil);
+    // buradan tamamlanan kadarını düşeriz.
+    if (window.kisiselRozetGuncelle && veri && typeof veri.acik === 'number') {
+      window.kisiselRozetGuncelle(Math.max(0, veri.acik - tamamlanan));
+    }
 
     if (kalan === 0) {
       kapat();
@@ -247,12 +259,15 @@
     var ozet = document.getElementById('ks-uyari-ozet');
     if (ozet) { ozet.textContent = v.toplam + ' görev bekliyor'; }
 
+    // Menü rozetini sunucudaki gerçek açık görev sayısıyla eşitle
+    if (window.kisiselRozetGuncelle && typeof v.acik === 'number') {
+      window.kisiselRozetGuncelle(v.acik);
+    }
+
     ort.style.display = 'flex';
   }
 
   // ---- Ajanda uyarısı açıksa sıraya gir: iki pencere üst üste çıkmasın ----
-  var veri = null;
-
   function ajandaAcikMi() {
     var aj = document.getElementById('aj-uyari-ort');
 

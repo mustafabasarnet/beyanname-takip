@@ -12,6 +12,8 @@
 .menu-rozet{display:inline-block;min-width:18px;padding:1px 6px;border-radius:99px;
   background:#dc2626;color:#fff;font-size:10.5px;font-weight:700;
   text-align:center;margin-left:auto}
+/* Kişisel Notlar rozeti — kişiye özel açık görev sayısı (mavi = bilgi, kırmızı = aciliyet) */
+.menu-rozet.kisisel{background:#2563eb}
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
 </head>
@@ -49,6 +51,9 @@ $aktifUrl = trim(uri_string(), '/');
     <!-- Kişisel not + to-do: yalnız kullanıcının kendisi görür -->
     <a href="<?= site_url('kisisel') ?>" class="<?= aktifMenu('kisisel') ?>">
       <span class="ikon">📝</span> Kişisel Notlar
+      <span class="menu-rozet kisisel" id="kisisel-menu-rozet"
+            title="Yapılmamış kişisel görevler"
+            style="<?= ! empty($kisiselRozet) ? '' : 'display:none' ?>"><?= (int) ($kisiselRozet ?? 0) ?></span>
     </a>
 
     <div class="menu-baslik">Takip</div>
@@ -330,6 +335,22 @@ $aktifUrl = trim(uri_string(), '/');
 </script>
 
 <script src="<?= base_url('assets/js/uygulama.js') ?>"></script>
+
+<script>
+/* Menüdeki "Kişisel Notlar" rozetini canlı günceller.
+   Kişisel sayfasında görev tamamlanınca ve giriş hatırlatma penceresinden
+   işaretlenince çağrılır → sayı anında düşer. 0 olunca rozet gizlenir. */
+window.kisiselRozetGuncelle = function (sayi) {
+  var el = document.getElementById('kisisel-menu-rozet');
+  if (!el) { return; }
+
+  sayi = parseInt(sayi, 10);
+  if (isNaN(sayi) || sayi < 0) { sayi = 0; }
+
+  el.textContent = sayi;
+  el.style.display = sayi > 0 ? '' : 'none';
+};
+</script>
 
 <!-- Kişisel To-Do giriş hatırlatması (son tarihi geçen / bugün olan görevler) -->
 <?= $this->include('parcalar/kisisel_uyari') ?>

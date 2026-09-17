@@ -139,6 +139,9 @@
 
   function sayacGuncelle(a, b) {
     sayac.textContent = a + ' açık' + (b > 0 ? ' · ' + b + ' tamamlandı' : '');
+
+    // Menüdeki Kişisel Notlar rozeti de anında düşsün
+    if (window.kisiselRozetGuncelle) { window.kisiselRozetGuncelle(a); }
   }
   sayacGuncelle(<?= count($acik) ?>, <?= count($biten) ?>);
 
