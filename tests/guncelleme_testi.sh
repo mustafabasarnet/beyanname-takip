@@ -199,16 +199,52 @@ ol "kayıt silindi" "0" "$(db "SELECT COUNT(*) FROM guncellemeler WHERE id=$GID;
 echo
 echo "=== 11) POPUP SAYFAYA GÖMÜLÜ MÜ ==="
 curl -s -b $JA -c $JA -o /tmp/gn_layout.html "$B/panel"
+curl -s -b $JP -c $JP -o /tmp/gn_menu_personel.html "$B/panel"
 ol "pencere kutusu var (gn-uyari-ort)" "1" "$(grep -c 'id="gn-uyari-ort"' /tmp/gn_layout.html | awk '{print ($1>0)?1:0}')"
 ol "başlık: Neler Değişti?" "1" "$(grep -c 'Neler Değişti' /tmp/gn_layout.html | awk '{print ($1>0)?1:0}')"
 ol "giris-uyarisi fetch ediliyor" "1" "$(grep -c 'guncellemeler/giris-uyarisi' /tmp/gn_layout.html | awk '{print ($1>0)?1:0}')"
 ol "okundu POST'u var" "1" "$(grep -c 'guncellemeler/uyari-okundu' /tmp/gn_layout.html | awk '{print ($1>0)?1:0}')"
 ol "diğer pencereleri bekleyen sıra mantığı var" "1" "$(grep -c 'digerleriKapaliMi' /tmp/gn_layout.html | awk '{print ($1>0)?1:0}')"
 ol "menüde Güncellemeler bağlantısı var" "1" "$(grep -c 'guncellemeler"' /tmp/gn_layout.html | awk '{print ($1>0)?1:0}')"
+
+echo
+echo "=== 12) MENÜ KONUMU (Sistem bölümünün en altı) ==="
+# Menüyü bölüm başlıklarına göre çözer: her öge hangi bölümde, kaçıncı sırada
+menuParcala(){ python3 -c "
+import re, sys
+h = open('$1', encoding='utf-8').read()
+nav = re.search(r'<nav class=\"menu-liste\">(.*?)</nav>', h, re.S)
+if not nav: print('NAV YOK'); sys.exit()
+bolum = ''
+for m in re.finditer(r'<div class=\"menu-baslik\">([^<]+)</div>|</span>\s*([^<\n]+?)\s*\n', nav.group(1)):
+    if m.group(1):
+        bolum = m.group(1).strip()
+    elif m.group(2).strip():
+        print(bolum + '|' + m.group(2).strip())
+"; }
+menuParcala /tmp/gn_layout.html > /tmp/gn_menu_admin.txt
+menuParcala /tmp/gn_menu_personel.html > /tmp/gn_menu_personel.txt
+
+ol "admin: Güncellemeler 'Sistem' bölümünde" "1" \
+   "$(grep -c '^Sistem|Güncellemeler$' /tmp/gn_menu_admin.txt)"
+ol "admin: Sistem bölümünün EN SON ögesi" "1" \
+   "$(python3 -c "
+satirlar=[l.strip() for l in open('/tmp/gn_menu_admin.txt',encoding='utf-8') if l.strip()]
+sistem=[l.split('|',1)[1] for l in satirlar if l.startswith('Sistem|')]
+print(1 if sistem and sistem[-1]=='Güncellemeler' else 0)")"
+ol "admin: Genel bölümünde artık YOK" "0" \
+   "$(grep -c '^Genel|Güncellemeler$' /tmp/gn_menu_admin.txt)"
+ol "admin: yönetici araçları hâlâ Sistem'de" "5" \
+   "$(grep -c '^Sistem|' /tmp/gn_menu_admin.txt | awk '{print $1-1}')"
+ol "personel: Güncellemeler Sistem bölümünde (erişim korundu)" "1" \
+   "$(grep -c '^Sistem|Güncellemeler$' /tmp/gn_menu_personel.txt)"
+ol "personel: Sistem bölümünde BAŞKA öge yok (admin araçları gizli)" "1" \
+   "$(grep -c '^Sistem|' /tmp/gn_menu_personel.txt)"
+
 ol "giriş ekranında popup YOK" "0" "$(curl -s "$B/giris" | grep -c 'gn-uyari-ort')"
 
 echo
-echo "=== 12) TEMİZLİK ==="
+echo "=== 13) TEMİZLİK ==="
 db "DELETE FROM guncellemeler WHERE versiyon LIKE '9.%';" >/dev/null
 db "DELETE FROM guncelleme_okundu WHERE kullanici_id IN (1,2);" >/dev/null
 ol "test kayıtları temizlendi" "0" "$(db "SELECT COUNT(*) FROM guncellemeler WHERE versiyon LIKE '9.%';")"

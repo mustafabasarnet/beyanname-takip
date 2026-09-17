@@ -80,9 +80,14 @@ listeyi görmek için **Kişisel Notlar ekranına girmek zorunda kalmamak**.
 
 | Nerede | Ne olur |
 |---|---|
-| Menü → **🆕 Güncellemeler** | Tüm sürüm notları listesi (her rol okur). Okunmamışlar **YENİ** rozetiyle ve mor çerçeveyle vurgulanır |
+| Menü → **Sistem → 🆕 Güncellemeler** | Tüm sürüm notları listesi (her rol okur). Okunmamışlar **YENİ** rozetiyle ve mor çerçeveyle vurgulanır |
 | Menüdeki **mor rozet** | Okunmadığınız güncelleme sayısı; pencereyi okuyunca kaybolur |
 | **Giriş penceresi** | Okumadığınız sürüm notları açılır: sürüm etiketi + tarih + başlık ve **türüne göre renkli** maddeler |
+
+> **Menüdeki yeri:** Güncellemeler bağlantısı **Sistem** bölümünün **en altındadır**.
+> Yönetici o bölümde önce yönetici araçlarını (Kullanıcılar, Toplu Dönem Üret, Yedekleme,
+> Veri Yönetimi, Çöp Kutusu), en sonda Güncellemeler'i görür; personel ve mali müşavirde
+> ise Sistem bölümünde yalnız Güncellemeler bulunur.
 
 Pencere davranışı:
 

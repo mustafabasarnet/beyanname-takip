@@ -58,14 +58,6 @@ $aktifUrl = trim(uri_string(), '/');
             style="<?= ! empty($kisiselRozet) ? '' : 'display:none' ?>"><?= (int) ($kisiselRozet ?? 0) ?></span>
     </a>
 
-    <!-- Sürüm notları: okunmamış güncelleme sayısı rozet olarak görünür -->
-    <a href="<?= site_url('guncellemeler') ?>" class="<?= aktifMenu('guncellemeler') ?>">
-      <span class="ikon">🆕</span> Güncellemeler
-      <span class="menu-rozet guncelleme" id="guncelleme-menu-rozet"
-            title="Okunmamış güncellemeler"
-            style="<?= ! empty($guncellemeRozet) ? '' : 'display:none' ?>"><?= (int) ($guncellemeRozet ?? 0) ?></span>
-    </a>
-
     <div class="menu-baslik">Takip</div>
     <a href="<?= site_url('takip') ?>" class="<?= aktifMenu('takip') ?>">
       <span class="ikon">📝</span> Beyanname Takip
@@ -152,8 +144,15 @@ $aktifUrl = trim(uri_string(), '/');
       </a>
     <?php endif; ?>
 
+    <?php /*
+     * SİSTEM bölümü
+     *   - Yöneticiye özel araçlar (kullanıcılar, yedekleme, veri yönetimi…)
+     *   - En altta Güncellemeler: sürüm notlarını HER ROL okur, bu yüzden
+     *     yönetici koşulunun DIŞINDA durur (başlık da tüm rollere görünür).
+     */ ?>
+    <div class="menu-baslik">Sistem</div>
+
     <?php if ($rol === 'admin'): ?>
-      <div class="menu-baslik">Sistem</div>
       <a href="<?= site_url('kullanicilar') ?>" class="<?= aktifMenu('kullanicilar') ?>">
         <span class="ikon">👥</span> Kullanıcılar
       </a>
@@ -170,6 +169,14 @@ $aktifUrl = trim(uri_string(), '/');
         <span class="ikon">🗑️</span> Çöp Kutusu
       </a>
     <?php endif; ?>
+
+    <!-- Sürüm notları: okunmamış güncelleme sayısı rozet olarak görünür -->
+    <a href="<?= site_url('guncellemeler') ?>" class="<?= aktifMenu('guncellemeler') ?>">
+      <span class="ikon">🆕</span> Güncellemeler
+      <span class="menu-rozet guncelleme" id="guncelleme-menu-rozet"
+            title="Okunmamış güncellemeler"
+            style="<?= ! empty($guncellemeRozet) ? '' : 'display:none' ?>"><?= (int) ($guncellemeRozet ?? 0) ?></span>
+    </a>
   </nav>
 
   <div class="yan-alt">
