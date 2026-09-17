@@ -57,6 +57,25 @@ if (! function_exists('ayarTanimlari')) {
                 'aciklama' => 'Ajanda kaydına eklenebilecek en büyük dosya boyutu. 5120 KB = 5 MB.',
             ],
 
+            // ---------------- KİŞİSEL NOTLAR / TO-DO ----------------
+            'kisisel_giris_uyari' => [
+                'ad'       => 'Girişte To-Do Hatırlatması',
+                'grup'     => 'kisisel',
+                'tip'      => 'onay',
+                'aciklama' => 'Açıkken, son tarihi geçen ("dünden kalanlar") ve bugün son gün olan '
+                            . 'kişisel görevler giriş sonrası bir kez pencere olarak hatırlatılır.',
+            ],
+            'kisisel_uyari_gun' => [
+                'ad'       => 'Hatırlatmada Kaç Gün İlerisi',
+                'grup'     => 'kisisel',
+                'tip'      => 'sayi',
+                'min'      => 0,
+                'max'      => 30,
+                'birim'    => 'gün',
+                'aciklama' => 'Son tarihi bu gün sayısı içinde olan görevler de hatırlatma penceresinde '
+                            . '"Yaklaşan" grubunda gösterilir. 0 = yalnız gecikmiş ve bugün.',
+            ],
+
             // ---------------- OTURUM / GÜVENLİK ----------------
             'hatirla_acik' => [
                 'ad'       => '"Beni Hatırla" Kutusu',
@@ -183,6 +202,11 @@ if (! function_exists('ayarGruplari')) {
                 'ikon'     => '🗓️',
                 'baslik'   => 'Ajanda ve Hatırlatmalar',
                 'aciklama' => 'Panel kartı, giriş uyarısı ve dosya eki sınırı.',
+            ],
+            'kisisel' => [
+                'ikon'     => '📝',
+                'baslik'   => 'Kişisel Notlar ve To-Do',
+                'aciklama' => 'Girişte kişisel görev hatırlatması ve kaç gün ilerisinin listeleneceği.',
             ],
             'evrak' => [
                 'ikon'     => '📁',

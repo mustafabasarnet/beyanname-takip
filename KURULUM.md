@@ -19,10 +19,53 @@ Son geliştirme turunda eklenen/düzeltilenler:
 | **E-Defter Takip** | **Durum** ve **Sorumlu Personel** filtrelerinde **çoklu seçim** (Beyanname Takip bileşeniyle aynı) |
 | **Yeni: Kişisel Notlar** | Her kullanıcıya özel **günlük not + to-do list**; yönetici dahil kimse başkasınınkini göremez |
 | **Kişisel To-Do genişletme** | Görevlere **öncelik / etiket / son tarih**; liste **AJAX** ile işlevsel (ekle, tamamla, düzenle, sil) |
+| **Kişisel To-Do giriş hatırlatması** | Son tarihi **geçen (dünden kalanlar)** ve **bugün son gün** olan kişisel görevler, girişte **günde bir kez pencere** olarak hatırlatılır (aşağıda ayrıntı) |
 | **Panel — E-Defter kartı** | E-Defter sayılarına (Yüklenen/Hazır/Kalan…) tıklayınca **açılır liste**; üstte **Takip ekranında aç** → süzülmüş E-Defter Takip |
 
 Ayrıntılar: Makbuz Takip bölümü → "Pasifler dahil" · E-Defter bölümü → "7. Yazdırma" ve
 "8. Durum ve Sorumlu Personel — çoklu seçim" · Vergi Yükü bölümü → "Hasılat kapsamı".
+
+---
+
+## 📝 Kişisel Notlar — To-Do Giriş Hatırlatması
+
+Kişisel görevlerin **son tarihine** göre çalışan otomatik hatırlatıcı. Amaç: günlük
+listeyi görmek için **Kişisel Notlar ekranına girmek zorunda kalmamak**.
+
+**Nasıl çalışır**
+
+1. Giriş yaptıktan sonra açılan ilk sayfada, üç gruptan oluşan bir pencere açılır:
+   - **⚠ Gecikmiş — dünden kalanlar** (son tarihi geçmiş, yapılmamış görevler)
+   - **⏰ Bugün son gün**
+   - **📅 Yaklaşan** (ayarlardaki gün sayısı kadar ilerisi)
+   - Alt satır: son tarihi **belirlenmemiş** açık görevlerin sayısı (bilgi)
+2. Satırdaki **kutuyu** tıklayarak görevi doğrudan *yapıldı* işaretleyebilirsiniz;
+   kutunun yanındaki başlık sizi Kişisel Notlar ekranına götürür.
+3. **Anladım** (veya pencere dışına tık / ESC) → pencere kapanır ve o gün
+   bir daha açılmaz. Hatırlatmadaki bütün görevler tamamlanınca pencere
+   kendiliğinden kapanır.
+
+**Kurallar**
+
+- **Günde bir kez**: kapatma kaydı veritabanına yazılır (`kisisel_uyari_okundu`);
+  çıkış yapıp aynı gün yeniden girseniz de tekrar açılmaz. Ertesi gün yeniden gelir.
+- **Ajanda uyarısıyla çakışmaz**: Ajanda pencere açıksa kişisel hatırlatma
+  onun kapanmasını bekler; iki pencere üst üste çıkmaz.
+- **Gizlilik**: herkes yalnız **kendi** görevlerini görür (yönetici dahil).
+- **Yeni tablo yok**: görevler mevcut `kisisel_notlar` tablosunun
+  `son_tarih` alanından üretilir.
+
+**Ayarlar** → *📝 Kişisel Notlar ve To-Do* kartı:
+
+| Ayar | Ne yapar |
+|---|---|
+| **Girişte To-Do Hatırlatması** | Aç/kapa. Kapalıyken pencere hiç açılmaz. |
+| **Hatırlatmada Kaç Gün İlerisi** | "Yaklaşan" grubunun kapsamı (0 = yalnız gecikmiş + bugün, en çok 30 gün). Varsayılan: **3** |
+
+> Kurulum sonrası tek komut yeterli: `database/migration_kisisel_uyari.sql`
+> (ayarları + okundu tablosunu ekler, tekrar koşulabilir).
+
+---
 
 ## ⚙️ Gerekli PHP Eklentileri
 

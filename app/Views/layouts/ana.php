@@ -330,6 +330,10 @@ $aktifUrl = trim(uri_string(), '/');
 </script>
 
 <script src="<?= base_url('assets/js/uygulama.js') ?>"></script>
+
+<!-- Kişisel To-Do giriş hatırlatması (son tarihi geçen / bugün olan görevler) -->
+<?= $this->include('parcalar/kisisel_uyari') ?>
+
 <?= $this->renderSection('script') ?>
 </body>
 </html>

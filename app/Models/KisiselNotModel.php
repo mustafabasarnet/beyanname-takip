@@ -95,6 +95,76 @@ class KisiselNotModel extends Model
             ->findAll();
     }
 
+    // =================================================================
+    //  GİRİŞ HATIRLATMASI (son tarihe göre)
+    // =================================================================
+
+    /**
+     * Girişte hatırlatılacak görevler — SON TARİHE göre üç grup:
+     *
+     *   gecikmis → son tarihi geçmiş, hâlâ yapılmamış  ("dünden kalanlar")
+     *   bugun    → son tarihi bugün
+     *   yaklasan → son tarihi önümüzdeki $yaklasanGun gün içinde
+     *
+     * Yalnız tamamlanmamış ve son tarihi girilmiş görevler döner; her satıra
+     * görüntüleme için kac_gün / gecikmis bilgisi eklenir.
+     *
+     * @param int $yaklasanGun kaç gün ilerisi listelensin (0 = yalnız gecikmiş+bugün)
+     *
+     * @return array{gecikmis:array, bugun:array, yaklasan:array, toplam:int}
+     */
+    public function uyarilacakGorevler(int $kullaniciId, int $yaklasanGun = 3): array
+    {
+        $bugun = date('Y-m-d');
+        $gun   = max(0, min(30, $yaklasanGun));
+        $sinir = date('Y-m-d', strtotime('+' . $gun . ' days'));
+
+        $satirlar = $this->where('kullanici_id', $kullaniciId)
+            ->where('tur', 'gorev')
+            ->where('tamamlandi', 0)
+            ->where('son_tarih IS NOT NULL', null, false)
+            ->where('son_tarih <=', $sinir)
+            ->orderBy('son_tarih', 'ASC')
+            ->orderBy('id', 'ASC')
+            ->findAll();
+
+        $out = ['gecikmis' => [], 'bugun' => [], 'yaklasan' => [], 'toplam' => 0];
+
+        foreach ($satirlar as $g) {
+            $son  = (string) $g['son_tarih'];
+            $fark = (int) round((strtotime($son) - strtotime($bugun)) / 86400); // + gelecek, − geçmiş
+
+            $g['kalan_gun']   = max(0, $fark);   // kaç gün kaldı  (bugün = 0)
+            $g['gecikme_gun'] = max(0, -$fark);  // kaç gün gecikti (gecikmemişse 0)
+            $g['gecikmis']    = $fark < 0;
+
+            if ($son < $bugun) {
+                $out['gecikmis'][] = $g;
+            } elseif ($son === $bugun) {
+                $out['bugun'][] = $g;
+            } else {
+                $out['yaklasan'][] = $g;
+            }
+        }
+
+        $out['toplam'] = count($out['gecikmis']) + count($out['bugun']) + count($out['yaklasan']);
+
+        return $out;
+    }
+
+    /** Son tarihi girilmemiş açık görev sayısı (hatırlatma alt bilgisi). */
+    public function tarihsizAcikSayisi(int $kullaniciId): int
+    {
+        return $this->where('kullanici_id', $kullaniciId)
+            ->where('tur', 'gorev')
+            ->where('tamamlandi', 0)
+            ->groupStart()
+                ->where('son_tarih', null)
+                ->orWhere('son_tarih', '')
+            ->groupEnd()
+            ->countAllResults();
+    }
+
     /** Görev öncelik/etiket/son_tarih girdilerini temizler */
     protected function temizleGorevAlani(string $oncelik, ?string $etiket, ?string $sonTarih): array
     {

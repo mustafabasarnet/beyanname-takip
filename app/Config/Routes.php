@@ -147,6 +147,9 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
         $routes->post('gorev-ters', 'Kisisel::gorevTers');       // AJAX
         $routes->post('gorev-guncelle', 'Kisisel::gorevGuncelle'); // AJAX
         $routes->post('gorev-sil', 'Kisisel::gorevSil');         // AJAX
+        // Giriş hatırlatması (son tarihi geçen/bugün olan kişisel görevler)
+        $routes->get('giris-uyarisi', 'Kisisel::girisUyarisi');  // AJAX (günde bir kez)
+        $routes->post('uyari-okundu', 'Kisisel::uyariOkundu');   // AJAX
         $routes->post('gecmis-sil', 'Kisisel::gecmisSil');       // AJAX
     });
 

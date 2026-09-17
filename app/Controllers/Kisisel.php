@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\AyarModel;
 use App\Models\KisiselNotModel;
 
 /**
@@ -27,6 +28,12 @@ class Kisisel extends BaseController
     protected function ben(): int
     {
         return (int) ($this->aktifKullanici['id'] ?? 0);
+    }
+
+    /** Veritabanı bağlantısı (proje deseni: Ajanda::db() ile aynı) */
+    protected function db()
+    {
+        return \Config\Database::connect();
     }
 
     /**
@@ -180,5 +187,93 @@ class Kisisel extends BaseController
             'mesaj'      => 'Not silindi.',
             'gecmisHtml' => view('kisisel/_gecmis', ['gecmis' => $gecmis, 'tarih' => $tarih]),
         ]);
+    }
+
+    // =================================================================
+    //  GİRİŞ HATIRLATMASI (kişisel To-Do — son tarihe göre)
+    // =================================================================
+
+    /**
+     * Giriş hatırlatma penceresi verisi (AJAX/JSON).
+     *
+     * Günde BİR kez gösterilir: pencere kapatılınca `kisisel_uyari_okundu`
+     * tablosuna o günün kaydı yazılır (ajanda uyarısı ile aynı desen) — çıkış
+     * yapıp aynı gün yeniden girilse de pencere tekrar açılmaz. Ayar kapalıysa
+     * veya hatırlatılacak görev yoksa goster=false.
+     *
+     * Yalnız giriş yapan kullanıcının KENDİ görevleri döner.
+     */
+    public function girisUyarisi()
+    {
+        $ayar = new AyarModel();
+
+        if ($ayar->oku('kisisel_giris_uyari', '1') !== '1') {
+            return $this->response->setJSON(['durum' => true, 'goster' => false]);
+        }
+
+        $kid = $this->ben();
+
+        if ($this->uyariOkunduMu($kid)) {
+            return $this->response->setJSON(['durum' => true, 'goster' => false]);
+        }
+
+        $gun   = (int) $ayar->oku('kisisel_uyari_gun', '3');
+        $liste = $this->model->uyarilacakGorevler($kid, $gun);
+
+        if ($liste['toplam'] === 0) {
+            return $this->response->setJSON([
+                'durum'     => true,
+                'goster'    => false,
+                'tarihsiz'  => $this->model->tarihsizAcikSayisi($kid),
+            ]);
+        }
+
+        $cevir = static fn (array $satirlar) => array_map(static fn ($g) => [
+            'id'          => (int) $g['id'],
+            'baslik'      => (string) $g['baslik'],
+            'metin'       => $g['metin'] === null ? null : kisalt((string) $g['metin'], 90),
+            'oncelik'     => (string) ($g['oncelik'] ?? 'normal'),
+            'etiket'      => $g['etiket'] === null ? null : (string) $g['etiket'],
+            'son_tarih'   => trTarih((string) $g['son_tarih']),
+            'kalan_gun'   => (int) $g['kalan_gun'],
+            'gecikme_gun' => (int) $g['gecikme_gun'],
+            'gecikmis'    => (bool) $g['gecikmis'],
+        ], $satirlar);
+
+        return $this->response->setJSON([
+            'durum'    => true,
+            'goster'   => true,
+            'gecikmis' => $cevir($liste['gecikmis']),
+            'bugun'    => $cevir($liste['bugun']),
+            'yaklasan' => $cevir($liste['yaklasan']),
+            'toplam'   => (int) $liste['toplam'],
+            'tarihsiz' => $this->model->tarihsizAcikSayisi($kid),
+            'gun'      => max(0, min(30, $gun)),
+        ]);
+    }
+
+    /** Hatırlatma penceresi kapatıldı — o gün bir daha gösterilmez. */
+    public function uyariOkundu()
+    {
+        $this->db()->table('kisisel_uyari_okundu')->ignore(true)->insert([
+            'kullanici_id' => $this->ben(),
+            'tarih'        => date('Y-m-d'),
+            'created_at'   => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->response->setJSON(['durum' => true]);
+    }
+
+    /** Bu kullanıcı için bugünün hatırlatması kapatıldı mı? */
+    protected function uyariOkunduMu(int $kullaniciId): bool
+    {
+        if ($kullaniciId <= 0) {
+            return false;
+        }
+
+        return $this->db()->table('kisisel_uyari_okundu')
+            ->where('kullanici_id', $kullaniciId)
+            ->where('tarih', date('Y-m-d'))
+            ->countAllResults() > 0;
     }
 }
