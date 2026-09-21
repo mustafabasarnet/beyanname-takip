@@ -760,3 +760,52 @@ if (! function_exists('filtreSorgusu')) {
     }
 }
 
+
+if (! function_exists('kdv2Belirtec')) {
+    /**
+     * KDV1 satırında, eşleşen KDV2 beyannamesinin durumunu gösteren belirteç.
+     *
+     * Neden gerekli: KDV2 (sorumlu sıfatıyla) izleyen ayın 25'inde, KDV1 ise
+     * 28'inde verilir. KDV2 onaylanmadan KDV1'de indirim konusu yapılamaz.
+     * Bu rozet, KDV1 üzerinde çalışırken KDV2'nin ne durumda olduğunu —
+     * henüz hazırlanmamış olsa bile — tek bakışta gösterir.
+     *
+     * @param array $bilgi BeyannameTakipModel::kdv2Harita() satırı
+     */
+    function kdv2Belirtec(array $bilgi): string
+    {
+        $durum = (string) ($bilgi['durum'] ?? 'YOK');
+        $var   = ! empty($bilgi['var']);
+
+        if (! $var) {
+            // KDV2 beyannamesi tanımlı ama bu dönem satırı üretilmemiş
+            $sinif = 'sari';
+            $metin = '⚠ KDV2 dönemi üretilmemiş';
+            $not   = 'KDV2 beyannamesi tanımlı ancak bu dönem için satır oluşmamış; '
+                   . '"🔄 Toplu Dönem Üret" çalıştırın.';
+            $adi   = 'Dönem üretilmemiş';
+        } else {
+            [$sinif, $metin, $not] = match ($durum) {
+                'ONAYLANDI' => ['yesil', '✓ KDV2 Onaylandı',
+                    'KDV2 onaylanmış — KDV1\'de indirim konusu yapılabilir.'],
+                'HAZIR' => ['mavi', '✓ KDV2 Hazır',
+                    'KDV2 hazırlanmış, onay bekliyor. Onaylandıktan sonra KDV1\'de indirim konusu yapılabilir.'],
+                'BEKLIYOR' => ['turuncu', '⏳ KDV2 Bekliyor',
+                    'KDV2 henüz hazırlanmadı. KDV2 onaylanmadan KDV1\'de indirim konusu yapılamaz.'],
+                default => ['gri', '⊘ KDV2 Takip dışı',
+                    'KDV2 bu dönem için takip dışı bırakılmış.'],
+            };
+
+            $adi = \App\Models\BeyannameTakipModel::DURUMLAR[$durum] ?? $durum;
+        }
+
+        $ipucu = 'KDV2 (Sorumlu Sıfatıyla)'
+            . (! empty($bilgi['donem_adi']) ? ' · Dönem: ' . $bilgi['donem_adi'] : '')
+            . (! empty($bilgi['son_tarih']) ? ' · Son gün: ' . trTarih($bilgi['son_tarih']) : '')
+            . ' · Durum: ' . $adi
+            . ' — ' . $not;
+
+        return '<span class="rozet ' . $sinif . ' kdv2-belirtec"'
+            . ' title="' . esc($ipucu) . '">' . esc($metin) . '</span>';
+    }
+}

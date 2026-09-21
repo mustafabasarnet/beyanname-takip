@@ -41,6 +41,8 @@ class Takip extends BaseController
             'kayitlar'   => $kayitlar,
             // MUHSGK ↔ SGK eşleşmesi: rozetler ve tek ekrandan tahakkuk için
             'esHarita'   => $this->model->esHarita($kayitlar),
+            // KDV1 ↔ KDV2: KDV2 durumu rozeti + onay öncesi uyarı (tek sorgu)
+            'kdv2Harita' => $this->model->kdv2Harita($kayitlar),
             'filtre'     => $filtre,
             'turler'     => (new BeyannameTuruModel())->aktifler(),
             'musavirler' => $this->secilebilirMusavirler(),
@@ -78,7 +80,8 @@ class Takip extends BaseController
         $kayitlar = $this->model->cizelge($sayfaFiltre);
         $toplam   = $this->model->cizelgeSayisi($filtre);
 
-        $esHarita = $this->model->esHarita($kayitlar);
+        $esHarita   = $this->model->esHarita($kayitlar);
+        $kdv2Harita = $this->model->kdv2Harita($kayitlar);
 
         $html = view('takip/_satirlar', [
             'kayitlar'      => $kayitlar,
@@ -87,6 +90,7 @@ class Takip extends BaseController
             'durumlar'      => BeyannameTakipModel::DURUMLAR,
             'tahakkukYetki' => $this->tahakkukYetkisiVarMi(),
             'esHarita'      => $esHarita,
+            'kdv2Harita'    => $kdv2Harita,
         ]);
 
         // Yeni satırların tahakkuk penceresi verisi (JS tarafına)

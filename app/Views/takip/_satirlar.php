@@ -17,6 +17,12 @@ $mod = $mod ?? ($filtre['tarih_modu'] ?? 'beyan');
  * Controller güncellenmemişse boş gelir; rozetler çizilmez, sayfa çalışır.
  */
 $esHarita = $esHarita ?? [];
+
+/*
+ * KDV1 ↔ KDV2 haritası (rozet + onay öncesi uyarı).
+ * Yalnız KDV1 satırları için dolu gelir; boşsa hiçbir şey çizilmez.
+ */
+$kdv2Harita = $kdv2Harita ?? [];
 ?>
           <?php foreach ($kayitlar as $k):
               /*
@@ -26,7 +32,17 @@ $esHarita = $esHarita ?? [];
                */
               $kalan   = kalanGunMetni($k['son_tarih'], $k['durum']);
               $gecikti = ! $kalan['bitti'] && $kalan['gun'] < 0;
+
+              // KDV1 ise eşleşen KDV2 bilgisi (rozet + onay uyarısı için)
+              $k2 = $kdv2Harita[(int) $k['id']] ?? null;
           ?>
+            <?php /*
+              DİKKAT: <tr> etiketine EK ÖZNİTELİK EKLENMEZ.
+              Çizelgeyi ayrıştıran testler/araçlar satırları
+              <tr class="..."> kalıbıyla eşleştiriyor; class'tan sonra
+              öznitelik gelirse kalıp bozulur. KDV2 bilgisi bu yüzden
+              satır içindeki durum kutusuna (select) yazılır.
+            */ ?>
             <tr class="<?= $gecikti ? 'gecikmis-satir' : (! $kalan['bitti'] && $kalan['gun'] === 0 ? 'bugun-satir' : '') ?>">
               <td><input type="checkbox" class="satir-sec" value="<?= $k['id'] ?>"></td>
 
@@ -65,6 +81,21 @@ $esHarita = $esHarita ?? [];
                       ⇄ <?= esc($esBilgi['esler'][0]['tur_kisa'] ?? 'MUHSGK') ?> ile bağlı
                     </span>
                   <?php endif; ?>
+                <?php endif; ?>
+                <?php
+                /*
+                 * KDV1 ↔ KDV2 BELİRTECİ
+                 *
+                 * KDV2 izleyen ayın 25'inde, KDV1 28'inde verilir; KDV2
+                 * onaylanmadan KDV1'de indirim konusu yapılamaz. KDV1
+                 * üzerinde çalışırken eşleşen KDV2'nin durumu burada
+                 * görünür — henüz hazırlanmamış olsa bile çizilir ki
+                 * "bu mükellefte KDV2 var, 25'i bekleyeceğim" bilgisi
+                 * eksik kalmasın.
+                 */
+                ?>
+                <?php if ($k2 !== null): ?>
+                  <?= kdv2Belirtec($k2) ?>
                 <?php endif; ?>
                 <?php
                 /*
@@ -113,6 +144,8 @@ $esHarita = $esHarita ?? [];
 
               <td>
                 <select class="girdi durum-sec" data-id="<?= $k['id'] ?>"
+                        <?php if ($k2 !== null): ?>data-kdv2-durum="<?= esc($k2['durum']) ?>"
+                        data-kdv2-tarih="<?= ! empty($k2['son_tarih']) ? esc(trTarih($k2['son_tarih'])) : '' ?>"<?php endif; ?>
                         style="padding:4px 8px;font-size:12px;min-width:118px;font-weight:600">
                   <?php foreach ($durumlar as $dk => $dv): ?>
                     <option value="<?= $dk ?>" <?= $k['durum'] === $dk ? 'selected' : '' ?>><?= esc($dv) ?></option>

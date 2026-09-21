@@ -180,6 +180,139 @@ class BeyannameTakipModel extends Model
     }
 
     // =================================================================
+    //  KDV1 ↔ KDV2 BAĞI
+    //
+    //  KDV2 (sorumlu sıfatıyla) izleyen ayın 25'inde, KDV1 ise 28'inde
+    //  verilir; KDV2 onaylanmadan KDV1'de İNDİRİM KONUSU YAPILAMAZ. Bu
+    //  yüzden kullanıcı KDV1'i hazırlarken eşleşen KDV2'nin durumunu
+    //  görmek ister.
+    //
+    //  ÖNEMLİ: MUHSGK ↔ SGK'dan farklı olarak burada OTOMATİK ONAY YOKTUR.
+    //  İki beyanname ayrı ayrı verilir; bağ yalnız GÖSTERİM (rozet) ve
+    //  ONAY ÖNCESİ UYARI amaçlıdır. Onay akışına sunucu tarafında
+    //  müdahale edilmez, hiçbir kayıt kendiliğinden değişmez.
+    // =================================================================
+
+    /** Bağın "ana" (bekleyen) tarafı: KDV1 ailesi */
+    public const KDV1_KODLARI = ['KDV1_A', 'KDV1_3A'];
+
+    /** Bağın karşı tarafı: sorumlu sıfatıyla KDV2 */
+    public const KDV2_KODU = 'KDV2';
+
+    /** KDV2 "hazır sayılan" durumlar (KDV1 onayı için ön koşul sağlanmış) */
+    public const KDV2_HAZIR_DURUMLAR = ['HAZIR', 'ONAYLANDI'];
+
+    /** Kayıt KDV1 ailesinden mi? */
+    public function kdv1Mi(array $kayit): bool
+    {
+        return in_array((string) ($kayit['tur_kodu'] ?? ''), self::KDV1_KODLARI, true);
+    }
+
+    /**
+     * KDV1 satırları için eşleşen KDV2 bilgisi (rozet + onay uyarısı).
+     *
+     * Eşleşme ölçütü MUHSGK ↔ SGK ile birebir aynıdır: AYNI mükellef +
+     * KESİŞEN dönem. Böylece üç aylık KDV1 ile o çeyreğe düşen aylık KDV2
+     * satırları da eşleşir.
+     *
+     * N+1 sorgu olmasın diye ilgili mükelleflerin TÜM KDV2 satırları ve
+     * KDV2 tanımları tek seferde okunur (2 sorgu, satır sayısından bağımsız).
+     *
+     * @param array<int,array> $kayitlar Çizelge satırları (tur_kodu gerekir)
+     *
+     * @return array<int,array> [kdv1_kayit_id => [
+     *     'var'       => bool    KDV2 dönem satırı bulundu mu
+     *     'durum'     => string  KDV2 durumu (satır yoksa 'YOK')
+     *     'son_tarih' => ?string KDV2 son günü (uyarı metni için)
+     *     'donem_adi' => ?string
+     *     'tur_kisa'  => string
+     * ]]
+     *
+     * Not: Mükellefin KDV2 beyannamesi HİÇ tanımlı değilse haritaya hiç
+     * girmez — rozet çizilmez (ilgisiz mükelleflerde gürültü olmasın).
+     */
+    public function kdv2Harita(array $kayitlar): array
+    {
+        $kdv1 = [];
+
+        foreach ($kayitlar as $k) {
+            if ($this->kdv1Mi($k)) {
+                $kdv1[] = $k;
+            }
+        }
+
+        if ($kdv1 === []) {
+            return [];
+        }
+
+        $mukellefler = array_values(array_unique(array_map(
+            static fn ($k) => (int) $k['mukellef_id'],
+            $kdv1
+        )));
+
+        // 1) İlgili mükelleflerin TÜM KDV2 dönem satırları
+        $kdv2Satirlar = $this->db->table('beyanname_takip bt')
+            ->select('bt.id, bt.mukellef_id, bt.beyanname_turu_id, bt.donem_baslangic, bt.donem_bitis,
+                      bt.donem_adi, bt.durum, bt.son_tarih, t.kisa_ad AS tur_kisa')
+            ->join('beyanname_turleri t', 't.id = bt.beyanname_turu_id')
+            ->whereIn('bt.mukellef_id', $mukellefler)
+            ->where('t.kod', self::KDV2_KODU)
+            ->orderBy('bt.donem_baslangic', 'ASC')
+            ->get()->getResultArray();
+
+        // 2) KDV2 beyannamesi TANIMLI mükellefler
+        //    (dönem üretilmemişse "KDV2 dönemi üretilmemiş" uyarısı için)
+        $tanimSatirlar = $this->db->table('mukellef_beyannameleri mb')
+            ->select('mb.mukellef_id')
+            ->join('beyanname_turleri t', 't.id = mb.beyanname_turu_id')
+            ->whereIn('mb.mukellef_id', $mukellefler)
+            ->where('t.kod', self::KDV2_KODU)
+            ->where('mb.aktif', 1)
+            ->get()->getResultArray();
+
+        $tanimli = [];
+
+        foreach ($tanimSatirlar as $t) {
+            $tanimli[(int) $t['mukellef_id']] = true;
+        }
+
+        $harita = [];
+
+        foreach ($kdv1 as $k) {
+            $mid     = (int) $k['mukellef_id'];
+            $bulunan = null;
+
+            foreach ($kdv2Satirlar as $a) {
+                if ((int) $a['mukellef_id'] !== $mid) {
+                    continue;
+                }
+
+                // Dönem kesişimi (MUHSGK ↔ SGK ile aynı kural)
+                if ($a['donem_baslangic'] <= $k['donem_bitis'] && $a['donem_bitis'] >= $k['donem_baslangic']) {
+                    $bulunan = $a;
+
+                    break;
+                }
+            }
+
+            // KDV2 ne tanımlı ne de satırı varsa rozet çizilmez
+            if ($bulunan === null && ! isset($tanimli[$mid])) {
+                continue;
+            }
+
+            $harita[(int) $k['id']] = [
+                'var'       => $bulunan !== null,
+                'durum'     => $bulunan !== null ? (string) $bulunan['durum'] : 'YOK',
+                'son_tarih' => $bulunan['son_tarih'] ?? null,
+                'donem_adi' => $bulunan['donem_adi'] ?? null,
+                'tur_kisa'  => $bulunan['tur_kisa'] ?? 'KDV2',
+            ];
+        }
+
+        return $harita;
+    }
+
+    // =================================================================
     //  DÖNEM ÜRETİMİ
     // =================================================================
 

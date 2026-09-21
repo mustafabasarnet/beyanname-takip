@@ -258,6 +258,8 @@ a.stat:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.13)}
 .rozet-indirim.mavi{background:var(--ana-acik,#dbeafe);color:var(--ana-koyu,#1d4ed8)}
 .rozet-indirim.mor{background:var(--mor-acik,#ede9fe);color:var(--mor,#7c3aed)}
 .rozet-indirim.turuncu{background:var(--turuncu-acik,#ffedd5);color:var(--turuncu,#ea580c)}
+/* KDV1 ↔ KDV2 belirteci — tür rozetinin yanında, küçük ve tıklanabilir ipuçlu */
+.kdv2-belirtec{font-size:10px;margin-left:3px;cursor:help;white-space:nowrap}
 </style>
 
 <div class="stat-grid">
@@ -580,6 +582,36 @@ a.stat:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.13)}
   </div>
 </div>
 
+<?php /*
+  KDV1 ↔ KDV2 ONAY UYARISI
+  KDV2 onaylanmadan KDV1'de indirim konusu yapılamaz. KDV1 onaya
+  çekilirken eşleşen KDV2 hazır değilse sorulur; ENGELLEME YOKTUR,
+  "Yine de onayla" derse işlem normal akışta tamamlanır.
+*/ ?>
+<div class="modal-arka" id="kdv2-uyari-modal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-baslik">
+      <h3>⏳ KDV2 hazır değil</h3>
+      <button type="button" class="modal-kapat" onclick="kdv2Vazgec()" title="Vazgeç">&times;</button>
+    </div>
+    <div class="modal-govde">
+      <div class="uyari dikkat mb16">
+        <span class="ik">⚠</span>
+        <div id="kdv2-uyari-metin"></div>
+      </div>
+      <p class="kucuk-yazi mb0">
+        KDV2 (sorumlu sıfatıyla) izleyen ayın 25'inde, KDV1 ise 28'inde verilir.
+        İndirim hakkı KDV2'nin onaylanmasına bağlı olduğu için genellikle 25'i beklenir.
+        Bu uyarı yalnızca hatırlatmadır; onayı <b>engellemez</b>.
+      </p>
+    </div>
+    <div class="modal-alt">
+      <button type="button" class="btn ikincil" onclick="kdv2Vazgec()">Vazgeç</button>
+      <button type="button" class="btn" onclick="kdv2Onayla()">✓ Yine de Onayla</button>
+    </div>
+  </div>
+</div>
+
 <?= $this->endSection() ?>
 
 <?= $this->section('script') ?>
@@ -593,7 +625,30 @@ document.querySelectorAll('.durum-sec').forEach(function (sel) {
   sel.dataset.bagli = '1';
   sel.dataset.eski = sel.value;
   sel.addEventListener('change', function () {
-    var id = sel.dataset.id, yeni = sel.value;
+    var yeni = sel.value;
+
+    // ---- KDV1 ↔ KDV2: onaydan ÖNCE uyarı (engelleme YOK) ----
+    // KDV2 onaylanmadan KDV1'de indirim konusu yapılamaz. KDV2 henüz
+    // hazır değilse kullanıcıya sorulur; "Yine de onayla" derse istek
+    // normal akışta gider. Sunucu tarafında hiçbir kısıt yoktur.
+    if (yeni === 'ONAYLANDI' && kdv2UyariGerekliMi(sel)) {
+      kdv2UyarAc(sel);
+      return;                  // karar verilene kadar istek gönderilmez
+    }
+
+    durumGonder(sel, yeni);
+  });
+});
+}
+
+/**
+ * Durum değişikliğini sunucuya gönderir.
+ *
+ * Eskiden change dinleyicisinin içindeydi; KDV2 uyarısından sonra da
+ * çağrılabilsin diye ayrı fonksiyona alındı. Gövdesi birebir aynıdır.
+ */
+function durumGonder(sel, yeni) {
+    var id = sel.dataset.id;
     sel.disabled = true;
 
     BT.post('<?= site_url('takip/durum') ?>', { id: id, durum: yeni })
@@ -637,9 +692,77 @@ document.querySelectorAll('.durum-sec').forEach(function (sel) {
         sel.value = sel.dataset.eski;
       })
       .finally(function () { sel.disabled = false; });
-  });
-});
 }
+
+// =================================================================
+//  KDV1 ↔ KDV2 ONAY UYARISI
+//
+//  KDV2 izleyen ayın 25'inde, KDV1 28'inde verilir. KDV2 onaylanmadan
+//  KDV1'de indirim konusu yapılamaz. KDV1 "Onaylandı"ya çekilirken
+//  eşleşen KDV2 hazır değilse kullanıcı UYARILIR ama ENGELLENMEZ.
+//
+//  KDV2 durumu durum kutusuna PHP tarafından yazıldığı için (data-kdv2-*)
+//  ek sorgu veya ek uç gerekmez.
+// =================================================================
+var kdv2BekleyenSel = null;   // kararı beklenen durum kutusu
+
+/**
+ * Durum kutusu KDV1 mi ve eşleşen KDV2 hazır değil mi?
+ *
+ * KDV2 bilgisi satır (tr) yerine durum kutusunun kendisinde tutulur
+ * (data-kdv2-durum). Böylece satır etiketinin class kalıbı bozulmaz;
+ * çizelgeyi ayrıştıran testler ve araçlar etkilenmez.
+ *
+ * NOT: Yorumlarda satır etiketi kalıbını birebir yazmayın — bu blok
+ * sayfaya çıktı olarak gider ve sayfayı ayrıştıran testlerin satır
+ * sayımına takılır.
+ */
+function kdv2UyariGerekliMi(sel) {
+  var d = sel.getAttribute('data-kdv2-durum');
+  if (d === null) { return false; }        // KDV1 satırı değil (ya da KDV2 tanımı yok)
+
+  return d === 'BEKLIYOR' || d === 'YOK';
+}
+
+function kdv2UyarAc(sel) {
+  kdv2BekleyenSel = sel;
+
+  var modal = document.getElementById('kdv2-uyari-modal');
+  var d     = sel.getAttribute('data-kdv2-durum') || '';
+  var tarih = sel.getAttribute('data-kdv2-tarih') || '';
+
+  // Pencere yoksa (eski şablon): sessizce normal akışa dön
+  if (!modal) { kdv2BekleyenSel = null; durumGonder(sel, 'ONAYLANDI'); return; }
+
+  var metin = (d === 'YOK')
+    ? 'Bu mükellefte eşleşen <b>KDV2 dönem satırı bulunamadı</b>. KDV2 beyannamesi tanımlı görünüyor.'
+    : 'Eşleşen <b>KDV2 beyannamesi henüz hazır değil</b>' + (tarih ? ' (son gün <b>' + tarih + '</b>)' : '') + '.';
+
+  document.getElementById('kdv2-uyari-metin').innerHTML =
+    metin + '<br><br>KDV2 onaylanmadan <b>KDV1\'de indirim konusu yapılamaz</b>. Yine de onaylansın mı?';
+
+  BT.modalAc('kdv2-uyari-modal');
+}
+
+/** Vazgeç: durum kutusu eski değerine döner, istek gönderilmez. */
+function kdv2Vazgec() {
+  if (kdv2BekleyenSel) { kdv2BekleyenSel.value = kdv2BekleyenSel.dataset.eski; }
+  kdv2BekleyenSel = null;
+  BT.modalKapat('kdv2-uyari-modal');
+}
+
+/** Yine de onayla: normal onay akışı çalışır. */
+function kdv2Onayla() {
+  var sel = kdv2BekleyenSel;
+  kdv2BekleyenSel = null;
+  BT.modalKapat('kdv2-uyari-modal');
+  if (sel) { durumGonder(sel, 'ONAYLANDI'); }
+}
+
+// Pencere dışına tıklama / ESC ile kapanırsa da karar verilmemiş sayılır
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && kdv2BekleyenSel) { kdv2Vazgec(); }
+});
 
 durumSecBagla();
 

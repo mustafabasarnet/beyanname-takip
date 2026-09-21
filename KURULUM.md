@@ -23,6 +23,7 @@ Son geliştirme turunda eklenen/düzeltilenler:
 | **Kişisel Notlar menü rozeti** | Menüde yapılmamış kişisel görev sayısı; görev tamamlanınca sayı **anında düşer** |
 | **Ajanda kişisel gizlilik** | `kişisel` görünürlüklü ajanda kaydını **yönetici dahil kimse** başkası adına göremez/değiştiremez |
 | **Makbuz Takip — formdan giriş** | Makbuzlar artık **➕ Makbuz Ekle** formuyla tek tek de girilebiliyor (Excel'e ek olarak; hesaplama aynı) |
+| **KDV1 ↔ KDV2 belirteci** | KDV1 listesinde eşleşen **KDV2'nin durumu** rozetle görünür (hazır / onaylı / bekliyor); KDV1 onayından önce "KDV2 hazır değil" uyarısı çıkar — engellemez (aşağıda ayrıntı) |
 | **Yeni: Güncelleme Logları** | **🆕 Güncellemeler** ekranı + sürüm notu girildiğinde kullanıcıya **girişte modern pencere**; okunduğunda bir daha gösterilmez (aşağıda ayrıntı) |
 | **Panel — E-Defter kartı** | E-Defter sayılarına (Yüklenen/Hazır/Kalan…) tıklayınca **açılır liste**; üstte **Takip ekranında aç** → süzülmüş E-Defter Takip |
 
@@ -696,6 +697,57 @@ temizleyebilirsiniz (tutar alanını boşaltıp kaydetmek de aynı işi yapar �
 bu durumda damga da sıfırlanır).
 
 ---
+
+---
+
+## ⏳ KDV1 ↔ KDV2 Bağlantısı (Zincir Takibi)
+
+KDV2 (**sorumlu sıfatıyla**) izleyen ayın **25**'inde, KDV1 ise **28**'inde verilir.
+**KDV2 onaylanmadan KDV1'de indirim konusu yapılamaz** — bu yüzden pratikte önce
+KDV2 hazırlanır, KDV1 onayı 25'i bekler.
+
+### KDV1 listesinde KDV2 belirteci
+
+KDV1 filtresinde çalışırken her satırda, eşleşen KDV2 beyannamesinin durumu
+tür rozetinin yanında görünür:
+
+| KDV2 durumu | Belirteç | Anlamı |
+|---|---|---|
+| Onaylandı | 🟢 `✓ KDV2 Onaylandı` | KDV1'de indirim yapılabilir |
+| **Hazır** | 🔵 `✓ KDV2 Hazır` | Hazırlanmış, onay bekliyor |
+| Bekliyor | 🟠 `⏳ KDV2 Bekliyor` | Henüz hazırlanmadı → 25'i bekle |
+| Satır yok, tanım var | 🟡 `⚠ KDV2 dönemi üretilmemiş` | "🔄 Toplu Dönem Üret" çalıştırın |
+| KDV2 tanımı yok | *(belirteç çizilmez)* | Bu mükellefte KDV2 yok |
+
+Fare ile üzerine gelince **dönem, KDV2 son günü ve durum** yazılı bir ipucu çıkar
+(örn. *"KDV2 (Sorumlu Sıfatıyla) · Dönem: Ağustos 2026 · Son gün: 21.09.2026 · Durum: Hazır"*).
+
+> **Önemli:** KDV2 `Bekliyor` olsa **bile** belirteç çizilir. Böylece KDV1'i 25'inden
+> önce hazırladığınızda "bu mükellefte KDV2 var, onu bekleyeceğim" bilgisi ekranda olur.
+
+### Onay öncesi uyarı (engelleme yok)
+
+KDV1 satırını **Onaylandı**'ya çektiğinizde eşleşen KDV2 hazır/onaylı değilse:
+
+> ⏳ **KDV2 hazır değil** — Eşleşen KDV2 beyannamesi henüz hazır değil (son gün 21.09.2026).
+> KDV2 onaylanmadan **KDV1'de indirim konusu yapılamaz**. Yine de onaylansın mı?
+> `[Vazgeç]` `[✓ Yine de Onayla]`
+
+- **Engellemez:** "Yine de onayla" derseniz onay normal şekilde kaydedilir (istisnai durumlar için).
+- **Vazgeç** derseniz istek hiç gönderilmez, durum kutusu eski değerine döner.
+- KDV2 `HAZIR` veya `ONAYLANDI` ise uyarı **çıkmaz**, onay doğrudan işlenir.
+
+### Teknik notlar
+
+- **KDV2 son günü** sistemde **21** olarak tanımlıdır; uygulamanızda farklıysa
+  **Tanımlar → Beyanname Türleri**'nden değiştirin, ardından **🔄 Toplu Dönem Üret**
+  çalıştırın (tarihler güncellenir, girdiğiniz durumlar **korunur**).
+- Eşleşme ölçütü: **aynı mükellef + kesişen dönem** (MUHSGK ↔ SGK ile aynı kural).
+  Üç aylık KDV1, o çeyreğe düşen aylık KDV2 satırlarıyla eşleşir.
+- **Otomatik onay YOKTUR:** MUHSGK ↔ SGK'daki gibi bir onay senkronu bilinçli olarak
+  kurulmadı; KDV1 ve KDV2 ayrı ayrı verilen beyannamelerdir. Bağ yalnız gösterim ve
+  uyarı amaçlıdır.
+- Liste için **2 ek sorgu** yapılır (satır sayısından bağımsız) — N+1 yoktur.
 
 ---
 
