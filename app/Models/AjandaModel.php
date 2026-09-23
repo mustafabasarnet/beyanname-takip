@@ -371,6 +371,61 @@ class AjandaModel extends Model
     }
 
     /**
+     * Bir kullanıcıya ATANAN açık görevler.
+     *
+     * Sol alttaki kullanıcı alanında rozet olarak gösterilir; personel
+     * Ajanda'ya girmeden kendisine verilen işleri görsün diye eklendi.
+     *
+     * Ölçüt: görünürlük='gorev' + atanan_id=ben + durum='BEKLIYOR'.
+     * (Yapıldı/iptal edilenler ile başkasına atananlar sayılmaz.)
+     *
+     * @param int $limit 0 = sınırsız (rozet ipucu için birkaç kayıt yeter)
+     *
+     * @return array<int,array> id, baslik, tarih, saat, oncelik
+     */
+    public function acikGorevler(int $kullaniciId, int $limit = 3): array
+    {
+        if ($kullaniciId <= 0) {
+            return [];
+        }
+
+        $b = $this->db->table('ajanda a')
+            ->select('a.id, a.baslik, a.tarih, a.saat, a.oncelik, a.mukellef_id')
+            ->where('a.gorunurluk', 'gorev')
+            ->where('a.atanan_id', $kullaniciId)
+            ->where('a.durum', 'BEKLIYOR')
+            ->where('a.deleted_at', null)
+            ->orderBy('a.tarih', 'ASC')
+            ->orderBy('a.saat', 'ASC');
+
+        if ($limit > 0) {
+            $b->limit($limit);
+        }
+
+        return $b->get()->getResultArray();
+    }
+
+    /**
+     * Kullanıcıya atanan AÇIK görev sayısı (sol alt rozet değeri).
+     *
+     * (atanan_id, durum) bileşik indexini kullanır — her sayfada
+     * çalıştığı için hafif tutuldu: tek COUNT, satır çekmez.
+     */
+    public function acikGorevSayisi(int $kullaniciId): int
+    {
+        if ($kullaniciId <= 0) {
+            return 0;
+        }
+
+        return (int) $this->db->table('ajanda')
+            ->where('gorunurluk', 'gorev')
+            ->where('atanan_id', $kullaniciId)
+            ->where('durum', 'BEKLIYOR')
+            ->where('deleted_at', null)
+            ->countAllResults();
+    }
+
+    /**
      * Panel/menü rozeti için sayaçlar.
      *
      * @return array{gecikmis:int,bugun:int,yaklasan:int,toplam:int}

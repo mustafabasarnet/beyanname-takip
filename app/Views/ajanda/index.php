@@ -226,6 +226,10 @@ include APPPATH . 'Views/ajanda/_filtre.php';
         gonder(url, { id: b.dataset.id })
           .then(function (v) {
             if (!v.durum) { alert(v.mesaj || 'İşlem yapılamadı.'); b.disabled = false; return; }
+            // Sol alttaki "bana atanan görevler" rozeti anında düşsün
+            if (window.ajandaGorevRozetGuncelle && typeof v.gorev_sayi === 'number') {
+              window.ajandaGorevRozetGuncelle(v.gorev_sayi);
+            }
             location.reload();   // sayaçlar ve sıralama değişir
           })
           .catch(function () { alert('Bağlantı hatası.'); b.disabled = false; });

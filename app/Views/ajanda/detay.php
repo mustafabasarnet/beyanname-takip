@@ -215,6 +215,10 @@
       gonder(url, Object.assign({ id: ID }, veriEk || {}))
         .then(function (v) {
           if (!v.durum) { alert(v.mesaj || 'İşlem yapılamadı.'); d.disabled = false; return; }
+          // Sol alttaki "bana atanan görevler" rozeti anında düşsün
+          if (window.ajandaGorevRozetGuncelle && typeof v.gorev_sayi === 'number') {
+            window.ajandaGorevRozetGuncelle(v.gorev_sayi);
+          }
           location.reload();
         })
         .catch(function () { alert('Bağlantı hatası.'); d.disabled = false; });

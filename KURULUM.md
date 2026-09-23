@@ -21,6 +21,7 @@ Son geliştirme turunda eklenen/düzeltilenler:
 | **Kişisel To-Do genişletme** | Görevlere **öncelik / etiket / son tarih**; liste **AJAX** ile işlevsel (ekle, tamamla, düzenle, sil) |
 | **Kişisel To-Do giriş hatırlatması** | Son tarihi **geçen (dünden kalanlar)** ve **bugün son gün** olan kişisel görevler, girişte **günde bir kez pencere** olarak hatırlatılır (aşağıda ayrıntı) |
 | **Kişisel Notlar menü rozeti** | Menüde yapılmamış kişisel görev sayısı; görev tamamlanınca sayı **anında düşer** |
+| **Ajanda — bana atanan görev rozeti** | Sol altta, kullanıcı adının yanında **bekleyen görev sayısı**: personel Ajanda'ya girmeden görür; görev yapılınca sayı düşer (aşağıda ayrıntı) |
 | **Ajanda kişisel gizlilik** | `kişisel` görünürlüklü ajanda kaydını **yönetici dahil kimse** başkası adına göremez/değiştiremez |
 | **Makbuz Takip — formdan giriş** | Makbuzlar artık **➕ Makbuz Ekle** formuyla tek tek de girilebiliyor (Excel'e ek olarak; hesaplama aynı) |
 | **KDV1 ↔ KDV2 belirteci** | KDV1 listesinde eşleşen **KDV2'nin durumu** rozetle görünür (hazır / onaylı / bekliyor); KDV1 onayından önce "KDV2 hazır değil" uyarısı çıkar — engellemez (aşağıda ayrıntı) |
@@ -697,6 +698,53 @@ temizleyebilirsiniz (tutar alanını boşaltıp kaydetmek de aynı işi yapar �
 bu durumda damga da sıfırlanır).
 
 ---
+
+---
+
+## 🔔 Ajanda — "Bana Atanan Görevler" Rozeti
+
+Ajanda'da **görünürlük = Görev** seçilip bir kullanıcıya atandığında, o kullanıcı
+sürekli Ajanda ekranını açmak zorunda kalmadan görevini görsün diye **sol alt
+köşeye (kullanıcı adının yanına) sayaç** eklendi.
+
+```
+┌──────────────────────────┐         ┌──────────────────────┐
+│  🅰  TEST PERSONEL       │         │  🅰  TEST PERSONEL   │
+│      Personel            │  →      │      Personel     🔔3│
+└──────────────────────────┘         └──────────────────────┘
+```
+
+### Nasıl çalışır
+
+| Konu | Davranış |
+|---|---|
+| **Göründüğü yer** | Sol menünün altı, kullanıcı adının bulunduğu satır — **her sayfada** (Ajanda'ya girmeden) |
+| **Sayı** | Kullanıcıya atanan **açık** görev sayısı (durum = Bekliyor) |
+| **Sayılmayanlar** | Yapıldı · İptal edilen · **başkasına atananlar** · kişisel/genel kayıtlar |
+| **Görev yapılınca** | Sayı **anında** düşer; tümü bitince rozet **kaybolur** |
+| **Görev geri açılınca** | Sayı yeniden artar |
+| **Üzerine gelince** | İlk 3 görevin **tarih, saat ve adı** (örn. *• 23.09.2026 10:00 — Evrak teslimi*), fazlası için *"+N görev daha"* |
+| **Tıklayınca** | Yalnız **bana atanan** görevlerin listesi açılır (`Ajanda → Atanan: ben`) |
+| **Kim görür** | Herkes yalnız **kendi** rozetini görür (yönetici dahil kimse başkasınınkini göremez) |
+
+### Görev atama
+
+**Ajanda → Yeni Kayıt** → **Görünürlük: Görev** → **Atanan** alanından kişi
+seçilir. (Admin herkesi, diğerleri müşavir kapsamındaki kullanıcıları görür.)
+Görev atandığı an, ilgili kişi bir sonraki sayfa geçişinde rozeti görür.
+
+> **Yetki:** Rozeti görmek için ek bir yetki gerekmez. Görevi **yalnız** oluşturan,
+> atanan kişi veya yönetici kapatabilir (mevcut ajanda yetki kuralı aynen geçerli).
+
+### Teknik notlar
+
+- Sayaç `ajanda` tablosundan tek `COUNT` ile okunur; `(atanan_id, durum)` bileşik
+  indexini kullanır. Sayfa başına **2 ek sorgu** (sayı + ipucu listesi), görev
+  sayısından bağımsızdır — **N+1 yoktur**.
+- Ajanda'da "Yapıldı / Geri al / İptal" AJAX uçları yeni sayıyı (`gorev_sayi`)
+  döndürür; `ajandaGorevRozetGuncelle()` bu değeri rozete yazar. Böylece sayı
+  sayfa yenilenmeden **anında** düşer.
+- Migration gerekmez; **yeni tablo/kolon yok**.
 
 ---
 

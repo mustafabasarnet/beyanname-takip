@@ -322,6 +322,8 @@ class Ajanda extends BaseController
             'kapandi'  => $s['kapandi'] ?? true,
             'yeni'     => $s['yeni'] ?? null,
             'sayaclar' => $this->model->sayaclar($kul, $mus, $this->panelGun()),
+            // Sol alttaki "bana atanan görevler" rozeti için yeni sayı
+            'gorev_sayi' => $this->model->acikGorevSayisi((int) ($this->aktifKullanici['id'] ?? 0)),
         ]);
     }
 
@@ -342,6 +344,7 @@ class Ajanda extends BaseController
             'durum'    => true,
             'mesaj'    => 'Kayıt yeniden açıldı.',
             'sayaclar' => $this->model->sayaclar($kul, $mus, $this->panelGun()),
+            'gorev_sayi' => $this->model->acikGorevSayisi((int) ($this->aktifKullanici['id'] ?? 0)),
         ]);
     }
 
@@ -362,6 +365,7 @@ class Ajanda extends BaseController
             'durum'    => true,
             'mesaj'    => 'Kayıt iptal edildi.',
             'sayaclar' => $this->model->sayaclar($kul, $mus, $this->panelGun()),
+            'gorev_sayi' => $this->model->acikGorevSayisi((int) ($this->aktifKullanici['id'] ?? 0)),
         ]);
     }
 

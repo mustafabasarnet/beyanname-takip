@@ -209,6 +209,8 @@ abstract class BaseController extends Controller
         $veri['aktifKullanici'] = $this->aktifKullanici;
         $veri['sayfaBasligi']   = $baslik ?: ($veri['sayfaBasligi'] ?? 'Beyanname Takip');
         $veri['ajandaRozet']    = $veri['ajandaRozet'] ?? $this->ajandaRozet();
+        // Sol alttaki "bana atanan görevler" rozeti (personel Ajanda'ya girmeden görsün)
+        $veri['ajandaGorev']    = $veri['ajandaGorev'] ?? $this->ajandaGorevRozet();
         $veri['kisiselRozet']   = $veri['kisiselRozet'] ?? $this->kisiselRozet();
         $veri['guncellemeRozet'] = $veri['guncellemeRozet'] ?? $this->guncellemeRozet();
 
@@ -312,6 +314,49 @@ abstract class BaseController extends Controller
             return $onbellek = (int) $s['gecikmis'] + (int) $s['bugun'];
         } catch (\Throwable $e) {
             return $onbellek = 0;
+        }
+    }
+
+    /**
+     * Sol alttaki kullanıcı alanında gösterilen "bana atanan görevler" rozeti.
+     *
+     * Ajanda'da görünürlük='görev' + atanan=ben olan AÇIK kayıtların sayısı.
+     * Personel, Ajanda ekranına girmeden kendisine verilen işleri görsün diye
+     * her sayfada (layout) hesaplanır; istek başına önbelleklenir.
+     *
+     * @return array{sayi:int, liste:array} liste = ipucunda gösterilecek ilk kayıtlar
+     */
+    protected function ajandaGorevRozet(): array
+    {
+        static $onbellek = null;
+
+        if ($onbellek !== null) {
+            return $onbellek;
+        }
+
+        $bos = ['sayi' => 0, 'liste' => []];
+        $kid = (int) ($this->aktifKullanici['id'] ?? 0);
+
+        if ($kid <= 0) {
+            return $onbellek = $bos;
+        }
+
+        try {
+            $db = \Config\Database::connect();
+
+            if (! $db->tableExists('ajanda')) {
+                return $onbellek = $bos;   // migration çalıştırılmamış kurulum
+            }
+
+            $m    = new \App\Models\AjandaModel();
+            $sayi = $m->acikGorevSayisi($kid);
+
+            return $onbellek = [
+                'sayi'  => $sayi,
+                'liste' => $sayi > 0 ? $m->acikGorevler($kid, 3) : [],
+            ];
+        } catch (\Throwable $e) {
+            return $onbellek = $bos;
         }
     }
 

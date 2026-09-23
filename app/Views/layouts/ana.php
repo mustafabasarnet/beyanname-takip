@@ -16,6 +16,20 @@
 .menu-rozet.kisisel{background:#2563eb}
 /* Güncellemeler rozeti — okunmamış sürüm notu (mor = yenilik) */
 .menu-rozet.guncelleme{background:#7c3aed}
+/* Bana atanan görev rozeti — sol altta kullanıcı adının yanında (bildirim) */
+.yan-alt .kullanici-satir{display:flex;align-items:center;gap:6px}
+.gorev-rozet{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;
+  background:linear-gradient(135deg,#dc2626,#f97316);color:#fff;text-decoration:none;
+  font-size:11.5px;font-weight:800;padding:4px 9px;border-radius:99px;
+  box-shadow:0 3px 10px rgba(220,38,38,.45);transition:.15s;white-space:nowrap}
+.gorev-rozet:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(220,38,38,.6);color:#fff}
+.gorev-rozet .zil{font-size:11px;line-height:1}
+.gorev-rozet .adet{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:no-preference){
+  .gorev-rozet{animation:gorevNabiz 2.4s ease-in-out 3}
+  @keyframes gorevNabiz{0%,100%{box-shadow:0 3px 10px rgba(220,38,38,.45)}
+    50%{box-shadow:0 3px 16px rgba(220,38,38,.85)}}
+}
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
 </head>
@@ -179,14 +193,52 @@ $aktifUrl = trim(uri_string(), '/');
     </a>
   </nav>
 
+  <?php
+  /*
+   * BANA ATANAN GÖREVLER ROZETİ
+   *
+   * Personel, Ajanda ekranına GİRMEDEN kendisine atanan açık görevleri
+   * görsün diye kullanıcı adının bulunduğu satıra sayaç eklendi.
+   * Kaynak: ajanda görünürlük='görev' + atanan=ben + durum='BEKLIYOR'.
+   * Görev "Yapıldı" işaretlenince sayı sunucudan yeniden hesaplanır
+   * (sayfa yüklenişinde) ve AJAX akışında anında düşer.
+   */
+  $ajGorev     = $ajandaGorev ?? ['sayi' => 0, 'liste' => []];
+  $ajGorevSayi = (int) ($ajGorev['sayi'] ?? 0);
+  $ajGorevIpucu = '';
+  if ($ajGorevSayi > 0) {
+      $satirlar = [];
+      foreach (($ajGorev['liste'] ?? []) as $g) {
+          $satirlar[] = '• ' . trTarih($g['tarih'])
+              . ($g['saat'] ? ' ' . substr((string) $g['saat'], 0, 5) : '')
+              . ' — ' . $g['baslik'];
+      }
+      $kalan = $ajGorevSayi - count($ajGorev['liste'] ?? []);
+      if ($kalan > 0) {
+          $satirlar[] = '+' . $kalan . ' görev daha';
+      }
+      $ajGorevIpucu = 'Bana atanan ' . $ajGorevSayi . " açık görev:\n"
+          . implode("\n", $satirlar)
+          . "\n\nTıklayın: yalnız bana atanan görevleri görün";
+  }
+  ?>
   <div class="yan-alt">
-    <a href="<?= site_url('profil') ?>" class="kullanici" style="text-decoration:none">
-      <div class="avatar"><?= esc($basHarf) ?></div>
-      <div>
-        <b><?= esc(kisalt($adSoyad, 18)) ?></b>
-        <span><?= ['admin' => 'Yönetici', 'musavir' => 'Mali Müşavir', 'personel' => 'Personel'][$rol] ?? $rol ?></span>
-      </div>
-    </a>
+    <div class="kullanici-satir">
+      <a href="<?= site_url('profil') ?>" class="kullanici" style="text-decoration:none;flex:1;min-width:0">
+        <div class="avatar"><?= esc($basHarf) ?></div>
+        <div style="min-width:0">
+          <b><?= esc(kisalt($adSoyad, 18)) ?></b>
+          <span><?= ['admin' => 'Yönetici', 'musavir' => 'Mali Müşavir', 'personel' => 'Personel'][$rol] ?? $rol ?></span>
+        </div>
+      </a>
+      <?php /* Sayı 0 iken gizli; görev yapılınca kaybolur */ ?>
+      <a href="<?= site_url('ajanda?atanan_id=' . (int) ($aktifKullanici['id'] ?? 0)) ?>"
+         class="gorev-rozet" id="ajanda-gorev-rozet" data-rol="ajanda-gorev-rozet"
+         title="<?= esc($ajGorevIpucu) ?>"
+         style="<?= $ajGorevSayi > 0 ? '' : 'display:none' ?>">
+        <span class="zil">🔔</span><span class="adet" id="ajanda-gorev-adet"><?= $ajGorevSayi ?></span>
+      </a>
+    </div>
     <a href="<?= site_url('cikis') ?>" style="display:flex;align-items:center;gap:9px;padding:8px 10px;color:#fca5a5;font-size:13px;font-weight:600">
       <span class="ikon">🚪</span> Çıkış Yap
     </a>
@@ -365,6 +417,24 @@ window.kisiselRozetGuncelle = function (sayi) {
   if (isNaN(sayi) || sayi < 0) { sayi = 0; }
 
   el.textContent = sayi;
+  el.style.display = sayi > 0 ? '' : 'none';
+};
+</script>
+
+<script>
+/* Bana atanan görev rozetini canlı günceller (sol alt).
+   Ajanda'da görev "Yapıldı" işaretlenince sayı anında düşsün diye
+   AJAX yanıtındaki gorev_sayi ile çağrılır. 0 olunca rozet gizlenir. */
+window.ajandaGorevRozetGuncelle = function (sayi) {
+  var el = document.getElementById('ajanda-gorev-rozet');
+  if (!el) { return; }
+
+  sayi = parseInt(sayi, 10);
+  if (isNaN(sayi) || sayi < 0) { sayi = 0; }
+
+  var adet = document.getElementById('ajanda-gorev-adet');
+  if (adet) { adet.textContent = sayi; }
+
   el.style.display = sayi > 0 ? '' : 'none';
 };
 </script>
