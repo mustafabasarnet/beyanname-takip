@@ -579,6 +579,16 @@ class BeyannameTakipModel extends Model
         //  filtresinde son tarihi 01.05.2028 olan kayıt görünüyor, buna karşılık
         //  Nisan 2027'de verilecek Kurumlar 2026 beyannamesi hiç görünmüyordu.
         // -------------------------------------------------------------
+        //  ⚠ AY/YIL ATAMASI — 'beyan' modunda YASAL son tarihe göre yapılır.
+        //
+        //  Tatil kaydırması ayı değiştirdiğinde beyanname yanlış aya düşüyordu:
+        //    Turizm (Eylül 2026) kanuni son gün 31.10.2026 Cumartesi
+        //    -> fiili son tarih 02.11.2026 Pazartesi
+        //  Kayıt "Kasım" listesinde görünüyordu; oysa o beyanname EKİM
+        //  beyannamesidir. Artık Ekim'de listelenir ve satırda
+        //  "Son Tarih: 02.11.2026 ↷" olarak görünür.
+        //  Aynı kural panel durum tablosu ve aylık grafikte de geçerlidir.
+        //  (Fiili son tarih; gecikme, geri sayım ve ödeme modunda aynen kullanılır.)
         $mod = ($f['tarih_modu'] ?? 'beyan') === 'donem' ? 'donem' : 'beyan';
 
         if ($mod === 'donem') {
@@ -592,11 +602,11 @@ class BeyannameTakipModel extends Model
             }
         } else {
             if (! empty($f['yil'])) {
-                $b->where('YEAR(beyanname_takip.son_tarih)', (int) $f['yil']);
+                $b->where('YEAR(beyanname_takip.yasal_son_tarih)', (int) $f['yil']);
             }
 
             if (! empty($f['ay'])) {
-                $b->where('MONTH(beyanname_takip.son_tarih)', (int) $f['ay']);
+                $b->where('MONTH(beyanname_takip.yasal_son_tarih)', (int) $f['ay']);
             }
         }
 
@@ -846,10 +856,11 @@ class BeyannameTakipModel extends Model
                 $b->where('MONTH(bt.donem_bitis)', (int) $ay);
             }
         } else {
-            $b->where('YEAR(bt.son_tarih)', $yil);
+            // Beyan ayı = kanuni son tarihin ayı (kaydırma ayı değiştirmez)
+            $b->where('YEAR(bt.yasal_son_tarih)', $yil);
 
             if (! empty($ay)) {
-                $b->where('MONTH(bt.son_tarih)', (int) $ay);
+                $b->where('MONTH(bt.yasal_son_tarih)', (int) $ay);
             }
         }
 
@@ -901,15 +912,17 @@ class BeyannameTakipModel extends Model
     public function aylikGrafik(int $yil, $musavirId = null, string $mod = 'beyan'): array
     {
         $b = $this->db->table('beyanname_takip bt')
-            ->select('MONTH(bt.son_tarih) as ay, bt.durum, COUNT(*) as adet')
+            ->select('MONTH(bt.yasal_son_tarih) as ay, bt.durum, COUNT(*) as adet')
             ->join('mukellefler m', 'm.id = bt.mukellef_id')
             ->where('m.deleted_at', null);
 
         // Grafik "hangi ay kaç beyanname veriyorum" sorusuna cevap verir
+        // Beyan modunda ay, KANUNİ son tarihe göre gruplanır (liste ve
+        // panel tablosuyla aynı kural) — kaydırma ayı değiştirmesin.
         if ($mod === 'donem') {
             $b->where('bt.yil', $yil);
         } else {
-            $b->where('YEAR(bt.son_tarih)', $yil);
+            $b->where('YEAR(bt.yasal_son_tarih)', $yil);
         }
 
         $this->musavirKosulu($b, $musavirId);

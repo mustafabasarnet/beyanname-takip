@@ -21,6 +21,7 @@ Son geliştirme turunda eklenen/düzeltilenler:
 | **Kişisel To-Do genişletme** | Görevlere **öncelik / etiket / son tarih**; liste **AJAX** ile işlevsel (ekle, tamamla, düzenle, sil) |
 | **Kişisel To-Do giriş hatırlatması** | Son tarihi **geçen (dünden kalanlar)** ve **bugün son gün** olan kişisel görevler, girişte **günde bir kez pencere** olarak hatırlatılır (aşağıda ayrıntı) |
 | **Kişisel Notlar menü rozeti** | Menüde yapılmamış kişisel görev sayısı; görev tamamlanınca sayı **anında düşer** |
+| **Ay ataması düzeltmesi** | Hafta sonu/tatil kaydırması beyannameyi başka aya taşımıyor: ay artık **kanuni son tarihe** göre belirlenir (örn. Turizm Eylül → 02.11'de verilse de **Ekim** listesinde) |
 | **Ajanda — bana atanan görev rozeti** | Sol altta, kullanıcı adının yanında **bekleyen görev sayısı**: personel Ajanda'ya girmeden görür; görev yapılınca sayı düşer (aşağıda ayrıntı) |
 | **Ajanda kişisel gizlilik** | `kişisel` görünürlüklü ajanda kaydını **yönetici dahil kimse** başkası adına göremez/değiştiremez |
 | **Makbuz Takip — formdan giriş** | Makbuzlar artık **➕ Makbuz Ekle** formuyla tek tek de girilebiliyor (Excel'e ek olarak; hesaplama aynı) |
@@ -450,16 +451,38 @@ belirler:
 Çizelgenin üstündeki **Görünüm** seçicisi, Yıl ve Ay filtrelerinin neye göre
 çalışacağını belirler:
 
-### 1. Beyan Dönemi (son tarih) — varsayılan
+### 1. Beyan Dönemi (kanuni son tarih) — varsayılan
 > *"Bu ay hangi beyannameleri vereceğim?"*
 
-Yıl + Ay birlikte **son tarihe** bakar. Günlük iş takibi için doğru olan mod budur.
+Yıl + Ay birlikte **kanuni (yasal) son tarihe** bakar. Günlük iş takibi için
+doğru olan mod budur.
 
 | Filtre | Listede çıkanlar |
 |---|---|
 | **Mart 2027** | Şubat 2027 KDV1/MUHSGK + **2026 Yıllık Gelir Vergisi** (31.03.2027) |
 | **Nisan 2027** | Mart 2027 KDV1/MUHSGK/SGK + **2026 Kurumlar Vergisi** (30.04.2027) |
 | **Mayıs 2027** | Nisan 2027 beyannameleri + 1. dönem geçici vergi (20.05.2027) |
+
+#### Hafta sonu / tatil kaydırması ayı değiştirmez
+
+Son gün hafta sonu veya resmî tatile denk gelirse fiili son tarih **bir sonraki
+iş gününe** kayar. Bu kaydırma beyannameyi **başka aya taşımaz**; ay ataması
+kanuni tarihe göre yapılır.
+
+| Örnek | Kanuni son gün | Fiili son tarih | Hangi ayda listelenir |
+|---|---|---|---|
+| **Turizm** (Eylül 2026 dönemi) | 31.10.2026 Cumartesi | **02.11.2026 Pazartesi** | ✅ **Ekim 2026** (Kasım'da çıkmaz) |
+| **GEKAP** (Tem–Ara dönemi) | 31.01 | kaydırma varsa Şubat başı | ✅ **Ocak** |
+| KDV1 (Ocak 2026 dönemi) | 28.02.2026 Cumartesi | 02.03.2026 | ✅ **Şubat 2026** |
+| KDV1 (Eylül 2026 dönemi) | 28.10.2026 | 30.10.2026 (29 Ekim tatili) | ✅ Ekim 2026 (ay değişmedi) |
+
+Satırda **kanuni tarih** (Son Tarih sütununun solunda) ve **fiili tarih** (kalın,
+yanında `↷ Cumartesi, Pazar` açıklaması) ayrı ayrı görünür — hangi gün
+gönderileceği kaybolmaz.
+
+> **Gecikme, geri sayım ve "≤7 gün" kartları FİİLİ tarihi kullanır** (değişmedi).
+> Ödeme listesi de fiili/ödeme tarihine göre çalışır; yalnız **beyan ayı**
+> kanuni tarihe göre belirlenir.
 
 Önceki yıla ait bir dönem listeye girdiğinde, Dönem sütununda mor bir
 **"2026 dönemi"** rozetiyle işaretlenir; karışıklık olmaz.

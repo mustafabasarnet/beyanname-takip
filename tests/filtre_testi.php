@@ -7,7 +7,8 @@
  *  Beyan dönemi / ait olduğu dönem ayrımını doğrular.
  *
  *  Kural:
- *    beyan modu : Yıl + Ay -> son_tarih  ("bu ay neyi vereceğim")
+ *    beyan modu : Yıl + Ay -> YASAL son tarih ("bu ay neyi vereceğim")
+ *                 (tatil kaydırması ayı değiştirmez; fiili tarih son_tarih'te)
  *    donem modu : Yıl -> yil, Ay -> donem_bitis  ("hangi döneme ait")
  *
  *  Kritik senaryo:
@@ -54,10 +55,14 @@ function filtrele(array $kayitlar, array $f): array
                 return false;
             }
         } else {
-            if (! empty($f['yil']) && (int) date('Y', strtotime($k['son_tarih'])) !== (int) $f['yil']) {
+            // Tatil kaydırması ayı değiştirdiğinde kayıt YANLIŞ aya düşmesin:
+            // ay/yıl kanuni (yasal) son tarihe göre belirlenir.
+            $kanuni = $k['yasal_son_tarih'] ?? $k['son_tarih'];
+
+            if (! empty($f['yil']) && (int) date('Y', strtotime($kanuni)) !== (int) $f['yil']) {
                 return false;
             }
-            if (! empty($f['ay']) && (int) date('n', strtotime($k['son_tarih'])) !== (int) $f['ay']) {
+            if (! empty($f['ay']) && (int) date('n', strtotime($kanuni)) !== (int) $f['ay']) {
                 return false;
             }
         }
@@ -70,17 +75,32 @@ function filtrele(array $kayitlar, array $f): array
 // Örnek veri (gerçek üretim sonuçlarıyla aynı)
 // --------------------------------------------------------------------
 $kayitlar = [
-    ['kod' => 'KDV1_A',       'yil' => 2027, 'donem_bitis' => '2027-03-31', 'son_tarih' => '2027-04-28'],
-    ['kod' => 'MUHSGK_A',     'yil' => 2027, 'donem_bitis' => '2027-03-31', 'son_tarih' => '2027-04-26'],
-    ['kod' => 'SGK',          'yil' => 2027, 'donem_bitis' => '2027-03-31', 'son_tarih' => '2027-04-30'],
-    ['kod' => 'KURUMLAR',     'yil' => 2026, 'donem_bitis' => '2026-12-31', 'son_tarih' => '2027-04-30'],
-    ['kod' => 'YILLIK_GV',    'yil' => 2026, 'donem_bitis' => '2026-12-31', 'son_tarih' => '2027-03-31'],
-    ['kod' => 'KURUMLAR',     'yil' => 2027, 'donem_bitis' => '2027-12-31', 'son_tarih' => '2028-05-01'],
-    ['kod' => 'KURUM_GECICI', 'yil' => 2027, 'donem_bitis' => '2027-03-31', 'son_tarih' => '2027-05-20'],
-    ['kod' => 'KDV1_A',       'yil' => 2027, 'donem_bitis' => '2027-04-30', 'son_tarih' => '2027-05-28'],
+    ['kod' => 'KDV1_A',       'yil' => 2027, 'donem_bitis' => '2027-03-31', 'son_tarih' => '2027-04-28', 'yasal_son_tarih' => '2027-04-28'],
+    ['kod' => 'MUHSGK_A',     'yil' => 2027, 'donem_bitis' => '2027-03-31', 'son_tarih' => '2027-04-26', 'yasal_son_tarih' => '2027-04-26'],
+    ['kod' => 'SGK',          'yil' => 2027, 'donem_bitis' => '2027-03-31', 'son_tarih' => '2027-04-30', 'yasal_son_tarih' => '2027-04-30'],
+    ['kod' => 'KURUMLAR',     'yil' => 2026, 'donem_bitis' => '2026-12-31', 'son_tarih' => '2027-04-30', 'yasal_son_tarih' => '2027-04-30'],
+    ['kod' => 'YILLIK_GV',    'yil' => 2026, 'donem_bitis' => '2026-12-31', 'son_tarih' => '2027-03-31', 'yasal_son_tarih' => '2027-03-31'],
+    ['kod' => 'KURUMLAR',     'yil' => 2027, 'donem_bitis' => '2027-12-31', 'son_tarih' => '2028-05-01', 'yasal_son_tarih' => '2028-05-01'],
+    ['kod' => 'KURUM_GECICI', 'yil' => 2027, 'donem_bitis' => '2027-03-31', 'son_tarih' => '2027-05-20', 'yasal_son_tarih' => '2027-05-20'],
+    ['kod' => 'KDV1_A',       'yil' => 2027, 'donem_bitis' => '2027-04-30', 'son_tarih' => '2027-05-28', 'yasal_son_tarih' => '2027-05-28'],
+
+    // ---- HAFTA SONU KAYDIRMASI AYI DEĞİŞTİREN GERÇEK VAKALAR ----
+    // Turizm (Eylül 2026): kanuni 31.10.2026 Cumartesi -> fiili 02.11.2026
+    ['kod' => 'TURIZM',       'yil' => 2026, 'donem_bitis' => '2026-09-30', 'son_tarih' => '2026-11-02', 'yasal_son_tarih' => '2026-10-31'],
+    // Turizm (Ekim 2026): kanuni 30.11.2026 Pazartesi -> kaydırma YOK
+    ['kod' => 'TURIZM',       'yil' => 2026, 'donem_bitis' => '2026-10-31', 'son_tarih' => '2026-11-30', 'yasal_son_tarih' => '2026-11-30'],
+    // KDV1 (Ocak 2026): kanuni 28.02.2026 Cumartesi -> fiili 02.03.2026
+    ['kod' => 'KDV1_A',       'yil' => 2026, 'donem_bitis' => '2026-01-31', 'son_tarih' => '2026-03-02', 'yasal_son_tarih' => '2026-02-28'],
 ];
 
 $kod = static fn (array $r) => array_map(static fn ($x) => $x['kod'] . '/' . $x['yil'], $r);
+
+// Aynı yıl içindeki farklı dönemleri ayırabilmek için dönem bitiş ayını da ekler:
+// örn. TURIZM/2026/09 (Eylül dönemi) ile TURIZM/2026/10 (Ekim dönemi)
+$kodD = static fn (array $r) => array_map(
+    static fn ($x) => $x['kod'] . '/' . $x['yil'] . '/' . date('m', strtotime($x['donem_bitis'])),
+    $r
+);
 
 // ====================================================================
 baslik('BEYAN MODU — "Bu ay hangi beyannameleri vereceğim?"');
@@ -108,7 +128,9 @@ baslik('DÖNEM MODU — "Hangi döneme ait?"');
 // ====================================================================
 
 $d2026 = filtrele($kayitlar, ['yil' => 2026, 'tarih_modu' => 'donem']);
-kontrol('2026 dönemi kayıt sayısı', 2, count($d2026));
+// 2026 dönemine ait 5 kayıt: Kurumlar, Yıllık GV + kaydırma testi için
+// eklenen Turizm (Eylül, Ekim) ve KDV1 (Ocak) satırları
+kontrol('2026 dönemi kayıt sayısı', 5, count($d2026));
 kontrol('  Kurumlar 2026 VAR', true, in_array('KURUMLAR/2026', $kod($d2026), true));
 kontrol('  Yıllık GV 2026 VAR', true, in_array('YILLIK_GV/2026', $kod($d2026), true));
 
@@ -118,6 +140,31 @@ kontrol('2027 dönemi: Kurumlar 2026 YOK', false, in_array('KURUMLAR/2026', $kod
 
 $dMart = filtrele($kayitlar, ['yil' => 2027, 'ay' => 3, 'tarih_modu' => 'donem']);
 kontrol('2027 Mart dönemi (aylık+3aylık)', 4, count($dMart));
+
+// ====================================================================
+baslik('HAFTA SONU KAYDIRMASI AYI DEĞİŞTİRMEZ (kanuni ay esas)');
+// ====================================================================
+
+// Turizm Eylül 2026: kanuni 31.10 (Cmt) -> fiili 02.11. EKİM beyannamesidir.
+$ekim = $kodD(filtrele($kayitlar, ['yil' => 2026, 'ay' => 10, 'tarih_modu' => 'beyan']));
+kontrol('★ Ekim 2026 -> Turizm (Eylül dönemi) VAR', true, in_array('TURIZM/2026/09', $ekim, true));
+kontrol('  Ekim 2026 kayıt sayısı', 1, count($ekim));
+
+$kasim = $kodD(filtrele($kayitlar, ['yil' => 2026, 'ay' => 11, 'tarih_modu' => 'beyan']));
+kontrol('★ Kasım 2026 -> Turizm (Eylül) YOK', false, in_array('TURIZM/2026/09', $kasim, true));
+kontrol('  Kasım 2026 yalnız Turizm (Ekim) dönemi', true, in_array('TURIZM/2026/10', $kasim, true));
+kontrol('  Kasım 2026 kayıt sayısı', 1, count($kasim));
+
+// KDV1 Ocak 2026: kanuni 28.02 (Cmt) -> fiili 02.03. ŞUBAT beyannamesidir.
+$subat = $kodD(filtrele($kayitlar, ['yil' => 2026, 'ay' => 2, 'tarih_modu' => 'beyan']));
+kontrol('★ Şubat 2026 -> KDV1 (Ocak) VAR', true, in_array('KDV1_A/2026/01', $subat, true));
+
+$mart26 = $kodD(filtrele($kayitlar, ['yil' => 2026, 'ay' => 3, 'tarih_modu' => 'beyan']));
+kontrol('★ Mart 2026 -> KDV1 (Ocak) YOK', false, in_array('KDV1_A/2026/01', $mart26, true));
+
+// Dönem modu etkilenmedi: Turizm Eylül, Eylül'de (dönem) görünür
+$donemEylul = $kodD(filtrele($kayitlar, ['yil' => 2026, 'ay' => 9, 'tarih_modu' => 'donem']));
+kontrol('Dönem modu: Eylül 2026 -> Turizm VAR', true, in_array('TURIZM/2026/09', $donemEylul, true));
 
 // ====================================================================
 baslik('İKİ MOD FARKLI SONUÇ VERMELİ');
