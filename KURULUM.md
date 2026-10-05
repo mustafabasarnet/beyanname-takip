@@ -28,6 +28,7 @@ Son geliştirme turunda eklenen/düzeltilenler:
 | **KDV1 ↔ KDV2 belirteci** | KDV1 listesinde eşleşen **KDV2'nin durumu** rozetle görünür (hazır / onaylı / bekliyor); KDV1 onayından önce "KDV2 hazır değil" uyarısı çıkar — engellemez (aşağıda ayrıntı) |
 | **Yeni: Güncelleme Logları** | **🆕 Güncellemeler** ekranı + sürüm notu girildiğinde kullanıcıya **girişte modern pencere**; okunduğunda bir daha gösterilmez (aşağıda ayrıntı) |
 | **Panel — E-Defter kartı** | E-Defter sayılarına (Yüklenen/Hazır/Kalan…) tıklayınca **açılır liste**; üstte **Takip ekranında aç** → süzülmüş E-Defter Takip |
+| **Sicil İşlemleri menü rozeti** | Menüde **Sicil İşlemleri** yanında **son günü gelen / gecikmiş** todo sayısı (ajanda rozeti mantığı); todo işaretlenince sayı **anında düşer**, tümü bitince rozet kaybolur (aşağıda ayrıntı) |
 
 Ayrıntılar: Makbuz Takip bölümü → "Pasifler dahil" · E-Defter bölümü → "7. Yazdırma" ve
 "8. Durum ve Sorumlu Personel — çoklu seçim" · Vergi Yükü bölümü → "Hasılat kapsamı".
@@ -767,6 +768,43 @@ Görev atandığı an, ilgili kişi bir sonraki sayfa geçişinde rozeti görür
 - Ajanda'da "Yapıldı / Geri al / İptal" AJAX uçları yeni sayıyı (`gorev_sayi`)
   döndürür; `ajandaGorevRozetGuncelle()` bu değeri rozete yazar. Böylece sayı
   sayfa yenilenmeden **anında** düşer.
+- Migration gerekmez; **yeni tablo/kolon yok**.
+
+---
+
+## 🧾 Sicil İşlemleri — Menü Rozeti (Son Günü Gelen İşler)
+
+Sicil işlemlerinin (şablondan üretilen) todo'ları için, tıpkı Ajanda'daki gibi
+**son günü gelen işler menüden görünsün** diye **Sicil İşlemleri** menü öğesine
+sayaç rozeti eklendi. Amaç: son tarihi yaklaşan/geçen todo'yu görmek için Sicil
+ekranını tek tek açmak zorunda kalmamak.
+
+```
+┌──────────────────────────┐         ┌──────────────────────────┐
+│  🧾 Sicil İşlemleri      │         │  🧾 Sicil İşlemleri   ⓷2│
+└──────────────────────────┘         └──────────────────────────┘
+```
+
+### Nasıl çalışır
+
+| Konu | Davranış |
+|---|---|
+| **Göründüğü yer** | Sol menü → **Sicil İşlemleri** — **her sayfada** (Sicil'e girmeden) |
+| **Sayı** | **Son günü gelen (bugün)** + **gecikmiş**, hâlâ **açık** todo sayısı (ajanda rozetiyle aynı mantık) |
+| **Sayılmayanlar** | İleri tarihli açık todo'lar · **Yapıldı** (TAMAM) · **Takip dışı** (GEREKSIZ) · yumuşak silinmiş todo ve **silinmiş işlemler** |
+| **Eski durum değerleri** | `HAZIR` / `GONDERILDI` değerleri **açık** sayılır → sayılır (geriye dönük uyum) |
+| **Todo işaretlenince** | Sayı **anında** düşer (Yapıldı / Takip dışı); geri alınca yeniden artar |
+| **Tümü bitince** | Rozet **kaybolur** (0 → gizli) |
+| **Kim görür** | Admin tümünü; diğerleri yalnız **erişebildiği müşavir kapsamındaki** mükelleflerin todolarını sayar |
+| **Yetki** | Ek yetki yok; rozet yalnız sayıdır, tıklayınca normal Sicil listesi açılır |
+
+### Teknik notlar
+
+- Sayaç `sicil_bildirim_gorevleri` + `sicil_degisiklikleri` + `mukellefler`
+  tablolarından **tek `COUNT`** ile okunur; `(durum, son_tarih)` indexini kullanır.
+  `BaseController::sicilRozet()` istek başına önbellekler — **N+1 yoktur**.
+- Sicil detayında todo durumu değiştiren AJAX ucu yeni sayıyı (`rozet` alanı)
+  döndürür; `window.sicilRozetGuncelle()` bu değeri menü rozetine yazar.
 - Migration gerekmez; **yeni tablo/kolon yok**.
 
 ---

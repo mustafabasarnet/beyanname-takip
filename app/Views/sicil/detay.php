@@ -303,6 +303,10 @@ $eksikAdlar    = implode(', ', array_map(static fn ($t) => (string) ($t['ad'] ??
     rozet.textContent = j.deg_durum_metin || j.deg_durum;
     // Evrak sil butonları durum geçişinde kilitli kalmasın
     satir.querySelectorAll('.evrak-sil').forEach(function (s) { s.disabled = false; });
+    // Menüdeki "Sicil İşlemleri" rozeti: son günü gelen iş sayısı anında düşsün
+    if (j.rozet !== undefined && window.sicilRozetGuncelle) {
+      window.sicilRozetGuncelle(j.rozet);
+    }
     BT.bildir(j.mesaj || 'Durum güncellendi.', j.yeni_durum === 'TAMAM' ? 'basari' : 'bilgi');
   }
 

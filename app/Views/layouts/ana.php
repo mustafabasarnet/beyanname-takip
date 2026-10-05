@@ -16,6 +16,9 @@
 .menu-rozet.kisisel{background:#2563eb}
 /* Güncellemeler rozeti — okunmamış sürüm notu (mor = yenilik) */
 .menu-rozet.guncelleme{background:#7c3aed}
+/* Sicil İşlemleri rozeti — son günü gelen / gecikmiş todolar (aciliyet = kırmızı).
+   Varsayılan .menu-rozet rengiyle aynıdır; ayrım için hafif gölge. */
+.menu-rozet.sicil{box-shadow:0 0 0 2px rgba(220,38,38,.18)}
 /* Bana atanan görev rozeti — sol altta kullanıcı adının yanında (bildirim) */
 .yan-alt .kullanici-satir{display:flex;align-items:center;gap:6px}
 .gorev-rozet{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;
@@ -108,6 +111,9 @@ $aktifUrl = trim(uri_string(), '/');
     </a>
     <a href="<?= site_url('sicil') ?>" class="<?= (! aktifMenu('sicil-sablon') && aktifMenu('sicil')) ? 'aktif' : '' ?>">
       <span class="ikon">🧾</span> Sicil İşlemleri
+      <span class="menu-rozet sicil" id="sicil-menu-rozet"
+            title="Son günü gelen ve gecikmiş yapılmamış sicil işleri"
+            style="<?= ! empty($sicilRozet) ? '' : 'display:none' ?>"><?= (int) ($sicilRozet ?? 0) ?></span>
     </a>
 
     <div class="menu-baslik">Kayıtlar</div>
@@ -435,6 +441,23 @@ window.ajandaGorevRozetGuncelle = function (sayi) {
   var adet = document.getElementById('ajanda-gorev-adet');
   if (adet) { adet.textContent = sayi; }
 
+  el.style.display = sayi > 0 ? '' : 'none';
+};
+</script>
+
+<script>
+/* Menüdeki "Sicil İşlemleri" rozetini canlı günceller.
+   Sicil detayında todo "Yapıldı" / "Takip dışı" işaretlenince AJAX yanıtındaki
+   rozet alanı ile çağrılır → son günü gelen işlerin sayısı anında düşer.
+   0 olunca rozet gizlenir. */
+window.sicilRozetGuncelle = function (sayi) {
+  var el = document.getElementById('sicil-menu-rozet');
+  if (!el) { return; }
+
+  sayi = parseInt(sayi, 10);
+  if (isNaN(sayi) || sayi < 0) { sayi = 0; }
+
+  el.textContent = sayi;
   el.style.display = sayi > 0 ? '' : 'none';
 };
 </script>

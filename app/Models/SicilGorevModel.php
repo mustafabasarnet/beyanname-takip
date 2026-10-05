@@ -445,6 +445,42 @@ class SicilGorevModel extends Model
     }
 
     // =================================================================
+    //  MENÜ ROZETİ
+    // =================================================================
+
+    /**
+     * Menü rozeti sayısı: SON GÜNÜ GELMİŞ (bugün) veya GEÇMİŞ, hâlâ açık todolar.
+     *
+     * Ajanda rozetiyle aynı mantık — "gecikmiş + bugün":
+     *   - durum açık (BEKLIYOR / eski HAZIR / GONDERILDI)
+     *   - son_tarih bugün ya da öncesi
+     *   - mükellef/işlem silinmemiş
+     * Tamamlanan (TAMAM) ve takip dışı (GEREKSIZ) todolar sayılmaz;
+     * son tarihi henüz gelmemiş todolar da sayılmaz (ileri tarihli iş sessiz kalır).
+     *
+     * Tek COUNT sorgusu döner (N+1 yok); istek başına BaseController'da
+     * önbelleklenir.
+     *
+     * @param int[]|null $musavirIdler kapsam (null = admin tümü)
+     */
+    public function sonGunuGelenSayisi($musavirIdler = null): int
+    {
+        $b = $this->db->table('sicil_bildirim_gorevleri g')
+            ->join('sicil_degisiklikleri d', 'd.id = g.sicil_degisikligi_id')
+            ->join('mukellefler m', 'm.id = d.mukellef_id')
+            ->where('m.deleted_at', null)
+            ->where('d.deleted_at', null)
+            ->where('g.deleted_at', null)
+            ->whereIn('g.durum', self::ACIK_DURUMLAR)
+            // NULL son tarih karşılaştırmada elenir; açık todoların hepsinde doludur
+            ->where('g.son_tarih <=', date('Y-m-d'));
+
+        $this->kapsamUygula($b, $musavirIdler);
+
+        return (int) $b->countAllResults();
+    }
+
+    // =================================================================
     //  ORTAK
     // =================================================================
 

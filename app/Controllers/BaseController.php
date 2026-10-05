@@ -213,6 +213,8 @@ abstract class BaseController extends Controller
         $veri['ajandaGorev']    = $veri['ajandaGorev'] ?? $this->ajandaGorevRozet();
         $veri['kisiselRozet']   = $veri['kisiselRozet'] ?? $this->kisiselRozet();
         $veri['guncellemeRozet'] = $veri['guncellemeRozet'] ?? $this->guncellemeRozet();
+        // Menüdeki "Sicil İşlemleri" rozeti (son günü gelen / gecikmiş todolar)
+        $veri['sicilRozet']     = $veri['sicilRozet'] ?? $this->sicilRozet();
 
         return view($view, $veri);
     }
@@ -312,6 +314,37 @@ abstract class BaseController extends Controller
             $s = $m->sayaclar($this->aktifKullanici, $this->erisilenMusavirler(), 0);
 
             return $onbellek = (int) $s['gecikmis'] + (int) $s['bugun'];
+        } catch (\Throwable $e) {
+            return $onbellek = 0;
+        }
+    }
+
+    /**
+     * Menüdeki "Sicil İşlemleri" rozeti: son günü gelmiş (bugün) + gecikmiş
+     * AÇIK sicil todo sayısı.
+     *
+     * Ajanda rozetiyle aynı mantık; personel/müşavir Sicil ekranına girmeden
+     * son günü gelen işleri görsün diye her sayfada (layout) hesaplanır ve
+     * istek başına önbelleklenir. Tablo yoksa (migration çalıştırılmamışsa)
+     * 0 döner — eski kurulumlar çökmesin.
+     */
+    protected function sicilRozet(): int
+    {
+        static $onbellek = null;
+
+        if ($onbellek !== null) {
+            return $onbellek;
+        }
+
+        try {
+            $db = \Config\Database::connect();
+
+            if (! $db->tableExists('sicil_bildirim_gorevleri')) {
+                return $onbellek = 0;
+            }
+
+            return $onbellek = (new \App\Models\SicilGorevModel())
+                ->sonGunuGelenSayisi($this->musavirFiltresi());
         } catch (\Throwable $e) {
             return $onbellek = 0;
         }

@@ -523,6 +523,9 @@ class Sicil extends BaseController
             'toplam'             => $hedef,
             'acik'               => $acik,
             'gerek'              => $gerek,
+            // Menü rozeti: son günü gelmiş/geçmiş açık todo sayısı (anında düşsün diye
+            // her yanıtta yeniden hesaplanır; BaseController önbelleği kullanılmaz).
+            'rozet'              => $this->gorevModel->sonGunuGelenSayisi($this->musavirFiltresi()),
         ]);
     }
 
