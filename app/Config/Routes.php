@@ -26,6 +26,13 @@ $routes->group('', ['filter' => 'guest'], static function ($routes) {
 });
 $routes->get('cikis', 'Auth::cikis');
 
+/*
+ * FİRMA LOGOSU
+ * Giriş ekranında da (oturum yokken) gösterildiği için auth filtresi DIŞINDA.
+ * Dosya web'e kapalı `writable/` altında tutulur; tek çıkış noktası bu uçtur.
+ */
+$routes->get('logo', 'Tanimlar::logo');
+
 // ---------------------------------------------------------------------
 // UYGULAMA (giriş zorunlu)
 // ---------------------------------------------------------------------
@@ -307,6 +314,9 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
         // Ayarlar
         $routes->get('ayarlar', 'Tanimlar::ayarlar');
         $routes->post('ayarlar', 'Tanimlar::ayarlarKaydet');
+
+        // Firma/büro kimliği: ad + logo (dosya yükleme ayrı form; yalnız yönetici)
+        $routes->post('firma-kaydet', 'Tanimlar::firmaKaydet');
     });
 
     // ----------------- SİSTEM (yalnızca yönetici) -----------------

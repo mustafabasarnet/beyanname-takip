@@ -33,7 +33,16 @@ echo ""
 echo "=== 2) VERİTABANINDAKİ HER AYAR EKRANDA MI? ==="
 EKSIK=0
 for K in $($MDB -e "select anahtar from ayarlar order by anahtar"); do
-  if grep -q "ayar\[$K\]" /tmp/ay_sayfa.html; then
+  # firma_adi ve logo_dosya, "Firma / Büro Kimliği" kartından yönetilir:
+  # alan adları ayar[...] değil, form alanı olarak durur (dosya yükleme
+  # multipart gerektirdiği için ayrı formdadır).
+  case "$K" in
+    firma_adi)  ARANAN='name="firma_adi"' ;;
+    logo_dosya) ARANAN='name="logo"' ;;
+    *)          ARANAN="ayar\[$K\]" ;;
+  esac
+
+  if grep -q "$ARANAN" /tmp/ay_sayfa.html; then
     echo "  [OK] $K düzenlenebilir"; g=$((g+1))
   else
     echo "  [HATA] $K ekranda YOK"; k=$((k+1)); EKSIK=$((EKSIK+1))
@@ -41,9 +50,14 @@ for K in $($MDB -e "select anahtar from ayarlar order by anahtar"); do
 done
 ol "Hiç eksik ayar yok" "0" "$EKSIK"
 
+# Toplam: ana formdaki ayar[...] alanları + kimlik kartındaki 2 alan
 TOPLAM=$($MDB -e "select count(*) from ayarlar")
 ol "Ekrandaki alan sayısı = ayar sayısı" "$TOPLAM" \
-   "$(grep -oE 'name="ayar\[[a-z_]+\]"' /tmp/ay_sayfa.html | sort -u | wc -l)"
+   "$((
+      $(grep -oE 'name="ayar\[[a-z_]+\]"' /tmp/ay_sayfa.html | sort -u | wc -l) \
+      + $(grep -c 'name="firma_adi"' /tmp/ay_sayfa.html | head -1 | awk '{print ($1>0)?1:0}') \
+      + $(grep -c 'name="logo"' /tmp/ay_sayfa.html | head -1 | awk '{print ($1>0)?1:0}')
+   ))"
 
 echo ""
 echo "=== 3) DEĞERLER DOĞRU YÜKLENİYOR MU ==="
@@ -73,7 +87,6 @@ curl -s -b $J -c $J -L -o /tmp/ay_son.html \
   -d "ayar[karsit_uyari_gun]=7" \
   -d "ayar[gg_istisna_donem]=3" \
   -d "ayar[uyari_gun_sayisi]=5" \
-  --data-urlencode "ayar[firma_adi]=SOYGÜDEN MÜŞAVİRLİK" \
   -d "ayar[cumartesi_tatil]=1" -d "ayar[pazar_tatil]=1" \
   -d "ayar[damga_otomatik_ekle]=1" \
   $B/tanimlar/ayarlar
@@ -81,7 +94,12 @@ ol "Başarı mesajı" "1" "$(grep -c 'Ayarlar kaydedildi' /tmp/ay_son.html)"
 ol "  kaydırma=1" "1" "$($MDB -e "select deger from ayarlar where anahtar='evrak_donem_kaydirma'")"
 ol "  adet=25" "25" "$($MDB -e "select deger from ayarlar where anahtar='evrak_sayfa_adedi'")"
 ol "  karsit=7" "7" "$($MDB -e "select deger from ayarlar where anahtar='karsit_uyari_gun'")"
-ol "  Türkçe karakter bozulmadı" "SOYGÜDEN MÜŞAVİRLİK" "$($MDB -e "select deger from ayarlar where anahtar='firma_adi'")"
+
+# Firma / Büro Adı ayrı formdan kaydedilir (kimlik kartı)
+T=$(grep -oP 'name="csrf-token" content="\K[^"]+' /tmp/ay_son.html | head -1)
+curl -s -b $J -c $J -o /dev/null -F "csrf_beyanname=$T" \
+     --form-string "firma_adi=SOYGÜDEN MÜŞAVİRLİK" $B/tanimlar/firma-kaydet
+ol "  Türkçe karakter bozulmadı (firma adı)" "SOYGÜDEN MÜŞAVİRLİK" "$($MDB -e "select deger from ayarlar where anahtar='firma_adi'")"
 
 echo ""
 echo "=== 5) İŞARETSİZ CHECKBOX'LAR 0 OLUYOR MU ==="
@@ -128,8 +146,12 @@ T=$(grep -oP 'name="csrf_beyanname" value="\K[^"]+' /tmp/f.html|head -1)
 curl -s -b /tmp/ay_p.txt -c /tmp/ay_p.txt -o /dev/null -d "csrf_beyanname=$T" -d "kimlik=personel" -d "sifre=Test1234" $B/giris
 ol "Personel ayarlara giremiyor" "302" "$(curl -s -b /tmp/ay_p.txt -o /dev/null -w '%{http_code}' $B/tanimlar/ayarlar)"
 # CSRF'siz POST 403, geçerli CSRF ile 302 (yetki reddi) — ikisi de engellenmiş demektir
-POSTKOD=$(curl -s -b /tmp/ay_p.txt -o /dev/null -w '%{http_code}' -d "ayar[firma_adi]=X" $B/tanimlar/ayarlar)
+POSTKOD=$(curl -s -b /tmp/ay_p.txt -o /dev/null -w '%{http_code}' -d "ayar[evrak_sayfa_adedi]=99" $B/tanimlar/ayarlar)
 ol "Personel ayar kaydedemiyor ($POSTKOD)" "1" "$([ "$POSTKOD" = "302" ] || [ "$POSTKOD" = "403" ] && echo 1 || echo 0)"
+# Firma kimliği ayrı uçtan da kilitli olmalı (301/302/403 hepsi engel demektir)
+POSTKOD2=$(curl -s -b /tmp/ay_p.txt -o /dev/null -w '%{http_code}' -F "firma_adi=ELE GEÇİRİLDİ" $B/tanimlar/firma-kaydet)
+ol "Personel firma kimliğini değiştiremiyor ($POSTKOD2)" "1" \
+   "$([ "$POSTKOD2" = "302" ] || [ "$POSTKOD2" = "403" ] && echo 1 || echo 0)"
 ol "  Personel değişiklik yapamadı" "SOYGÜDEN MÜŞAVİRLİK" "$($MDB -e "select deger from ayarlar where anahtar='firma_adi'")"
 
 # Yedeği geri yükle

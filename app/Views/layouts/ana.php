@@ -106,11 +106,26 @@ $aktifUrl = trim(uri_string(), '/');
 ?>
 
 <!-- ================= YAN MENÜ ================= -->
+<?php
+/*
+ * FİRMA KİMLİĞİ (sol üst)
+ * -----------------------
+ * Ad  : Ayarlar → Firma / Büro Adı  (boşsa "Beyanname Takip")
+ * Logo: Ayarlar → Logo (yüklenmişse görsel, yoksa 📋 simgesi)
+ *
+ * $firma BaseController::firmaBilgisi() ile gelir (istek başına 1 sorgu).
+ */
+$firma = $firma ?? ['ad' => 'Beyanname Takip', 'logo_var' => false];
+?>
 <aside class="yan-menu">
   <div class="logo">
-    <div class="logo-ikon">📋</div>
+    <?php if (! empty($firma['logo_var'])): ?>
+      <img class="logo-img" src="<?= site_url('logo') ?>" alt="<?= esc($firma['ad'], 'attr') ?> logosu">
+    <?php else: ?>
+      <div class="logo-ikon">📋</div>
+    <?php endif; ?>
     <div class="logo-yazi">
-      <b>Beyanname Takip</b>
+      <b title="<?= esc($firma['ad'], 'attr') ?>"><?= esc($firma['ad']) ?></b>
       <span>Mükellef Yönetim Sistemi</span>
     </div>
   </div>

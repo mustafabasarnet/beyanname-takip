@@ -111,8 +111,13 @@ input,select,textarea,button{font-family:inherit;font-size:inherit}
   background:linear-gradient(135deg,var(--ana),var(--ana-2));
   display:grid;place-items:center;font-size:19px
 }
-.yan-menu .logo-yazi b{display:block;color:var(--yan-logo-metin);font-size:14.5px;letter-spacing:-.2px}
+.yan-menu .logo-yazi b{display:block;color:var(--yan-logo-metin);font-size:14.5px;letter-spacing:-.2px;
+  line-height:1.25;overflow-wrap:anywhere;max-height:2.6em;overflow:hidden}
 .yan-menu .logo-yazi span{font-size:11px;color:var(--yan-alt-metin)}
+/* Yüklenen firma logosu — koyu/açık menüde de görünsün diye açık zemin */
+.yan-menu .logo-img{width:38px;height:38px;flex:0 0 38px;border-radius:10px;object-fit:contain;
+  background:#fff;padding:3px;box-shadow:0 1px 5px rgba(0,0,0,.28)}
+.yan-menu .logo-yazi{min-width:0;flex:1}
 
 .menu-liste{flex:1;overflow-y:auto;padding:14px 10px}
 .menu-liste::-webkit-scrollbar{width:5px}
@@ -480,6 +485,8 @@ table.tablo .orta{text-align:center}
   width:100%;max-width:420px;padding:36px 32px;position:relative;z-index:1
 }
 .giris-kutu .logo{text-align:center;margin-bottom:26px}
+.giris-kutu .giris-logo{height:66px;max-width:230px;object-fit:contain;margin-bottom:12px;
+  background:#fff;padding:8px;border-radius:14px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
 .giris-kutu .logo .ik{
   width:60px;height:60px;border-radius:16px;margin:0 auto 13px;
   background:linear-gradient(135deg,var(--ana),var(--ana-2));

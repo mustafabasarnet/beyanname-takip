@@ -16,9 +16,21 @@
 <body class="giris-sayfa">
 
 <div class="giris-kutu">
+  <?php
+  /*
+   * FİRMA KİMLİĞİ — giriş ekranı
+   * Oturum açılmadan da göründüğü için BaseController'dan değil, doğrudan
+   * ayarlardan okunur (GuestFilter altındaki Auth controller'ında).
+   */
+  $firma = $firma ?? firmaBilgisi();
+  ?>
   <div class="logo">
-    <div class="ik">📋</div>
-    <h1>Beyanname Takip</h1>
+    <?php if (! empty($firma['logo_var'])): ?>
+      <img class="giris-logo" src="<?= site_url('logo') ?>" alt="<?= esc($firma['ad'], 'attr') ?> logosu">
+    <?php else: ?>
+      <div class="ik">📋</div>
+    <?php endif; ?>
+    <h1><?= esc($firma['ad']) ?></h1>
     <div class="alt-yazi">Mükellef Beyanname ve Evrak Yönetim Sistemi</div>
   </div>
 

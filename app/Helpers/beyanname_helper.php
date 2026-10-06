@@ -809,3 +809,58 @@ if (! function_exists('kdv2Belirtec')) {
             . ' title="' . esc($ipucu) . '">' . esc($metin) . '</span>';
     }
 }
+
+if (! function_exists('firmaBilgisi')) {
+    /**
+     * FİRMA / BÜRO KİMLİĞİ — sol üst başlık (ad + logo)
+     *
+     * Kaynak: `ayarlar` tablosu
+     *   firma_adi  → başlık ("Beyanname Takip" boşsa varsayılan)
+     *   logo_dosya → yüklenen logo dosya adı (writable/uploads/logo altında)
+     *
+     * İstek başına BİR kez sorgular (static önbellek); layout ve giriş ekranı
+     * aynı fonksiyonu kullandığı için kod tekrarı yoktur.
+     *
+     * @return array{ad:string, logo:?string, logo_var:bool}
+     */
+    function firmaBilgisi(): array
+    {
+        static $onbellek = null;
+
+        if ($onbellek !== null) {
+            return $onbellek;
+        }
+
+        $varsayilan = ['ad' => 'Beyanname Takip', 'logo' => null, 'logo_var' => false];
+
+        try {
+            $db = \Config\Database::connect();
+
+            if (! $db->tableExists('ayarlar')) {
+                return $onbellek = $varsayilan;   // kurulum öncesi
+            }
+
+            // Bilinmeyen anahtarlar için findAll yerine iki nokta okuma yeterli
+            $satirlar = $db->table('ayarlar')
+                ->select('anahtar, deger')
+                ->whereIn('anahtar', ['firma_adi', 'logo_dosya'])
+                ->get()->getResultArray();
+
+            $ayar = array_column($satirlar, 'deger', 'anahtar');
+
+            $ad   = trim((string) ($ayar['firma_adi'] ?? ''));
+            $logo = basename((string) ($ayar['logo_dosya'] ?? ''));
+
+            $logoVar = $logo !== ''
+                && is_file(WRITEPATH . 'uploads/logo' . DIRECTORY_SEPARATOR . $logo);
+
+            return $onbellek = [
+                'ad'       => $ad === '' ? $varsayilan['ad'] : $ad,
+                'logo'     => $logoVar ? $logo : null,
+                'logo_var' => $logoVar,
+            ];
+        } catch (\Throwable $e) {
+            return $onbellek = $varsayilan;
+        }
+    }
+}

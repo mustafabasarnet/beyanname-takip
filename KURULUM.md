@@ -29,6 +29,7 @@ Son geliştirme turunda eklenen/düzeltilenler:
 | **Yeni: Güncelleme Logları** | **🆕 Güncellemeler** ekranı + sürüm notu girildiğinde kullanıcıya **girişte modern pencere**; okunduğunda bir daha gösterilmez (aşağıda ayrıntı) |
 | **Panel — E-Defter kartı** | E-Defter sayılarına (Yüklenen/Hazır/Kalan…) tıklayınca **açılır liste**; üstte **Takip ekranında aç** → süzülmüş E-Defter Takip |
 | **🎨 Renkli tema (kullanıcı bazlı)** | Açık / karanlık / **sistem** teması + **7 renk şablonu** + **yan menü açık-koyu**; kullanıcı kendi profilinden seçer. Açık tema + mavi palet = **bugünkü görünümün aynısı** (aşağıda ayrıntı) |
+| **Firma kimliği (sol üst)** | Ayarlar → **🏢 Firma / Büro Kimliği**: kendi **logonuzu** yükleyin (PNG/JPG/WEBP/GIF, ≤1 MB) + **firma/büro adı**; sol üst köşede ve **giriş ekranında** görünür |
 | **Karanlık tema okunabilirliği** | Öncelik/görünürlük rozetleri, etiket çipleri ve satır zeminleri karanlıkta okunur hâle getirildi (WCAG AA ≥ 4.5:1); otomatik **kontrast testi** ile korunuyor |
 | **Sicil İşlemleri menü rozeti** | Menüde **Sicil İşlemleri** yanında **son günü gelen / gecikmiş** todo sayısı (ajanda rozeti mantığı); todo işaretlenince sayı **anında düşer**, tümü bitince rozet kaybolur (aşağıda ayrıntı) |
 
@@ -771,6 +772,53 @@ Görev atandığı an, ilgili kişi bir sonraki sayfa geçişinde rozeti görür
   döndürür; `ajandaGorevRozetGuncelle()` bu değeri rozete yazar. Böylece sayı
   sayfa yenilenmeden **anında** düşer.
 - Migration gerekmez; **yeni tablo/kolon yok**.
+
+---
+
+## 🏢 Firma / Büro Kimliği — Logo ve Ad (Sol Üst)
+
+Sol üstteki başlık artık **size ait**: kendi logonuzu yükleyebilir, firma/büro
+adınızı yazabilirsiniz. Aynı kimlik **giriş ekranında** da görünür.
+
+```
+┌────────────────────────────────┐
+│  ┌──────┐  BAŞAR MUHASEBE      │   ← logo (sizin yüklediğiniz)
+│  │ LOGO │  BÜROSU              │   ← Ayarlar → Firma / Büro Adı
+│  └──────┘  Mükellef Yönetim…   │   ← sabit alt başlık
+└────────────────────────────────┘
+```
+
+### Nereden ayarlanır
+
+**Tanımlar → Ayarlar → 🏢 Firma / Büro Kimliği** (en üstteki kart)
+
+| Alan | Açıklama |
+|---|---|
+| **Firma / Büro Adı** | Sol üstte ve giriş ekranında başlık olur (en fazla 60 karakter). Boş bırakılırsa **“Beyanname Takip”** yazılır |
+| **Logo Yükle** | **PNG, JPG, WEBP, GIF** · en fazla **1 MB**. Kare veya yatay logo önerilir |
+| **Mevcut logoyu kaldır** | İşaretlenip kaydedilirse logo silinir, varsayılan **📋** simgesine dönülür |
+
+Kartın sağında **canlı önizleme** vardır: seçtiğiniz logo ve yazdığınız ad,
+kaydetmeden önce sol üst köşenin birebir taklidi üzerinde görünür.
+
+> **Yetki:** Yalnız **yönetici** değiştirebilir (logo, tüm kullanıcıların gördüğü
+> ortak kimliktir). Diğer roller kartı görür ama alanlar kilitlidir.
+
+### Güvenlik
+
+| Konu | Davranış |
+|---|---|
+| **Dosya konumu** | `writable/uploads/logo/` — web'den **doğrudan erişilemez**; görüntü yalnız `/logo` ucundan sunulur |
+| **İçerik doğrulaması** | `getimagesize()` ile gerçek görüntü olduğu doğrulanır → uzantısı `.png` yapılmış PHP dosyası **reddedilir** |
+| **SVG** | Bilinçli olarak **kabul edilmez** (içine gömülü betik çalışabilir → XSS) |
+| **Boyut / uzantı** | 1 MB sınırı + beyaz liste (png, jpg, jpeg, webp, gif) |
+| **Dosya adı** | Her yüklemede rastgele üretilir (`logo_<16 karakter>.png`); eski dosya **silinir** → klasörde tek logo kalır |
+| **Sunum** | `X-Content-Type-Options: nosniff` + uzantıdan türetilen doğru `Content-Type` |
+| **Yol güvenliği** | Dosya adı `basename()` ile sınırlandırılır; yalnız `logo_` ile başlayan adlar silinebilir (dizin dolaşma engeli) |
+| **CSRF / yetki** | POST uçları CSRF korumalı; yönetici olmayan kullanıcı **403** alır |
+
+> Kurulum: `database/migration_logo.sql` (`logo_dosya` ayar anahtarı ekler;
+> `information_schema` kullanmaz, tekrar koşulabilir).
 
 ---
 

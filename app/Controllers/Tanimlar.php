@@ -356,4 +356,171 @@ class Tanimlar extends BaseController
         return redirect()->to(site_url('tanimlar/ayarlar'))
             ->with('basari', 'Ayarlar kaydedildi. Tarih kurallarını değiştirdiyseniz dönemleri yeniden üretin.');
     }
+
+    // ============ FİRMA / BÜRO KİMLİĞİ (ad + logo) ============
+
+    /** Logo klasörü: web'e kapalı alan (writable) — yalnız controller sunar. */
+    public const LOGO_KLASOR = 'uploads/logo';
+
+    /** Kabul edilen logo dosya uzantıları. SVG bilinçli olarak YOKTUR:
+     *  SVG içine gömülü betik çalışabildiği için XSS riski taşır. */
+    public const LOGO_UZANTI = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+
+    /** Logo en büyük boyut (KB). */
+    public const LOGO_BOYUT_KB = 1024;
+
+    /**
+     * Firma/büro adı ve logoyu kaydeder.
+     *
+     * Ayarlar sayfasındaki diğer alanlardan AYRI bir formdur (dosya yükleme
+     * multipart gerektirir). Yalnız yönetici kullanabilir: logo tüm kullanıcıların
+     * gördüğü ortak kimliktir.
+     */
+    public function firmaKaydet()
+    {
+        if (! $this->adminMi()) {
+            return redirect()->to(site_url('tanimlar/ayarlar'))
+                ->with('hata', 'Firma bilgilerini yalnız yönetici değiştirebilir.');
+        }
+
+        $model = new AyarModel();
+
+        // ---- 1) Firma / büro adı ----
+        $ad = trim((string) $this->request->getPost('firma_adi'));
+        $ad = strip_tags($ad);
+
+        if (mb_strlen($ad) > 60) {
+            $ad = mb_substr($ad, 0, 60);
+        }
+
+        $model->yaz('firma_adi', $ad === '' ? 'Beyanname Takip' : $ad);
+
+        // ---- 2) Logo kaldırma ----
+        if ($this->request->getPost('logo_kaldir') === '1') {
+            $this->logoDosyaSil((string) $model->oku('logo_dosya', ''));
+            $model->yaz('logo_dosya', '');
+
+            return redirect()->to(site_url('tanimlar/ayarlar'))
+                ->with('basari', 'Firma bilgileri kaydedildi, logo kaldırıldı.');
+        }
+
+        // ---- 3) Yeni logo yükleme ----
+        $dosya = $this->request->getFile('logo');
+
+        if ($dosya === null || $dosya->getError() === UPLOAD_ERR_NO_FILE) {
+            return redirect()->to(site_url('tanimlar/ayarlar'))
+                ->with('basari', 'Firma bilgileri kaydedildi.');
+        }
+
+        if (! $dosya->isValid()) {
+            return redirect()->to(site_url('tanimlar/ayarlar'))
+                ->with('hata', 'Logo yüklenemedi: ' . $dosya->getErrorString());
+        }
+
+        $uzanti = strtolower((string) $dosya->getClientExtension());
+
+        if (! in_array($uzanti, self::LOGO_UZANTI, true)) {
+            return redirect()->to(site_url('tanimlar/ayarlar'))
+                ->with('hata', 'Logo için yalnız şu türler kullanılabilir: '
+                    . strtoupper(implode(', ', self::LOGO_UZANTI)) . '. (SVG güvenlik nedeniyle kabul edilmez.)');
+        }
+
+        if ($dosya->getSize() > self::LOGO_BOYUT_KB * 1024) {
+            return redirect()->to(site_url('tanimlar/ayarlar'))
+                ->with('hata', 'Logo ' . self::LOGO_BOYUT_KB . ' KB üzerinde olamaz.');
+        }
+
+        /*
+         * İçerik doğrulaması: uzantısı .png olan bir PHP dosyası yüklenmesin.
+         * getimagesize() gerçek bir görüntü değilse false döner.
+         */
+        $bilgi = @getimagesize($dosya->getTempName());
+
+        if ($bilgi === false) {
+            return redirect()->to(site_url('tanimlar/ayarlar'))
+                ->with('hata', 'Yüklenen dosya geçerli bir görüntü değil.');
+        }
+
+        $klasor = WRITEPATH . self::LOGO_KLASOR;
+
+        if (! is_dir($klasor)) {
+            mkdir($klasor, 0o775, true);
+        }
+
+        $yeniAd = 'logo_' . bin2hex(random_bytes(8)) . '.' . $uzanti;
+
+        if (! $dosya->move($klasor, $yeniAd)) {
+            return redirect()->to(site_url('tanimlar/ayarlar'))
+                ->with('hata', 'Logo kaydedilemedi.');
+        }
+
+        // Eski dosyayı temizle (yalnız bizim ürettiğimiz adlar silinir)
+        $this->logoDosyaSil((string) $model->oku('logo_dosya', ''));
+        $model->yaz('logo_dosya', $yeniAd);
+
+        return redirect()->to(site_url('tanimlar/ayarlar'))
+            ->with('basari', 'Firma bilgileri ve logo kaydedildi.');
+    }
+
+    /**
+     * Logoyu tarayıcıya sunar.
+     *
+     * Dosya `writable/` altında tutulur (web'den doğrudan erişilemez); bu uç
+     * tek çıkış noktasıdır. Dosya adı ayardan okunur ve `basename()` ile
+     * sınırlandırılır → dizin dolaşma (path traversal) engellenir. Ayarlarda
+     * logo yoksa varsayılan simge (SVG) döner, böylece istemci tarafında
+     * kırık görüntü oluşmaz.
+     */
+    public function logo()
+    {
+        $ad     = basename((string) (new AyarModel())->oku('logo_dosya', ''));
+        $dosya  = WRITEPATH . self::LOGO_KLASOR . DIRECTORY_SEPARATOR . $ad;
+
+        if ($ad === '' || ! is_file($dosya)) {
+            // Varsayılan simge — 1x1 şeffaf PNG yerine marka simgesi döner
+            $this->response->setHeader('Content-Type', 'image/svg+xml');
+            $this->response->setHeader('Cache-Control', 'no-store');
+
+            return $this->response->setBody(
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+                . '<rect width="64" height="64" rx="14" fill="#ffffff"/>'
+                . '<text x="32" y="44" font-size="34" text-anchor="middle">📋</text></svg>'
+            );
+        }
+
+        $uzanti = strtolower(pathinfo($dosya, PATHINFO_EXTENSION));
+        $mime   = [
+            'png'  => 'image/png',  'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg',
+            'webp' => 'image/webp', 'gif' => 'image/gif',
+        ][$uzanti] ?? 'application/octet-stream';
+
+        $this->response->setHeader('Content-Type', $mime);
+        $this->response->setHeader('X-Content-Type-Options', 'nosniff');
+        $this->response->setHeader('Content-Disposition', 'inline; filename="logo.' . $uzanti . '"');
+        // Dosya adı her yüklemede değişir → uzun önbellek güvenli (sürümleme etkisi)
+        $this->response->setHeader('Cache-Control', 'public, max-age=604800');
+
+        return $this->response->setBody((string) file_get_contents($dosya));
+    }
+
+    /**
+     * Logo dosyasını diskten siler.
+     *
+     * Güvenlik: yalnız `logo_` ile başlayan ve klasörün İÇİNDE kalan adlar
+     * silinir; ayara dışarıdan yazılmış olabilecek bir yol (../) asla işlenmez.
+     */
+    protected function logoDosyaSil(string $ad): void
+    {
+        $ad = basename($ad);
+
+        if ($ad === '' || ! str_starts_with($ad, 'logo_')) {
+            return;
+        }
+
+        $yol = WRITEPATH . self::LOGO_KLASOR . DIRECTORY_SEPARATOR . $ad;
+
+        if (is_file($yol)) {
+            @unlink($yol);
+        }
+    }
 }

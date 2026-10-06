@@ -14,6 +14,10 @@ $acik  = static fn ($k, $v = 0) => (int) ($a[$k]['deger'] ?? $v) === 1;
 $bilinen = [
     'cumartesi_tatil', 'pazar_tatil', 'arife_tatil_sayilsin', 'mali_tatil_uygula',
     'otomatik_donem_uret', 'firma_adi', 'uyari_gun_sayisi',
+    // Kimlik kartından yönetilir (yukarıda, ayrı formda) — "Diğer Ayarlar"
+    // bölümünde ham metin olarak görünmemeli: aksi hâlde logo dosya adı
+    // elle değiştirilebilirdi.
+    'logo_dosya',
     'evrak_donem_kaydirma', 'evrak_sayfa_adedi',
     'damga_otomatik_ekle', 'bildirim_ucret_varsayilan',
     'gg_istisna_donem', 'karsit_uyari_gun',
@@ -50,6 +54,155 @@ $digerleri = array_filter(
                    && ! isset($tanimli[$x['anahtar']])
 );
 ?>
+
+<?php
+/*
+ * ==================== FİRMA / BÜRO KİMLİĞİ ====================
+ * Sol üstte görünen başlık ve logo. Dosya yükleme multipart gerektirdiği
+ * için ayrı bir formdur (iç içe form geçersiz olurdu). Yalnız yönetici
+ * kaydedebilir; diğer roller alanları salt-okunur görür.
+ */
+$firma  = $firma ?? firmaBilgisi();
+$yonetici = ($aktifKullanici['rol'] ?? '') === 'admin';
+$engelli  = $yonetici ? '' : 'disabled';
+?>
+<div class="kart">
+  <div class="kart-baslik"><h2>🏢 Firma / Büro Kimliği</h2>
+    <div class="sag">
+      <?php if (! empty($firma['logo_var'])): ?>
+        <span class="rozet yesil">✓ Logo yüklü</span>
+      <?php else: ?>
+        <span class="rozet gri">Logo yüklenmemiş</span>
+      <?php endif; ?>
+    </div>
+  </div>
+  <div class="kart-govde">
+    <?php if (! $yonetici): ?>
+      <div class="uyari bilgi" style="padding:9px 14px;font-size:13px;margin-bottom:14px">
+        <span class="ik">ℹ</span>
+        <div>Firma bilgilerini yalnız <b>yönetici</b> değiştirebilir. Aşağıdaki
+          bilgiler tüm kullanıcıların gördüğü ortak kimliktir.</div>
+      </div>
+    <?php endif; ?>
+
+    <form method="post" action="<?= site_url('tanimlar/firma-kaydet') ?>" enctype="multipart/form-data">
+    <?= csrf_field() ?>
+
+    <div class="firma-grid">
+      <!-- Sol: alanlar -->
+      <div>
+        <div class="form-grup">
+          <label>Firma / Büro Adı</label>
+          <input type="text" name="firma_adi" class="girdi" maxlength="60"
+                 value="<?= esc($firma['ad']) ?>" <?= $engelli ?>
+                 placeholder="Örn. Yılmaz Muhasebe Bürosu">
+          <span class="yardim">
+            Sol üstte ve giriş ekranında başlık olarak görünür (en fazla 60 karakter).
+          </span>
+        </div>
+
+        <div class="form-grup" style="margin-top:14px">
+          <label>Logo Yükle</label>
+          <input type="file" name="logo" class="girdi" accept="image/png,image/jpeg,image/webp,image/gif"
+                 <?= $engelli ?>>
+          <span class="yardim">
+            <b>PNG, JPG, WEBP veya GIF</b> · en fazla <b>1 MB</b> · kare veya yatay logo önerilir.
+            Logonun arkasına okunurluk için açık zemin uygulanır.
+          </span>
+        </div>
+
+        <?php if (! empty($firma['logo_var']) && $yonetici): ?>
+          <label class="onay" style="margin-top:12px">
+            <input type="checkbox" name="logo_kaldir" value="1">
+            <span>Mevcut logoyu kaldır (varsayılan 📋 simgesine dön)</span>
+          </label>
+        <?php endif; ?>
+
+        <?php if ($yonetici): ?>
+          <div class="form-alt" style="margin-top:16px;padding-top:14px">
+            <button type="submit" class="btn">💾 Kaydet</button>
+          </div>
+        <?php endif; ?>
+      </div>
+
+      <!-- Sağ: canlı önizleme (sol üst köşenin birebir taklidi) -->
+      <div class="firma-onizleme">
+        <div class="fo-bas">Önizleme — sol üst köşe</div>
+        <div class="fo-menu">
+          <div class="fo-logo">
+            <?php if (! empty($firma['logo_var'])): ?>
+              <img src="<?= site_url('logo') ?>" alt="Logo" id="fo-logo-img">
+            <?php else: ?>
+              <span class="fo-ikon" id="fo-logo-yer">📋</span>
+            <?php endif; ?>
+          </div>
+          <div class="fo-yazi">
+            <b id="fo-ad"><?= esc($firma['ad']) ?></b>
+            <span>Mükellef Yönetim Sistemi</span>
+          </div>
+        </div>
+        <div class="fo-not">
+          Yeni logo seçtiğinizde <b>Kaydet</b> demeden önce burada görünür.
+        </div>
+      </div>
+    </div>
+
+    </form>
+  </div>
+</div>
+
+<style>
+/* ---------------- FİRMA KİMLİĞİ KARTI ---------------- */
+.firma-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px;align-items:start}
+.firma-onizleme{background:var(--gri-50);border:1px solid var(--cizgi);border-radius:12px;padding:14px}
+.fo-bas{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--gri-500);
+  font-weight:700;margin-bottom:10px}
+.fo-menu{display:flex;align-items:center;gap:11px;background:linear-gradient(180deg,var(--yan-bg-1),var(--yan-bg-2));
+  border-radius:10px;padding:12px 14px;border:1px solid var(--yan-cizgi)}
+.fo-logo{width:38px;height:38px;flex:0 0 38px;border-radius:10px;display:grid;place-items:center;
+  background:#fff;overflow:hidden;padding:3px}
+.fo-logo img{width:100%;height:100%;object-fit:contain;display:block}
+.fo-ikon{font-size:19px;background:linear-gradient(135deg,var(--ana),var(--ana-2));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.fo-yazi{min-width:0}
+.fo-yazi b{display:block;color:var(--yan-logo-metin);font-size:14.5px;line-height:1.25;
+  overflow-wrap:anywhere;max-height:2.6em;overflow:hidden}
+.fo-yazi span{font-size:11px;color:var(--yan-alt-metin)}
+.fo-not{margin-top:10px;font-size:11.5px;color:var(--gri-500);line-height:1.5}
+</style>
+
+<script>
+/* Seçilen dosyayı kaydetmeden önce önizlemede göster (yalnız tarayıcıda) */
+(function () {
+  var giris = document.querySelector('.firma-grid input[type=file]');
+  if (!giris) { return; }
+
+  giris.addEventListener('change', function () {
+    var dosya = giris.files && giris.files[0];
+    if (!dosya) { return; }
+
+    var kap = document.querySelector('.fo-logo');
+    if (!kap) { return; }
+
+    var img = kap.querySelector('img');
+    if (!img) {
+      kap.innerHTML = '';
+      img = document.createElement('img');
+      kap.appendChild(img);
+    }
+    img.src = URL.createObjectURL(dosya);
+  });
+
+  /* Firma adı yazılırken önizleme başlığı da anında güncellenir */
+  var ad = document.querySelector('.firma-grid input[name=firma_adi]');
+  var foAd = document.getElementById('fo-ad');
+  if (ad && foAd) {
+    ad.addEventListener('input', function () {
+      foAd.textContent = ad.value.trim() === '' ? 'Beyanname Takip' : ad.value;
+    });
+  }
+}());
+</script>
 
 <form method="post" action="<?= site_url('tanimlar/ayarlar') ?>">
 <?= csrf_field() ?>
@@ -184,19 +337,8 @@ $digerleri = array_filter(
   </div>
 </div>
 
-<!-- ============ GENEL ============ -->
-<div class="kart">
-  <div class="kart-baslik"><h2>🏷️ Genel</h2></div>
-  <div class="kart-govde">
-    <div class="form-grid">
-      <div class="form-grup tam">
-        <label>Firma / Büro Adı</label>
-        <input type="text" name="ayar[firma_adi]" class="girdi" value="<?= esc($deger('firma_adi')) ?>">
-        <span class="yardim">Üst menüde ve yazdırma çıktılarında görünür</span>
-      </div>
-    </div>
-  </div>
-</div>
+<?php /* Not: "Firma / Büro Adı" alanı yukarıdaki kimlik kartına taşındı
+         (logo ile aynı formda kaydedilir). */ ?>
 
 <!-- ============ E-DEFTER ============ -->
 <div class="kart">

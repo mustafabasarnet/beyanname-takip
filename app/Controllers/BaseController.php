@@ -216,6 +216,9 @@ abstract class BaseController extends Controller
         // Menüdeki "Sicil İşlemleri" rozeti (son günü gelen / gecikmiş todolar)
         $veri['sicilRozet']     = $veri['sicilRozet'] ?? $this->sicilRozet();
 
+        // Firma/büro kimliği (sol üst logo + ad) — tüm sayfalarda gerekli
+        $veri['firma']          = $veri['firma'] ?? $this->firmaBilgisi();
+
         // Görünüm tercihi (tema / palet / yan menü) — kullanıcı bazlı
         $tema = $this->temaTercihi();
         $veri['temaModu']  = $veri['temaModu']  ?? $tema['tema'];
@@ -323,6 +326,19 @@ abstract class BaseController extends Controller
         } catch (\Throwable $e) {
             return $onbellek = 0;
         }
+    }
+
+    /**
+     * Firma/büro kimliği (sol üst logo + ad).
+     *
+     * Mantık `firmaBilgisi()` helper'ında tanımlıdır; giriş ekranı da aynı
+     * fonksiyonu kullandığı için kural tek yerde durur.
+     *
+     * @return array{ad:string, logo:?string, logo_var:bool}
+     */
+    protected function firmaBilgisi(): array
+    {
+        return firmaBilgisi();
     }
 
     /**
