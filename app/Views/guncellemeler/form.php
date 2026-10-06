@@ -16,7 +16,7 @@ $duzenleme = ! empty($kayit['id']);
 <style>
 .gn-ornek{background:var(--gri-50,#f8fafc);border:1px dashed var(--gri-300,#cbd5e1);
   border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--gri-600,#475569);margin-top:8px}
-.gn-ornek code{background:#fff;border:1px solid var(--gri-200,#e2e8f0);border-radius:6px;
+.gn-ornek code{background:var(--yuzey);border:1px solid var(--gri-200,#e2e8f0);border-radius:6px;
   padding:1px 6px;font-weight:700}
 .gn-ornek .satir{margin-top:5px;display:flex;gap:8px;align-items:center}
 .gn-onizleme{border:1px solid var(--gri-200,#e2e8f0);border-radius:12px;padding:12px 14px;margin-top:14px}
@@ -25,10 +25,10 @@ $duzenleme = ! empty($kayit['id']);
   border-top:1px dashed var(--gri-100,#f1f5f9);font-size:13.5px;color:var(--gri-700,#334155)}
 .gn-madde:first-of-type{border-top:0}
 .gn-madde .rz{flex:0 0 auto;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:99px;white-space:nowrap}
-.gn-madde .rz.yesil{background:#d1fae5;color:#065f46}
-.gn-madde .rz.mavi{background:#dbeafe;color:#1e40af}
-.gn-madde .rz.turuncu{background:#ffedd5;color:#9a3412}
-.gn-madde .rz.gri{background:#e2e8f0;color:#475569}
+.gn-madde .rz.yesil{background:var(--yesil-acik);color:var(--yesil-metin-koyu)}
+.gn-madde .rz.mavi{background:var(--ana-acik);color:var(--ana-metin)}
+.gn-madde .rz.turuncu{background:#ffedd5;color:var(--sari-metin-koyu)}
+.gn-madde .rz.gri{background:var(--gri-200);color:var(--gri-600)}
 .gn-madde .mt b{color:var(--gri-900,#0f172a)}
 </style>
 

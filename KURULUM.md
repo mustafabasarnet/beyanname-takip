@@ -28,6 +28,7 @@ Son geliştirme turunda eklenen/düzeltilenler:
 | **KDV1 ↔ KDV2 belirteci** | KDV1 listesinde eşleşen **KDV2'nin durumu** rozetle görünür (hazır / onaylı / bekliyor); KDV1 onayından önce "KDV2 hazır değil" uyarısı çıkar — engellemez (aşağıda ayrıntı) |
 | **Yeni: Güncelleme Logları** | **🆕 Güncellemeler** ekranı + sürüm notu girildiğinde kullanıcıya **girişte modern pencere**; okunduğunda bir daha gösterilmez (aşağıda ayrıntı) |
 | **Panel — E-Defter kartı** | E-Defter sayılarına (Yüklenen/Hazır/Kalan…) tıklayınca **açılır liste**; üstte **Takip ekranında aç** → süzülmüş E-Defter Takip |
+| **🎨 Renkli tema (kullanıcı bazlı)** | Açık / karanlık / **sistem** teması + **7 renk şablonu** + **yan menü açık-koyu**; kullanıcı kendi profilinden seçer. Açık tema + mavi palet = **bugünkü görünümün aynısı** (aşağıda ayrıntı) |
 | **Sicil İşlemleri menü rozeti** | Menüde **Sicil İşlemleri** yanında **son günü gelen / gecikmiş** todo sayısı (ajanda rozeti mantığı); todo işaretlenince sayı **anında düşer**, tümü bitince rozet kaybolur (aşağıda ayrıntı) |
 
 Ayrıntılar: Makbuz Takip bölümü → "Pasifler dahil" · E-Defter bölümü → "7. Yazdırma" ve
@@ -769,6 +770,58 @@ Görev atandığı an, ilgili kişi bir sonraki sayfa geçişinde rozeti görür
   döndürür; `ajandaGorevRozetGuncelle()` bu değeri rozete yazar. Böylece sayı
   sayfa yenilenmeden **anında** düşer.
 - Migration gerekmez; **yeni tablo/kolon yok**.
+
+---
+
+## 🎨 Renkli Tema — Kullanıcı Bazlı Görünüm
+
+Her kullanıcı **kendi** tema ve renk şablonunu seçer; diğer kullanıcılar etkilenmez.
+Amaç: karanlık ortamda çalışan, gözü yoran parlaklıktan şikâyet eden ya da kurumsal rengini
+tercih eden kullanıcıya seçenek sunmak — **varsayılan görünümü bozmadan**.
+
+### Seçenekler
+
+| Ayar | Seçenekler | Varsayılan |
+|---|---|---|
+| **Tema** | 🖥️ Sistem · ☀️ Açık · 🌙 Karanlık | **Sistem** (işletim sistemi koyuysa karanlık) |
+| **Renk şablonu** | Mavi · Turkuaz · Yeşil · Mor · Turuncu · Bordo · Grafit | **Mavi** (bugünkü vurgu rengi) |
+| **Yan menü** | 🌑 Koyu menü · ◻️ Açık menü | **Koyu** (bugünkü lacivert menü) |
+
+> **Varsayılan görünüm = bugünkü görünüm.** Hiç seçim yapılmamışsa ve işletim sistemi açıksa
+> ekranlar **birebir aynı** kalır. Sistem koyu ise otomatik karanlık gelir; kullanıcı isterse
+> Profil → Görünüm'den ☀️ **Açık**'ı sabitleyebilir.
+
+### Nereden değiştirilir
+
+| Yer | Ne yapar |
+|---|---|
+| **Profil → 🎨 Görünüm** | 3 tema modu + 7 renk şablonu + 2 yan menü seçeneği. Seçim **anında** uygulanır (deneme), **💾 Kaydet** ile kalıcı olur |
+| **Üst bar → 🌙/☀️ düğmesi** | Tek tıkla açık ↔ karanlık geçişi (her sayfada). Yalnız modu çevirir; palet/menü seçimine dokunmaz |
+
+### Neyi değiştirir, neyi değiştirmez
+
+| Değişir | Değişmez |
+|---|---|
+| Kart/panel/tablo zeminleri, metin ve çizgi tonları | **Anlamsal renkler**: gecikmiş = kırmızı, onaylandı = yeşil, hazır = sarı, bilgi = mor |
+| Buton, bağlantı, aktif menü öğesi (palet rengi) | Bileşen boyutu, yerleşimi, sayfa düzeni |
+| Yan menü zemini (koyu/açık seçimi) | **Yazdırma çıktıları** (11 ekran) — her zaman açık tema basılır |
+
+### Teknik yapı
+
+| Katman | İçerik |
+|---|---|
+| `stil.css` `:root` | **Tema değişken katmanı** (`--yuzey`, `--gri-*`, `--satir-*`, `--yan-*`, `--ana-*`). Bugüne kadar sabit yazılan renkler **aynı değeri taşıyan** değişkenlere bağlandı; açık temada görünüm **tek piksel değişmedi** |
+| `tema.css` (yeni) | Yalnız değişken değerleri: karanlık tema, 7 palet, karanlık+palet kombinasyonları, yan menü varyantları, `@media print` geri alma. **Kural (layout) yazılmaz** |
+| `layouts/ana.php` | `<html data-tema data-palet data-yan>` + ilk boyama script'i (FOUC yok) + üst barda hızlı geçiş düğmesi |
+| `kullanicilar` tablosu | `tema`, `palet`, `yan_menu`, `hizli_gecis` kolonları (`migration_kullanici_tema.sql`, tekrar koşulabilir) |
+| Oturum | Tercih girişte oturuma yazılır → her sayfada **ek sorgu yok** |
+
+**Güvenlik:** Tüm değerler **whitelist** ile doğrulanır (geçersiz değer reddedilir); tercih
+**kişiye özeldir** — yönetici dâhil kimse başkasının görünümünü değiştiremez. Yazdırma
+ekranları tema layout'unu kullanmaz; ekrandan yazdırmada (Ctrl+P) bile **açık tema** basılır.
+
+> Kurulum: `database/migration_kullanici_tema.sql` (4 kolon; yeni tablo yok).
+> Migration koşulmamışsa program varsayılan görünümle çalışmaya devam eder.
 
 ---
 

@@ -106,15 +106,15 @@ $tabloCiz = static function (array $dilimler, string $tip, int $yil, bool $admin
 .tr-bos .tr-para{background:#fffdf7}
 .tr-sekme{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
 .tr-sekme button{font:inherit;padding:7px 14px;border-radius:7px;border:1px solid var(--gri-300,#cbd5e1);
-  background:#fff;cursor:pointer;font-size:13px}
-.tr-sekme button.aktif{background:#0f172a;color:#fff;border-color:#0f172a;font-weight:600}
-.tr-bilgi{padding:10px 12px;border-radius:8px;background:#eff6ff;color:#1e40af;
+  background:var(--yuzey);cursor:pointer;font-size:13px}
+.tr-sekme button.aktif{background:#0f172a;color:#fff;border-color:var(--gri-900);font-weight:600}
+.tr-bilgi{padding:10px 12px;border-radius:8px;background:var(--ana-acik);color:var(--ana-metin);
   font-size:12.5px;margin-bottom:14px;border:1px solid #bfdbfe;line-height:1.5}
-.tr-uyari{padding:10px 12px;border-radius:8px;background:#fef3c7;color:#92400e;
-  font-size:12.5px;margin-bottom:14px;border:1px solid #fde68a}
+.tr-uyari{padding:10px 12px;border-radius:8px;background:var(--sari-acik);color:#92400e;
+  font-size:12.5px;margin-bottom:14px;border:1px solid var(--sari-kenar)}
 .tr-yil-serit{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .tr-yil-serit a{padding:4px 10px;border-radius:99px;border:1px solid var(--gri-300,#cbd5e1);
-  font-size:12px;text-decoration:none;color:var(--gri-700,#334155);background:#fff}
+  font-size:12px;text-decoration:none;color:var(--gri-700,#334155);background:var(--yuzey)}
 .tr-yil-serit a.aktif{background:#2563eb;color:#fff;border-color:#2563eb;font-weight:700}
 </style>
 

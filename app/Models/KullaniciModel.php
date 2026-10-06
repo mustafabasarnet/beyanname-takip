@@ -13,7 +13,148 @@ class KullaniciModel extends Model
     protected $allowedFields = [
         'musavir_id', 'ad_soyad', 'kullanici_adi', 'eposta', 'sifre',
         'rol', 'telefon', 'aktif', 'son_giris',
+        // Görünüm tercihleri (tema / palet / yan menü) — migration_kullanici_tema.sql
+        'tema', 'palet', 'yan_menu', 'hizli_gecis',
     ];
+
+    // =================================================================
+    //  GÖRÜNÜM TERCİHLERİ (tema)
+    // =================================================================
+
+    /** Tema modları (kullanıcı seçebilir). */
+    public const TEMA_MODLARI = [
+        'sistem'   => 'Sistem',
+        'acik'     => 'Açık',
+        'karanlik' => 'Karanlık',
+    ];
+
+    /** Renk şablonları — anahtar => [etiket, önizleme rengi]. */
+    public const PALETLER = [
+        'mavi'    => ['Mavi', '#2563eb'],
+        'turkuaz' => ['Turkuaz', '#0891b2'],
+        'yesil'   => ['Yeşil', '#059669'],
+        'mor'     => ['Mor', '#7c3aed'],
+        'turuncu' => ['Turuncu', '#ea580c'],
+        'bordo'   => ['Bordo', '#be123c'],
+        'grafit'  => ['Grafit', '#475569'],
+    ];
+
+    /** Yan menü zemin seçenekleri. */
+    public const YAN_MENULER = [
+        'koyu' => 'Koyu menü',
+        'acik' => 'Açık menü',
+    ];
+
+    /** Varsayılan görünüm: sistem teması + mavi palet + koyu menü. */
+    public const TEMA_VARSAYILAN = ['tema' => 'sistem', 'palet' => 'mavi', 'yan_menu' => 'koyu'];
+
+    /**
+     * Kullanıcının görünüm tercihleri.
+     *
+     * Migration çalıştırılmamışsa (kolonlar yoksa) ya da kayıt bulunamazsa
+     * güvenli varsayılan döner — program çökmez, görünüm bugünkü gibi kalır.
+     *
+     * @return array{tema:string, palet:string, yan_menu:string}
+     */
+    public function temaTercihleri(int $kullaniciId): array
+    {
+        $v = self::TEMA_VARSAYILAN;
+
+        if ($kullaniciId <= 0) {
+            return $v;
+        }
+
+        try {
+            $db = $this->db;
+
+            if (! $db->fieldExists('tema', $this->table)) {
+                return $v; // migration henüz koşulmamış
+            }
+
+            $satir = $db->table($this->table)
+                ->select('tema, palet, yan_menu')
+                ->where('id', $kullaniciId)
+                ->get()->getRowArray();
+
+            if ($satir === null) {
+                return $v;
+            }
+
+            return [
+                'tema'     => $this->gecerli((string) ($satir['tema'] ?? ''), array_keys(self::TEMA_MODLARI), $v['tema']),
+                'palet'    => $this->gecerli((string) ($satir['palet'] ?? ''), array_keys(self::PALETLER), $v['palet']),
+                'yan_menu' => $this->gecerli((string) ($satir['yan_menu'] ?? ''), array_keys(self::YAN_MENULER), $v['yan_menu']),
+            ];
+        } catch (\Throwable $e) {
+            return $v;
+        }
+    }
+
+    /** Değer izinli listede mi? Değilse varsayılana düşer (whitelist). */
+    protected function gecerli(string $deger, array $izinli, string $varsayilan): string
+    {
+        return in_array($deger, $izinli, true) ? $deger : $varsayilan;
+    }
+
+    /**
+     * Görünüm tercihini yazar (whitelist doğrulamalı).
+     *
+     * @param array{tema?:string, palet?:string, yan_menu?:string} $tercih
+     *
+     * @return array{durum:bool, mesaj:string, tercih:array}
+     */
+    public function temaKaydet(int $kullaniciId, array $tercih): array
+    {
+        $mevcut = $this->temaTercihleri($kullaniciId);
+        $veri   = [];
+
+        if (isset($tercih['tema'])) {
+            if (! array_key_exists((string) $tercih['tema'], self::TEMA_MODLARI)) {
+                return ['durum' => false, 'mesaj' => 'Geçersiz tema modu.', 'tercih' => $mevcut];
+            }
+            $veri['tema'] = (string) $tercih['tema'];
+        }
+
+        if (isset($tercih['palet'])) {
+            if (! array_key_exists((string) $tercih['palet'], self::PALETLER)) {
+                return ['durum' => false, 'mesaj' => 'Geçersiz renk şablonu.', 'tercih' => $mevcut];
+            }
+            $veri['palet'] = (string) $tercih['palet'];
+        }
+
+        if (isset($tercih['yan_menu'])) {
+            if (! array_key_exists((string) $tercih['yan_menu'], self::YAN_MENULER)) {
+                return ['durum' => false, 'mesaj' => 'Geçersiz yan menü seçimi.', 'tercih' => $mevcut];
+            }
+            $veri['yan_menu'] = (string) $tercih['yan_menu'];
+        }
+
+        if ($veri === []) {
+            return ['durum' => false, 'mesaj' => 'Kaydedilecek görünüm ayarı yok.', 'tercih' => $mevcut];
+        }
+
+        try {
+            $db = $this->db;
+
+            if (! $db->fieldExists('tema', $this->table)) {
+                return ['durum' => false, 'mesaj' => 'Görünüm ayarları için veritabanı güncellemesi gerekli.', 'tercih' => $mevcut];
+            }
+
+            /*
+             * Query Builder ile yazılır: Model::update() kullanıcı doğrulama
+             * kurallarını (ad_soyad, eposta…) çalıştırır; bu dar güncelleme
+             * yalnız görünüm alanlarını değiştirdiği için doğrudan yazılır.
+             */
+            $veri['updated_at'] = date('Y-m-d H:i:s');
+
+            $db->table($this->table)->where('id', $kullaniciId)->update($veri);
+
+            return ['durum' => true, 'mesaj' => 'Görünüm kaydedildi.',
+                    'tercih' => array_merge($mevcut, array_intersect_key($veri, self::TEMA_VARSAYILAN))];
+        } catch (\Throwable $e) {
+            return ['durum' => false, 'mesaj' => 'Görünüm kaydedilemedi.', 'tercih' => $mevcut];
+        }
+    }
 
     /**
      * Varsayılan (EKLEME) kuralları.

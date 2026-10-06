@@ -3,7 +3,7 @@
 
 <style>
 /* Kişisel not ekranı — kompakt, temiz */
-.kn-kart{background:#fff;border:1px solid var(--gri-200,#e2e8f0);border-radius:12px;overflow:hidden}
+.kn-kart{background:var(--yuzey);border:1px solid var(--gri-200,#e2e8f0);border-radius:12px;overflow:hidden}
 .kn-bas{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--gri-100,#f1f5f9);
   font-weight:700;font-size:14px}
 .kn-govde{padding:14px 16px}
@@ -13,7 +13,7 @@
 .kn-textarea:focus{outline:2px solid var(--ana,#2563eb);outline-offset:-1px}
 .gorev-satir{display:flex;align-items:flex-start;gap:10px;padding:9px 4px;border-bottom:1px dashed var(--gri-100,#f1f5f9)}
 .gorev-satir:last-child{border-bottom:0}
-.gorev-kutu{width:19px;height:19px;border:2px solid var(--gri-300,#cbd5e1);border-radius:5px;background:#fff;
+.gorev-kutu{width:19px;height:19px;border:2px solid var(--gri-300,#cbd5e1);border-radius:5px;background:var(--yuzey);
   cursor:pointer;flex-shrink:0;margin-top:2px;display:inline-flex;align-items:center;justify-content:center;color:#fff}
 .gorev-kutu:hover{border-color:#059669}
 .gorev-metin{flex:1;min-width:0}
@@ -25,7 +25,7 @@
 .gorev-islem{display:flex;gap:2px;flex-shrink:0}
 .sil-btn{background:none;border:0;cursor:pointer;font-size:14px;color:var(--gri-300,#cbd5e1);
   padding:2px 6px;border-radius:6px;line-height:1}
-.sil-btn:hover{background:#fef2f2;color:#dc2626}
+.sil-btn:hover{background:var(--kirmizi-acik);color:var(--kirmizi)}
 .kn-bos{color:var(--gri-400,#94a3b8);font-size:13px;padding:10px 4px}
 .gecmis-satir{display:flex;justify-content:space-between;gap:10px;padding:8px 4px;border-bottom:1px dashed var(--gri-100,#f1f5f9)}
 .gecmis-satir:last-child{border-bottom:0}
@@ -35,10 +35,10 @@
 .kn-etiket{display:inline-block;background:#e0e7ff;color:#3730a3;font-size:10px;font-weight:700;
   padding:1px 7px;border-radius:99px;margin-left:6px;vertical-align:middle}
 .kn-onc{display:inline-block;font-size:9.5px;font-weight:700;padding:1px 7px;border-radius:99px}
-.kn-onc.kirmizi{background:#fee2e2;color:#991b1b}
-.kn-onc.turuncu{background:#ffedd5;color:#9a3412}
-.kn-onc.mavi{background:#dbeafe;color:#1e40af}
-.kn-onc.gri{background:#e2e8f0;color:#475569}
+.kn-onc.kirmizi{background:var(--kirmizi-acik);color:var(--kirmizi-metin)}
+.kn-onc.turuncu{background:#ffedd5;color:var(--sari-metin-koyu)}
+.kn-onc.mavi{background:var(--ana-acik);color:var(--ana-metin)}
+.kn-onc.gri{background:var(--gri-200);color:var(--gri-600)}
 /* Satır içi düzenleme */
 .duzenle-panel{background:var(--gri-50,#f8fafc);border:1px solid var(--gri-200,#e2e8f0);border-radius:10px;
   padding:10px 12px;margin:2px 0 8px}

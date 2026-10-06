@@ -69,6 +69,8 @@ class Auth extends BaseController
                 'rol'           => $kullanici['rol'],
                 'musavir_id'    => $kullanici['musavir_id'] ? (int) $kullanici['musavir_id'] : null,
                 'hatirlandi'    => true,
+                // Görünüm tercihleri (tema/palet/yan menü)
+                'tema_tercih'   => (new KullaniciModel())->temaTercihleri((int) $kullanici['id']),
             ]);
 
             return true;
@@ -197,6 +199,8 @@ class Auth extends BaseController
             'kullanici_adi' => $user['kullanici_adi'],
             'rol'           => $user['rol'],
             'musavir_id'    => $user['musavir_id'] ? (int) $user['musavir_id'] : null,
+            // Görünüm tercihleri (tema/palet/yan menü) — her istekte sorgu olmasın
+            'tema_tercih'   => $model->temaTercihleri((int) $user['id']),
         ]);
 
         // ---- Beni hatırla ----

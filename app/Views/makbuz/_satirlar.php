@@ -50,7 +50,7 @@ $yil    = (int) ($filtre['yil'] ?? date('Y'));
 
     <td class="sag"><?= number_format($kesilen, 2, ',', '.') ?></td>
 
-    <td class="sag kalin" style="color:<?= $kalan > 0 ? 'var(--kirmizi,#dc2626)' : 'var(--yesil,#059669)' ?>">
+    <td class="sag kalin" style="color:<?= $kalan > 0 ? 'var(--kirmizi,var(--kirmizi))' : 'var(--yesil,#059669)' ?>">
       <?= number_format($kalan, 2, ',', '.') ?>
     </td>
 

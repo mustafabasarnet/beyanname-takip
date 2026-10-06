@@ -5,7 +5,7 @@
 <title>Ödeme Bildirimi<?= isset($mukellef) ? ' — ' . esc($mukellef['unvan']) : '' ?></title>
 <link rel="stylesheet" href="<?= base_url('assets/css/stil.css') ?>">
 <style>
-  body{background:#fff;padding:26px;max-width:820px;margin:0 auto}
+  body{background:var(--yuzey);padding:26px;max-width:820px;margin:0 auto}
   h1{font-size:19px}
   .ust{border-bottom:2px solid #2563eb;padding-bottom:10px;margin-bottom:16px}
   .secenek-bar{

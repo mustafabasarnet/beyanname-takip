@@ -198,8 +198,8 @@
 </form>
 
 <style>
-table.tablo tbody tr.satir-atla{background:#fffbeb}
-table.tablo tbody tr.satir-hata{background:#fff5f5}
+table.tablo tbody tr.satir-atla{background:var(--satir-bugun)}
+table.tablo tbody tr.satir-hata{background:var(--satir-gecikmis)}
 table.tablo tbody tr.satir-ekle:hover{background:#f0fdf4}
 </style>
 

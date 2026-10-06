@@ -14,7 +14,7 @@
 .mk-tablo td.orta{text-align:center}
 .mk-tablo tbody tr:hover{background:var(--gri-50,#f8fafc)}
 .mk-tablo tr.mk-tamam{background:#f0fdf4}
-.mk-tablo tr.mk-asim{background:#fef2f2}
+.mk-tablo tr.mk-asim{background:var(--kirmizi-acik)}
 .mk-tablo tr.mk-ucretsiz{opacity:.7}
 .mk-cubuk{display:inline-block;width:62px;height:7px;border-radius:99px;background:var(--gri-200,#e2e8f0);
   overflow:hidden;vertical-align:middle}
@@ -24,7 +24,7 @@
 .mk-ucret:hover{color:var(--ana,#2563eb);border-bottom-color:var(--ana,#2563eb)}
 /* Müşavir özeti */
 .mk-mus{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
-.mk-mus-kart{border:1px solid var(--gri-200,#e2e8f0);border-radius:10px;padding:12px 14px;background:#fff}
+.mk-mus-kart{border:1px solid var(--gri-200,#e2e8f0);border-radius:10px;padding:12px 14px;background:var(--yuzey)}
 .mk-mus-bas{display:flex;align-items:center;gap:7px;font-weight:700;margin-bottom:8px}
 .mk-mus-nokta{width:10px;height:10px;border-radius:50%;flex:0 0 10px}
 .mk-mus-satir{display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0}
@@ -33,7 +33,8 @@
   border-top:1px solid var(--gri-200,#e2e8f0)}
 /* Makbuz Ekle modalı — mükellef arama + canlı önizleme */
 .mk-sec{position:relative}
-.mk-liste{position:absolute;top:calc(100%+4px);left:0;right:0;z-index:70;background:#fff;
+.mk-secili-ok{color:var(--yesil);font-weight:600}
+.mk-liste{position:absolute;top:calc(100%+4px);left:0;right:0;z-index:70;background:var(--yuzey);
   border:1px solid var(--gri-300,#cbd5e1);border-radius:10px;box-shadow:var(--golge-lg);max-height:220px;
   overflow-y:auto;display:none}
 .mk-liste.goster{display:block}
@@ -187,7 +188,7 @@
             <div class="mk-mus-satir"><span>Kesilen</span>
               <b style="color:var(--yesil,#059669)"><?= number_format($mo['kesilen'], 2, ',', '.') ?> ₺</b></div>
             <div class="mk-mus-satir"><span>Kalan</span>
-              <b style="color:<?= $mo['kalan'] > 0 ? 'var(--kirmizi,#dc2626)' : 'var(--yesil,#059669)' ?>">
+              <b style="color:<?= $mo['kalan'] > 0 ? 'var(--kirmizi,var(--kirmizi))' : 'var(--yesil,#059669)' ?>">
                 <?= number_format($mo['kalan'], 2, ',', '.') ?> ₺</b></div>
             <div class="mk-mus-satir kucuk-yazi">
               <span><?= (int) $mo['adet'] ?> makbuz</span>
@@ -582,7 +583,7 @@ window.addEventListener('scroll', function () {
     mkId.value = '';
     if (mkSecili) {
       mkSecili.textContent = 'Henüz mükellef seçilmedi.';
-      mkSecili.style.color = '';
+      mkSecili.classList.remove('mk-secili-ok');
     }
   }
 
@@ -613,7 +614,7 @@ window.addEventListener('scroll', function () {
               mkAra.value = m.unvan;
               if (mkSecili) {
                 mkSecili.textContent = '✓ Seçildi: ' + m.unvan + (vkn ? ' (' + vkn + ')' : '');
-                mkSecili.style.color = 'var(--yesil,#059669)';
+                mkSecili.classList.add('mk-secili-ok'); // renk CSS'ten gelir (tema uyumlu)
               }
               mkListe.className = 'mk-liste';
             });

@@ -99,7 +99,7 @@ $harfLink = static function (?string $harf) use ($temelSorgu) {
 -->
 <style>
 .alfabe-kart{
-  background:#fff;
+  background:var(--yuzey);
   border:1px solid var(--gri-200, #e2e8f0);
   border-radius:var(--radius, 12px);
   box-shadow:var(--golge, 0 1px 3px rgba(15,23,42,.08));
@@ -116,8 +116,8 @@ $harfLink = static function (?string $harf) use ($temelSorgu) {
 }
 .alfabe-temizle{
   margin-left:auto;font-size:12px;font-weight:600;text-decoration:none;
-  color:var(--kirmizi, #dc2626);padding:3px 10px;border-radius:99px;
-  background:var(--kirmizi-acik, #fee2e2);transition:.15s;
+  color:var(--kirmizi, var(--kirmizi));padding:3px 10px;border-radius:99px;
+  background:var(--kirmizi-acik, var(--kirmizi-acik));transition:.15s;
 }
 .alfabe-temizle:hover{filter:brightness(.95)}
 
@@ -141,13 +141,13 @@ $harfLink = static function (?string $harf) use ($temelSorgu) {
   color:var(--gri-500, #64748b);letter-spacing:.2px;
 }
 .alfabe a:hover{
-  background:var(--ana-acik, #dbeafe);
+  background:var(--ana-acik, var(--ana-acik));
   border-color:var(--ana, #2563eb);
-  color:var(--ana-koyu, #1d4ed8);
+  color:var(--ana-koyu, var(--ana-uzeri));
   transform:translateY(-1px);
   box-shadow:var(--golge-md, 0 4px 12px rgba(15,23,42,.08));
 }
-.alfabe a:hover .adet{color:var(--ana-koyu, #1d4ed8)}
+.alfabe a:hover .adet{color:var(--ana-koyu, var(--ana-uzeri))}
 
 .alfabe a.aktif{
   background:var(--ana, #2563eb);
@@ -159,7 +159,7 @@ $harfLink = static function (?string $harf) use ($temelSorgu) {
 
 .alfabe a.tumu{
   min-width:auto;padding:5px 14px 4px;
-  background:#fff;border-color:var(--gri-300, #cbd5e1);
+  background:var(--yuzey);border-color:var(--gri-300, #cbd5e1);
 }
 .alfabe a.tumu.aktif{
   background:var(--ana, #2563eb);border-color:var(--ana, #2563eb);color:#fff;
@@ -167,7 +167,7 @@ $harfLink = static function (?string $harf) use ($temelSorgu) {
 
 .alfabe a.bos{
   opacity:.4;pointer-events:none;
-  background:#fff;border-style:dashed;
+  background:var(--yuzey);border-style:dashed;
   color:var(--gri-400, #94a3b8);
 }
 

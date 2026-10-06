@@ -48,30 +48,30 @@ $eksikAdlar    = implode(', ', array_map(static fn ($t) => (string) ($t['ad'] ??
 .todo-satir{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-bottom:1px solid var(--gri-100,#f1f5f9);
   transition:background .2s}
 .todo-satir:last-child{border-bottom:none}
-.todo-satir.arka-kirmizi{background:var(--kirmizi-acik,#fee2e2)}
+.todo-satir.arka-kirmizi{background:var(--kirmizi-acik,var(--kirmizi-acik))}
 .todo-satir.arka-turuncu{background:var(--turuncu-acik,#ffedd5)}
-.todo-satir.arka-sari{background:var(--sari-acik,#fef9c3)}
-.todo-satir.arka-yesil{background:var(--yesil-acik,#d1fae5)}
+.todo-satir.arka-sari{background:var(--sari-acik,var(--sari-acik))}
+.todo-satir.arka-yesil{background:var(--yesil-acik,var(--yesil-acik))}
 .todo-satir.arka-gri{background:var(--gri-100,#f1f5f9)}
 .todo-kutu{margin-top:2px;flex:0 0 auto}
 .todo-kutu input{width:20px;height:20px;accent-color:#059669;cursor:pointer}
 .todo-ad{font-size:14px;font-weight:600;color:var(--gri-900)}
-.todo-ad.yapildi{color:#047857;text-decoration:line-through}
+.todo-ad.yapildi{color:var(--yesil-metin);text-decoration:line-through}
 .todo-ayrinti{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:3px;font-size:12px;color:var(--gri-500)}
 .todo-islem{margin-left:auto;display:flex;gap:6px;align-items:center;flex:0 0 auto}
 .todo-evrak{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
-.evrak-cip{display:inline-flex;align-items:center;gap:4px;background:#fff;
+.evrak-cip{display:inline-flex;align-items:center;gap:4px;background:var(--yuzey);
   border:1px solid var(--gri-200,#e2e8f0);border-radius:8px;padding:2px 4px 2px 8px;font-size:11.5px}
 .evrak-cip a{color:var(--gri-700,#334155);text-decoration:none;max-width:260px;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
-.evrak-cip a:hover{color:var(--ana,#1d4ed8)}
+.evrak-cip a:hover{color:var(--ana,var(--ana-uzeri))}
 .evrak-sil{border:none;background:none;color:var(--gri-400,#94a3b8);cursor:pointer;font-size:14px;
   line-height:1;padding:0 4px}
-.evrak-sil:hover{color:var(--kirmizi,#dc2626)}
+.evrak-sil:hover{color:var(--kirmizi,var(--kirmizi))}
 .evrak-ekle{display:inline-flex;align-items:center;gap:4px;cursor:pointer;
   color:var(--gri-600,#475569);border:1px dashed var(--gri-300,#cbd5e1);border-radius:8px;
   padding:3px 9px;font-size:11.5px;font-weight:600;user-select:none}
-.evrak-ekle:hover{border-color:var(--ana,#1d4ed8);color:var(--ana,#1d4ed8)}
+.evrak-ekle:hover{border-color:var(--ana,var(--ana-uzeri));color:var(--ana,var(--ana-uzeri))}
 </style>
 
 <div id="sicil-bildirim" style="margin-bottom:10px"></div>

@@ -342,9 +342,12 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
         $routes->get('sil/(:num)', 'Kullanicilar::sil/$1');
     });
 
-    // Profil (her kullanıcı kendi şifresini değiştirebilir)
+    // Profil (her kullanıcı kendi şifresini değiştirebilir + görünüm tercihi)
     $routes->get('profil', 'Kullanicilar::profil');
     $routes->post('profil', 'Kullanicilar::profilKaydet');
+
+    // Görünüm: üst bardaki hızlı tema geçişi (açık ↔ karanlık, AJAX)
+    $routes->post('tema-hizli-gecis', 'Kullanicilar::temaHizliGecis');
 
     // ----------------- RAPORLAR -----------------
     $routes->group('raporlar', static function ($routes) {

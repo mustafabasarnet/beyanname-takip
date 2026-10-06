@@ -1,5 +1,21 @@
 <!DOCTYPE html>
-<html lang="tr">
+<?php
+/*
+ * TEMA (renk şablonu) — kullanıcı bazlı görünüm tercihi
+ *
+ * Basılan öznitelikler:
+ *   data-tema  : acik | karanlik   ("sistem" modu aşağıdaki ilk script'te çözülür)
+ *   data-palet : mavi | turkuaz | yesil | mor | turuncu | bordo | grafit
+ *   data-yan   : koyu | acik       (yan menü zemini)
+ *
+ * Değerler BaseController'dan gelir (oturumdaki tercih). Hiçbiri yoksa
+ * bugünkü görünüm birebir korunur: acik + mavi + koyu menü.
+ */
+$temaModu  = (string) ($temaModu  ?? 'acik');
+$temaPalet = (string) ($temaPalet ?? 'mavi');
+$temaYan   = (string) ($temaYan   ?? 'koyu');
+?>
+<html lang="tr" data-tema="<?= esc($temaModu, 'attr') ?>" data-palet="<?= esc($temaPalet, 'attr') ?>" data-yan="<?= esc($temaYan, 'attr') ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,22 +23,55 @@
 <meta name="csrf-token" content="<?= csrf_hash() ?>">
 <title><?= esc($sayfaBasligi ?? 'Beyanname Takip') ?> — Beyanname Takip</title>
 <link rel="stylesheet" href="<?= base_url('assets/css/stil.css') ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/tema.css') ?>">
+<script>
+/* ------------------------------------------------------------------
+   İLK BOYAMA — "sistem" modunu gerçek temaya çevirir
+   ------------------------------------------------------------------
+   Tema özniteliği sunucudan basıldığı için sayfa hiçbir zaman yanlış
+   renkle "bir anlık" görünmez (FOUC yok). Bu script yalnız kullanıcı
+   "Sistem" modunu seçtiyse işletim sistemi tercihini uygular; JS kapalıysa
+   güvenli varsayılan (açık tema) kalır.
+   ------------------------------------------------------------------ */
+(function () {
+  var kok = document.documentElement;
+  var medya = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+  if (kok.getAttribute('data-tema') === 'sistem' && medya) {
+    kok.setAttribute('data-tema', medya.matches ? 'karanlik' : 'acik');
+  }
+
+  /* Sistem modundayken işletim sistemi değişirse canlı geçiş yap */
+  window.btSistemTemaIzle = function (mod) {
+    if (!medya) { return; }
+
+    var uygula = function () {
+      if (mod() === 'sistem') {
+        kok.setAttribute('data-tema', medya.matches ? 'karanlik' : 'acik');
+      }
+    };
+
+    if (medya.addEventListener) { medya.addEventListener('change', uygula); }
+    else if (medya.addListener) { medya.addListener(uygula); }
+  };
+}());
+</script>
 <style>
 /* Menü rozeti — ajanda gecikmiş/bugün sayısı (stil.css'ten bağımsız) */
 .menu-rozet{display:inline-block;min-width:18px;padding:1px 6px;border-radius:99px;
-  background:#dc2626;color:#fff;font-size:10.5px;font-weight:700;
+  background:var(--kirmizi);color:#fff;font-size:10.5px;font-weight:700;
   text-align:center;margin-left:auto}
-/* Kişisel Notlar rozeti — kişiye özel açık görev sayısı (mavi = bilgi, kırmızı = aciliyet) */
-.menu-rozet.kisisel{background:#2563eb}
+/* Kişisel Notlar rozeti — kişiye özel açık görev sayısı (vurgu = bilgi, kırmızı = aciliyet) */
+.menu-rozet.kisisel{background:var(--ana)}
 /* Güncellemeler rozeti — okunmamış sürüm notu (mor = yenilik) */
-.menu-rozet.guncelleme{background:#7c3aed}
+.menu-rozet.guncelleme{background:var(--mor)}
 /* Sicil İşlemleri rozeti — son günü gelen / gecikmiş todolar (aciliyet = kırmızı).
    Varsayılan .menu-rozet rengiyle aynıdır; ayrım için hafif gölge. */
 .menu-rozet.sicil{box-shadow:0 0 0 2px rgba(220,38,38,.18)}
 /* Bana atanan görev rozeti — sol altta kullanıcı adının yanında (bildirim) */
 .yan-alt .kullanici-satir{display:flex;align-items:center;gap:6px}
 .gorev-rozet{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;
-  background:linear-gradient(135deg,#dc2626,#f97316);color:#fff;text-decoration:none;
+  background:linear-gradient(135deg,var(--kirmizi),#f97316);color:#fff;text-decoration:none;
   font-size:11.5px;font-weight:800;padding:4px 9px;border-radius:99px;
   box-shadow:0 3px 10px rgba(220,38,38,.45);transition:.15s;white-space:nowrap}
 .gorev-rozet:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(220,38,38,.6);color:#fff}
@@ -33,6 +82,17 @@
   @keyframes gorevNabiz{0%,100%{box-shadow:0 3px 10px rgba(220,38,38,.45)}
     50%{box-shadow:0 3px 16px rgba(220,38,38,.85)}}
 }
+
+/* Hızlı tema geçişi — üst barda, bugünün tarihinin yanında */
+.ust-bar .tema-gecis{display:inline-flex;align-items:center;gap:6px;margin-left:10px;
+  background:var(--yuzey);color:var(--gri-700);border:1px solid var(--cizgi-koyu);
+  border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:600;cursor:pointer;
+  transition:.15s;white-space:nowrap}
+.ust-bar .tema-gecis:hover{background:var(--gri-50);color:var(--gri-900);
+  border-color:var(--gri-400);transform:translateY(-1px)}
+.ust-bar .tema-gecis:disabled{opacity:.6;cursor:wait;transform:none}
+.ust-bar .tema-gecis .tg-ikon{font-size:13px;line-height:1}
+@media (max-width:640px){ .ust-bar .tema-gecis .tg-metin{display:none} }
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
 </head>
@@ -245,7 +305,7 @@ $aktifUrl = trim(uri_string(), '/');
         <span class="zil">🔔</span><span class="adet" id="ajanda-gorev-adet"><?= $ajGorevSayi ?></span>
       </a>
     </div>
-    <a href="<?= site_url('cikis') ?>" style="display:flex;align-items:center;gap:9px;padding:8px 10px;color:#fca5a5;font-size:13px;font-weight:600">
+    <a href="<?= site_url('cikis') ?>" style="display:flex;align-items:center;gap:9px;padding:8px 10px;color:var(--kirmizi-metin);font-size:13px;font-weight:600">
       <span class="ikon">🚪</span> Çıkış Yap
     </a>
   </div>
@@ -261,6 +321,21 @@ $aktifUrl = trim(uri_string(), '/');
       <span>📅</span>
       <span><?= trTarihUzun(date('Y-m-d')) ?></span>
     </div>
+    <?php
+    /*
+     * HIZLI TEMA GEÇİŞİ (açık ↔ karanlık)
+     *
+     * Tek tıkla mod değiştirir ve tercihi sunucuya kaydeder (AJAX).
+     * Profil → Görünüm kartından farklı olarak palet/menü seçimini
+     * değiştirmez; yalnız aydınlık/karanlık modu çevirir.
+     */
+    ?>
+    <button type="button" class="tema-gecis" id="tema-hizli-gecis"
+            data-mod="<?= esc($temaModu, 'attr') ?>"
+            title="Açık / karanlık tema arasında geç" aria-label="Tema değiştir">
+      <span class="tg-ikon" id="tema-hizli-ikon">🌙</span>
+      <span class="tg-metin" id="tema-hizli-metin">Karanlık</span>
+    </button>
   </header>
 
   <main class="icerik">
@@ -310,23 +385,23 @@ $aktifUrl = trim(uri_string(), '/');
 </div>
 
 <style>
-.aj-uyari-ort{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9998;
+.aj-uyari-ort{position:fixed;inset:0;background:var(--perde);z-index:9998;
   display:flex;align-items:center;justify-content:center;padding:20px}
-.aj-uyari{background:#fff;border-radius:14px;max-width:560px;width:100%;
-  max-height:80vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.3)}
-.aj-uyari-bas{padding:16px 20px;border-bottom:1px solid #e2e8f0;
+.aj-uyari{background:var(--yuzey);border-radius:14px;max-width:560px;width:100%;
+  max-height:80vh;overflow:auto;box-shadow:var(--golge-modal)}
+.aj-uyari-bas{padding:16px 20px;border-bottom:1px solid var(--cizgi);
   display:flex;align-items:center;gap:10px}
-.aj-uyari-bas h3{margin:0;font-size:16px}
+.aj-uyari-bas h3{margin:0;font-size:16px;color:var(--gri-900)}
 .aj-uyari-govde{padding:8px 20px 16px}
-.aj-uyari-alt{padding:12px 20px;border-top:1px solid #e2e8f0;display:flex;gap:10px;
-  justify-content:flex-end;background:#f8fafc;border-radius:0 0 14px 14px}
+.aj-uyari-alt{padding:12px 20px;border-top:1px solid var(--cizgi);display:flex;gap:10px;
+  justify-content:flex-end;background:var(--gri-50);border-radius:0 0 14px 14px}
 .aj-uyari-is{display:flex;align-items:center;gap:10px;padding:9px 0;
-  border-bottom:1px solid #f1f5f9}
+  border-bottom:1px solid var(--gri-100)}
 .aj-uyari-is:last-child{border-bottom:0}
 .aj-uyari-nokta{width:10px;height:10px;border-radius:50%;flex:0 0 10px}
 .aj-uyari-is .ad{flex:1;font-size:13.5px}
-.aj-uyari-is .ad small{display:block;color:#64748b;font-size:11.5px}
-.aj-uyari-gec{background:#dc2626;color:#fff;padding:1px 7px;border-radius:99px;
+.aj-uyari-is .ad small{display:block;color:var(--gri-500);font-size:11.5px}
+.aj-uyari-gec{background:var(--kirmizi);color:#fff;padding:1px 7px;border-radius:99px;
   font-size:10.5px;font-weight:700}
 </style>
 
@@ -460,6 +535,64 @@ window.sicilRozetGuncelle = function (sayi) {
   el.textContent = sayi;
   el.style.display = sayi > 0 ? '' : 'none';
 };
+</script>
+
+<script>
+/* ------------------------------------------------------------------
+   TEMA — üst bardaki hızlı geçiş düğmesi
+   ------------------------------------------------------------------
+   • Tıklama: mevcut GERÇEK temanın tersine geçer (karanlık ↔ açık),
+     görünüm anında değişir, tercih AJAX ile kaydedilir.
+   • Etiket her zaman gerçek duruma göre yazılır ("sistem" modunda da).
+   ------------------------------------------------------------------ */
+(function () {
+  var kok   = document.documentElement;
+  var dugme = document.getElementById('tema-hizli-gecis');
+  var ikon  = document.getElementById('tema-hizli-ikon');
+  var metin = document.getElementById('tema-hizli-metin');
+
+  function durumYaz() {
+    var koyu = kok.getAttribute('data-tema') === 'karanlik';
+    if (ikon)  { ikon.textContent  = koyu ? '☀️' : '🌙'; }
+    if (metin) { metin.textContent = koyu ? 'Açık' : 'Karanlık'; }
+  }
+
+  /* Sayfa açılışında etiket gerçek temaya göre düzeltilir */
+  durumYaz();
+
+  /* Profil → Görünüm kartından tema değişince etiket yenilensin */
+  window.temaHizliEtiketYenile = durumYaz;
+
+  if (!dugme) { return; }
+
+  dugme.addEventListener('click', function () {
+    var koyu = kok.getAttribute('data-tema') === 'karanlik';
+    var yeni = koyu ? 'acik' : 'karanlik';
+
+    /* Görünüm ANINDA değişir; kayıt başarısız olsa bile kullanıcı
+       tıklamanın karşılığını görür (sonraki sayfada eski hâle döner) */
+    kok.setAttribute('data-tema', yeni);
+    durumYaz();
+
+    dugme.disabled = true;
+    BT.post('<?= site_url('tema-hizli-gecis') ?>', { tema: yeni })
+      .then(function (j) {
+        if (!j.durum) { throw new Error(j.mesaj || 'Tema kaydedilemedi.'); }
+        BT.bildir(j.mesaj || 'Tema güncellendi.', 'basari');
+      })
+      .catch(function (e) {
+        BT.bildir(e.message, 'hata');
+      })
+      .finally(function () { dugme.disabled = false; });
+  });
+
+  /* "Sistem" modunda işletim sistemi değişirse etiket de yenilenir */
+  if (window.btSistemTemaIzle) {
+    window.btSistemTemaIzle(function () {
+      return dugme.getAttribute('data-mod') || 'acik';
+    });
+  }
+}());
 </script>
 
 <!-- Kişisel To-Do giriş hatırlatması (son tarihi geçen / bugün olan görevler) -->

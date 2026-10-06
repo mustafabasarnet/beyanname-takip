@@ -21,7 +21,7 @@ $p = static fn ($v) => $v === null || $v === '' ? '' : number_format((float) $v,
 .gv-duzen{display:grid;grid-template-columns:minmax(300px,360px) 1fr;gap:16px;align-items:start}
 @media(max-width:980px){.gv-duzen{grid-template-columns:1fr}}
 
-.gv-kart{background:#fff;border:1px solid var(--gri-200,#e2e8f0);border-radius:10px;overflow:hidden}
+.gv-kart{background:var(--yuzey);border:1px solid var(--gri-200,#e2e8f0);border-radius:10px;overflow:hidden}
 .gv-kart-bas{padding:10px 14px;border-bottom:1px solid var(--gri-200,#e2e8f0);
   font-weight:700;font-size:13.5px;background:var(--gri-50,#f8fafc);display:flex;
   align-items:center;justify-content:space-between;gap:8px}
@@ -44,32 +44,32 @@ $p = static fn ($v) => $v === null || $v === '' ? '' : number_format((float) $v,
 .gv-hesap td{padding:7px 10px;border-bottom:1px solid var(--gri-100,#f1f5f9);font-size:13.5px}
 .gv-hesap td.sag{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .gv-hesap tr.gv-eksi td:first-child{padding-left:22px;color:var(--gri-600,#475569)}
-.gv-hesap tr.gv-eksi td.sag{color:#b91c1c}
+.gv-hesap tr.gv-eksi td.sag{color:var(--kirmizi-koyu)}
 .gv-hesap tr.gv-arti td:first-child{padding-left:22px;color:var(--gri-600,#475569)}
-.gv-hesap tr.gv-kirilim td{background:#f8fafc;font-weight:600;font-size:13px;
+.gv-hesap tr.gv-kirilim td{background:var(--gri-50);font-weight:600;font-size:13px;
   border-top:1px dashed var(--gri-300,#cbd5e1)}
-.gv-hesap tr.gv-kirilim td.sag.yesil{color:#047857}
+.gv-hesap tr.gv-kirilim td.sag.yesil{color:var(--yesil-metin)}
 .gv-hesap tr.gv-arti td.sag{color:#0369a1}
 
 /* Sınırlı indirim rozeti ve aşım uyarısı */
 .gv-limit{display:inline-block;margin-left:5px;padding:1px 6px;border-radius:99px;
   background:#e0e7ff;color:#3730a3;font-size:10px;font-weight:700}
-.gv-liste-not{margin-top:4px;padding:5px 8px;border-radius:6px;background:#eff6ff;
-  color:#1e40af;font-size:11px;line-height:1.35;border:1px solid #bfdbfe}
+.gv-liste-not{margin-top:4px;padding:5px 8px;border-radius:6px;background:var(--ana-acik);
+  color:var(--ana-metin);font-size:11px;line-height:1.35;border:1px solid #bfdbfe}
 .gv-para[readonly]{background:var(--gri-100,#f1f5f9);color:var(--gri-600,#475569);cursor:not-allowed}
-.gv-asim{margin-top:4px;padding:5px 8px;border-radius:6px;background:#fef3c7;
-  color:#92400e;font-size:11px;line-height:1.35;border:1px solid #fde68a}
+.gv-asim{margin-top:4px;padding:5px 8px;border-radius:6px;background:var(--sari-acik);
+  color:#92400e;font-size:11px;line-height:1.35;border:1px solid var(--sari-kenar)}
 
 /* Hesap kipi seçici */
 .kip-secici{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:14px;
-  padding:10px 12px;background:#fff;border:1px solid var(--gri-200,#e2e8f0);border-radius:10px}
+  padding:10px 12px;background:var(--yuzey);border:1px solid var(--gri-200,#e2e8f0);border-radius:10px}
 .kip-etiket{font-size:11.5px;font-weight:700;text-transform:uppercase;
   letter-spacing:.3px;color:var(--gri-500,#64748b)}
 .kip-dugme{font:inherit;text-align:left;padding:7px 13px;border-radius:8px;cursor:pointer;
-  border:1px solid var(--gri-300,#cbd5e1);background:#fff;color:var(--gri-700,#334155);
+  border:1px solid var(--gri-300,#cbd5e1);background:var(--yuzey);color:var(--gri-700,#334155);
   font-size:13px;font-weight:600;line-height:1.25;transition:.15s}
 .kip-dugme:hover{border-color:var(--ana,#2563eb);background:var(--gri-50,#f8fafc)}
-.kip-dugme.aktif{background:#0f172a;color:#fff;border-color:#0f172a}
+.kip-dugme.aktif{background:#0f172a;color:#fff;border-color:var(--gri-900)}
 .kip-dugme small{display:block;font-size:10.5px;font-weight:400;opacity:.75;margin-top:1px}
 .kip-not{font-size:11.5px;color:var(--gri-500,#64748b);flex:1;min-width:200px;line-height:1.4}
 
@@ -80,7 +80,7 @@ $p = static fn ($v) => $v === null || $v === '' ? '' : number_format((float) $v,
   color:var(--gri-500,#64748b);margin-right:2px}
 .uc-bas[aria-expanded="true"] .uc-ok{transform:rotate(90deg)}
 .uc-ac-yazi{margin-left:8px;padding:1px 8px;border-radius:99px;
-  background:var(--ana-acik,#dbeafe);color:var(--ana-koyu,#1e40af);
+  background:var(--ana-acik,var(--ana-acik));color:var(--ana-koyu,var(--ana-metin));
   font-size:10.5px;font-weight:700}
 .uc-arac{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
 .uc-sayac{font-size:11.5px;color:var(--gri-500,#64748b)}
@@ -107,10 +107,10 @@ $p = static fn ($v) => $v === null || $v === '' ? '' : number_format((float) $v,
 .kalem-ozet .et{font-size:10px;text-transform:uppercase;letter-spacing:.3px;
   color:var(--gri-500,#64748b);font-weight:700}
 .kalem-ozet .dg{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px}
-.kalem-ozet .yesil .dg{color:#047857}
-.kalem-ozet .kirmizi .dg{color:#b91c1c}
+.kalem-ozet .yesil .dg{color:var(--yesil-metin)}
+.kalem-ozet .kirmizi .dg{color:var(--kirmizi-koyu)}
 .kalem-ozet .yesil{background:#f0fdf4;border-color:#bbf7d0}
-.kalem-ozet .kirmizi{background:#fef2f2;border-color:#fecaca}
+.kalem-ozet .kirmizi{background:var(--kirmizi-acik);border-color:var(--kirmizi-kenar)}
 
 .kalem-tablo{width:100%;border-collapse:collapse}
 .kalem-tablo th{font-size:10px;text-transform:uppercase;letter-spacing:.3px;
@@ -125,7 +125,7 @@ $p = static fn ($v) => $v === null || $v === '' ? '' : number_format((float) $v,
 .kalem-tablo td.aciklama{color:var(--gri-600,#475569)}
 .kalem-tablo td.islem{white-space:nowrap;text-align:right}
 .kalem-tablo tbody tr:hover{background:var(--gri-50,#f8fafc)}
-.kalem-tablo tr.duzenleniyor td{background:#fef3c7}
+.kalem-tablo tr.duzenleniyor td{background:var(--sari-acik)}
 .kalem-tablo tr.bos td{text-align:center;color:var(--gri-500,#64748b);
   padding:18px 8px;font-size:12.5px;line-height:1.5}
 .kalem-tablo tfoot td{background:var(--gri-50,#f8fafc);font-weight:700;font-size:13.5px;
@@ -133,16 +133,16 @@ $p = static fn ($v) => $v === null || $v === '' ? '' : number_format((float) $v,
 
 .kalem-rozet{display:inline-block;padding:2px 8px;border-radius:99px;
   font-size:10.5px;font-weight:700;white-space:nowrap}
-.kalem-rozet.t-egitim{background:#dbeafe;color:#1e40af}
+.kalem-rozet.t-egitim{background:var(--ana-acik);color:var(--ana-metin)}
 .kalem-rozet.t-saglik{background:#dcfce7;color:#166534}
 .kalem-rozet.t-hayat{background:#f3e8ff;color:#6b21a8}
 .kalem-rozet.t-sahis{background:#fce7f3;color:#9d174d}
-.kalem-rozet.t-diger{background:#e2e8f0;color:#475569}
+.kalem-rozet.t-diger{background:var(--gri-200);color:var(--gri-600)}
 
 .kalem-form{display:flex;gap:9px;align-items:flex-end;flex-wrap:wrap;
   margin-top:12px;padding:11px 12px;background:var(--gri-50,#f8fafc);
   border:1px solid var(--gri-200,#e2e8f0);border-radius:9px}
-.kalem-form.duzenleme{background:#fffbeb;border-color:#fde68a}
+.kalem-form.duzenleme{background:#fffbeb;border-color:var(--sari-kenar)}
 .kalem-form .alan{display:flex;flex-direction:column;gap:4px}
 .kalem-form .alan.genis{flex:1;min-width:180px}
 .kalem-form .alan.dugme{flex-direction:row;gap:6px}
@@ -169,7 +169,7 @@ $p = static fn ($v) => $v === null || $v === '' ? '' : number_format((float) $v,
   border-top:2px solid var(--gri-300,#cbd5e1);font-variant-numeric:tabular-nums;padding:8px 7px}
 .kdv-girdi{width:100%;padding:5px 7px;border:1px solid var(--gri-300,#cbd5e1);
   border-radius:5px;font-size:12.5px;text-align:right;font-family:inherit;
-  font-variant-numeric:tabular-nums;background:#fff}
+  font-variant-numeric:tabular-nums;background:var(--yuzey)}
 .kdv-girdi:focus{outline:none;border-color:var(--ana,#2563eb);
   box-shadow:0 0 0 2px rgba(37,99,235,.12)}
 .kdv-girdi.dolu{background:#f0fdf4;border-color:#86efac}
@@ -181,12 +181,12 @@ $p = static fn ($v) => $v === null || $v === '' ? '' : number_format((float) $v,
 .kdv-ozet .dg{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px}
 .kdv-ozet .mavi .dg{color:#0369a1}
 .kdv-ozet .yesil{background:#f0fdf4;border-color:#bbf7d0}
-.kdv-ozet .yesil .dg{color:#047857}
+.kdv-ozet .yesil .dg{color:var(--yesil-metin)}
 .gv-hesap tr.gv-ara td{background:var(--gri-50,#f8fafc);font-weight:700;
   border-top:1px solid var(--gri-300,#cbd5e1)}
-.gv-hesap tr.gv-vurgu td{background:#eff6ff;font-weight:700;font-size:14.5px}
+.gv-hesap tr.gv-vurgu td{background:var(--ana-acik);font-weight:700;font-size:14.5px}
 .gv-hesap tr.gv-sonuc td{background:#0f172a;color:#fff;font-weight:700;font-size:16px}
-.gv-hesap tr.gv-sonuc.iade td{background:#047857}
+.gv-hesap tr.gv-sonuc.iade td{background:var(--yesil-metin)}
 .gv-hesap tr.gv-sonuc.notr td{background:#475569}
 .gv-hesap .aciklama{font-size:10.5px;color:var(--gri-500,#64748b);font-weight:400;display:block}
 
@@ -197,12 +197,12 @@ $p = static fn ($v) => $v === null || $v === '' ? '' : number_format((float) $v,
 .gv-dilimler th.sag{text-align:right}
 .gv-dilimler td{padding:5px 8px;border-bottom:1px solid var(--gri-100,#f1f5f9)}
 .gv-dilimler td.sag{text-align:right;font-variant-numeric:tabular-nums}
-.gv-dilimler tr.aktif td{background:#fef3c7;font-weight:700}
+.gv-dilimler tr.aktif td{background:var(--sari-acik);font-weight:700}
 .gv-dilimler tr.dolu td{background:#f0fdf4}
 
-.gv-uyari{padding:10px 12px;border-radius:8px;background:#fef3c7;color:#92400e;
-  font-size:12.5px;margin-bottom:12px;border:1px solid #fde68a}
-.gv-bilgi{padding:9px 12px;border-radius:8px;background:#eff6ff;color:#1e40af;
+.gv-uyari{padding:10px 12px;border-radius:8px;background:var(--sari-acik);color:#92400e;
+  font-size:12.5px;margin-bottom:12px;border:1px solid var(--sari-kenar)}
+.gv-bilgi{padding:9px 12px;border-radius:8px;background:var(--ana-acik);color:var(--ana-metin);
   font-size:12px;margin-bottom:12px;border:1px solid #bfdbfe;line-height:1.45}
 
 .gv-ust{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
@@ -220,8 +220,8 @@ $p = static fn ($v) => $v === null || $v === '' ? '' : number_format((float) $v,
 .gv-ay b{display:block;font-size:9.5px;color:var(--gri-700,#334155);font-weight:600}
 
 .gv-rozet{display:inline-block;padding:2px 7px;border-radius:99px;font-size:11px;font-weight:700}
-.gv-rozet.mavi{background:#dbeafe;color:#1e40af}
-.gv-rozet.yesil{background:#d1fae5;color:#065f46}
+.gv-rozet.mavi{background:var(--ana-acik);color:var(--ana-metin)}
+.gv-rozet.yesil{background:var(--yesil-acik);color:var(--yesil-metin-koyu)}
 </style>
 
 <div class="gv-ust">
@@ -1016,7 +1016,7 @@ foreach ($giderler as $x) {
         </div>
         <div>
           <div class="et">Doğan Stopaj (%<?= (int) $h['ucret_stopaj_oran'] ?>)</div>
-          <div class="dg" style="color:#047857"><?= number_format($h['ucret_stopaj'], 2, ',', '.') ?></div>
+          <div class="dg" style="color:var(--yesil-metin)"><?= number_format($h['ucret_stopaj'], 2, ',', '.') ?></div>
         </div>
         <div class="mavi">
           <div class="et">Doğan KDV (%<?= (int) $h['ucret_kdv_oran'] ?>)</div>

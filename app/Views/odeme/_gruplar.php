@@ -154,7 +154,7 @@ $filtre = $filtre ?? [];
                       🔁<?= ! empty($o['tekrar_bitis']) ? ' → ' . trTarih($o['tekrar_bitis']) : '' ?>
                     </span>
                     <a href="<?= site_url('odeme/tekrar-durdur/' . $o['id']) ?>"
-                       class="kucuk-yazi" style="color:var(--kirmizi,#dc2626)"
+                       class="kucuk-yazi" style="color:var(--kirmizi,var(--kirmizi))"
                        data-onay="'<?= esc($o['baslik'], 'js') ?>' kaleminin aylık tekrarı durdurulacak. Gelecek aylardaki ödenmemiş kopyaları da silinecek. Onaylıyor musunuz?">
                       durdur
                     </a>

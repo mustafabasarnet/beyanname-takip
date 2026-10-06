@@ -119,11 +119,11 @@ $dGenelOran = $dTakipli > 0 ? (int) round($dTop['onaylandi'] / $dTakipli * 100) 
 .bdk-tur{display:inline-block;padding:2px 9px;border-radius:6px;color:#fff;font-size:11.5px;font-weight:700}
 .bdk-say{background:none;border:0;font:inherit;font-weight:700;cursor:pointer;padding:2px 7px;
   border-radius:6px;color:inherit;min-width:34px}
-.bdk-say:hover{background:var(--ana-acik,#dbeafe);color:var(--ana-koyu,#1d4ed8)}
+.bdk-say:hover{background:var(--ana-acik,var(--ana-acik));color:var(--ana-koyu,var(--ana-uzeri))}
 .bdk-say.bos{color:var(--gri-300,#cbd5e1);cursor:default;font-weight:600}
 .bdk-say.bos:hover{background:none;color:var(--gri-300,#cbd5e1)}
 .bdk-yesil{color:#059669}.bdk-sari{color:#ca8a04}.bdk-gri{color:var(--gri-500,#64748b)}
-.bdk-kirmizi{color:#dc2626}
+.bdk-kirmizi{color:var(--kirmizi)}
 .bdk-cubuk{display:inline-block;width:110px;height:7px;border-radius:99px;background:var(--gri-200,#e2e8f0);
   overflow:hidden;vertical-align:middle;margin-right:8px}
 .bdk-cubuk i{display:block;height:100%;background:#059669;border-radius:99px}
@@ -133,7 +133,7 @@ $dGenelOran = $dTakipli > 0 ? (int) round($dTop['onaylandi'] / $dTakipli * 100) 
 .bdk-ortu{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:900;display:none}
 .bdk-ortu.acik{display:block}
 .bdk-pencere{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:901;
-  background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.3);width:min(860px,94vw);
+  background:var(--yuzey);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.3);width:min(860px,94vw);
   max-height:86vh;display:none;flex-direction:column}
 .bdk-pencere.acik{display:flex}
 .bdk-p-bas{display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -141,7 +141,7 @@ $dGenelOran = $dTakipli > 0 ? (int) round($dTop['onaylandi'] / $dTakipli * 100) 
 .bdk-p-bas h3{margin:0;font-size:15.5px}
 .bdk-p-govde{overflow:auto;padding:0 4px 4px}
 .bdk-p-kapat{background:none;border:0;font-size:22px;cursor:pointer;color:var(--gri-400,#94a3b8);line-height:1}
-.bdk-p-kapat:hover{color:var(--kirmizi,#dc2626)}
+.bdk-p-kapat:hover{color:var(--kirmizi,var(--kirmizi))}
 @media(max-width:760px){
   .bdk-tablo th:nth-child(6),.bdk-tablo td:nth-child(6){display:none}
   .bdk-cubuk{width:60px}
@@ -157,8 +157,8 @@ $dGenelOran = $dTakipli > 0 ? (int) round($dTop['onaylandi'] / $dTakipli * 100) 
     <div class="sag bdk-lejant">
       <span><i style="background:#059669"></i>Onaylandı</span>
       <span><i style="background:#ca8a04"></i>Hazır</span>
-      <span><i style="background:#cbd5e1"></i>Bekliyor</span>
-      <span><i style="background:#dc2626"></i>Gecikmiş</span>
+      <span><i style="background:var(--gri-300)"></i>Bekliyor</span>
+      <span><i style="background:var(--kirmizi)"></i>Gecikmiş</span>
     </div>
   </div>
 
@@ -259,7 +259,7 @@ $edOzet = $edefterOzet ?? null;
   <style>
   .edk-kart{margin-bottom:18px}
   .edk-bas{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
-  .edk-ikon{width:30px;height:30px;border-radius:8px;background:#fef3c7;display:inline-flex;
+  .edk-ikon{width:30px;height:30px;border-radius:8px;background:var(--sari-acik);display:inline-flex;
     align-items:center;justify-content:center;font-size:16px}
   .edk-rakamlar{display:flex;gap:38px;flex-wrap:wrap;padding:4px 2px 14px}
   .edk-sayi{display:block;font-size:27px;font-weight:800;line-height:1.15;letter-spacing:-1px}
@@ -311,7 +311,7 @@ $edOzet = $edefterOzet ?? null;
         </button>
         <?php if ((int) $edOzet['gecikmis'] > 0): ?>
           <button type="button" class="edk-bag" data-ed-durum="GECIKMIS" data-ed-ad="Gecikmiş">
-            <span class="edk-sayi" style="color:#dc2626"><?= (int) $edOzet['gecikmis'] ?></span>
+            <span class="edk-sayi" style="color:var(--kirmizi)"><?= (int) $edOzet['gecikmis'] ?></span>
             <span class="edk-etiket">Gecikmiş</span>
           </button>
         <?php endif; ?>
@@ -728,7 +728,7 @@ $edOzet = $edefterOzet ?? null;
         <div class="etiket">✓ Tamamlanan</div><div class="deger"><?= (int) $sicilBildirim['tamamlanan'] ?></div></a>
     </div>
     <?php if ((int) $sicilBildirim['gecikti'] > 0): ?>
-      <div class="kucuk-yazi" style="margin-top:8px;color:var(--kirmizi,#dc2626)">
+      <div class="kucuk-yazi" style="margin-top:8px;color:var(--kirmizi,var(--kirmizi))">
         ⚠ <?= (int) $sicilBildirim['gecikti'] ?> todo'nun süresi geçti — acil işlem gerekir.
       </div>
     <?php endif; ?>

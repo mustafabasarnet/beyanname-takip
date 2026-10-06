@@ -1,0 +1,255 @@
+/* =====================================================================
+   BEYANNAME TAKİP — TEMA KATMANI (karanlık / palet / yan menü)
+   =====================================================================
+
+   NASIL ÇALIŞIR
+   -------------
+   Bu dosyada **kural (layout) yazılmaz**; yalnız `stil.css` :root katmanında
+   tanımlı değişkenlerin tema/palet değerleri verilir. Böylece:
+
+     • Varsayılan (data-tema="acik" + data-palet="mavi") → bugünkü görünümün
+       BİREBİR aynısı (bu dosya o durumda hiçbir şey yapmaz).
+     • Karanlık / palet / açık menü seçildiğinde yalnız renkler değişir,
+       hiçbir bileşenin boyutu/yerleşimi değişmez.
+
+   BASILAN ÖZNİTELİKLER (layouts/ana.php)
+   --------------------------------------
+     <html data-tema="acik|karanlik" data-palet="mavi|turkuaz|…"
+           data-yan="koyu|acik">
+
+   "sistem" modu sunucudan `acik`/`karanlik` olarak çözülüp basılır
+   (layouts/ana.php içindeki ilk-boyama script'i) — böylece JS kapalıysa
+   güvenli varsayılan olarak AÇIK tema görünür.
+
+   YAZDIRMA
+   --------
+   Yazdırma ekranları bu layout'u kullanmaz (data-tema yok → açık tema).
+   Ekrandan yazdırma (Ctrl+P) için de dosya sonunda `@media print` bloğu
+   renkleri açık temaya geri döndürür: kâğıt her zaman açık basılır.
+
+   SABİT KALANLAR (bilinçli)
+   -------------------------
+   Anlamsal durum renkleri (gecikmiş=kırmızı, onaylandı=yeşil, hazır=sarı,
+   bilgi=mor) tema/paletten bağımsız KORUNUR; yalnız zemin/metin tonları
+   okunabilirlik için uyarlanır.
+   ===================================================================== */
+
+/* =====================================================================
+   1) KARANLIK TEMA
+   ===================================================================== */
+:root[data-tema="karanlik"]{
+  /* --- yüzey / çizgi --- */
+  --yuzey:#121a28;
+  --cizgi:#2a3549;
+  --cizgi-koyu:#3b475e;
+
+  /* --- gri skalası ters çevrilir: açık tonlar koyu, koyu tonlar açık --- */
+  --gri-50:#1b2436;  --gri-100:#151d2c; --gri-200:#2a3549; --gri-300:#3b475e;
+  --gri-400:#7c8aa3; --gri-500:#95a3ba; --gri-600:#aebbd0; --gri-700:#c6d1e2;
+  --gri-800:#dde5f0; --gri-900:#f1f5f9;
+
+  /* --- gölgeler (koyu zeminde daha derin) --- */
+  --golge:0 1px 3px rgba(0,0,0,.5),0 1px 2px rgba(0,0,0,.35);
+  --golge-md:0 4px 14px rgba(0,0,0,.5);
+  --golge-lg:0 14px 38px rgba(0,0,0,.6);
+  --golge-modal:0 22px 60px rgba(0,0,0,.7);
+  --perde:rgba(0,0,0,.62);
+
+  /* --- tablo satır zeminleri --- */
+  --satir-gecikmis:#3a1d22;       --satir-gecikmis-hover:#452228;
+  --satir-bugun:#3a2f14;
+  --not-dolu:#2c2814;
+  --hucre-bos-1:#1b2436;          --hucre-bos-2:#151d2c;
+  --hucre-atil-1:#1b2436;         --hucre-atil-2:#2a3549;
+
+  /* --- anlamsal yumuşak zeminler: açık ton → koyu ton --- */
+  --yesil-acik:#064e3b;  --kirmizi-acik:#4c1d24;
+  --turuncu-acik:#4a2a12; --sari-acik:#463a12;  --mor-acik:#312e81;
+
+  /* --- anlamsal metinler: koyu ton → açık ton (kontrast korunur) --- */
+  --yesil-metin:#6ee7b7;  --yesil-metin-koyu:#a7f3d0; --yesil-koyu:#059669;
+  --kirmizi-metin:#fca5a5; --kirmizi-koyu:#dc2626;
+  --sari-metin:#fcd34d;   --sari-metin-koyu:#fde68a;
+  --turuncu-koyu:#ea580c; --mor-koyu:#7c3aed;
+
+  /* --- anlamsal kenarlıklar: açık ton → koyu ton --- */
+  --yesil-kenar:#065f46; --kirmizi-kenar:#7f1d1d;
+  --ana-kenar:#1e3a8a;   --sari-kenar:#713f12;
+
+  /* --- yan menü koyu varyantı (karanlık temada biraz daha koyu) --- */
+  --yan-bg-1:#0b1220; --yan-bg-2:#141d2e;
+  --yan-cizgi:rgba(255,255,255,.07);
+
+  /* --- giriş/karsilama kahraman alanı --- */
+  --hero-bg:linear-gradient(135deg,#0b1220 0%,#172554 55%,#1d4ed8 100%);
+
+  /* --- vurgunun ikinci tonu (palet blokları aşağıda daraltır) --- */
+  --ana-2:#3b82f6;
+  --ana-uzeri:#bfdbfe;
+}
+
+/* =====================================================================
+   2) RENK ŞABLONLARI (PALETLER) — açık tema
+   Yalnız vurgu ailesi değişir: buton, bağlantı, aktif menü, "Onaylandı"
+   rozeti zemini, istatistik kartı şeridi, gradyan.
+   ===================================================================== */
+:root[data-palet="mavi"]{
+  --ana:#2563eb; --ana-koyu:#1d4ed8; --ana-acik:#dbeafe;
+  --ana-metin:#1e40af; --ana-uzeri:#1d4ed8; --ana-2:#60a5fa;
+  --ana-kenar:#93c5fd;
+  --ana-golge:rgba(37,99,235,.35); --ana-halka:rgba(37,99,235,.12);
+  --hero-bg:linear-gradient(135deg,#0f172a 0%,#1e3a8a 55%,#2563eb 100%);
+}
+:root[data-palet="turkuaz"]{
+  --ana:#0891b2; --ana-koyu:#0e7490; --ana-acik:#cffafe;
+  --ana-metin:#155e75; --ana-uzeri:#0e7490; --ana-2:#22d3ee;
+  --ana-kenar:#a5f3fc;
+  --ana-golge:rgba(8,145,178,.35); --ana-halka:rgba(8,145,178,.12);
+  --hero-bg:linear-gradient(135deg,#0f172a 0%,#164e63 55%,#0891b2 100%);
+}
+:root[data-palet="yesil"]{
+  --ana:#059669; --ana-koyu:#047857; --ana-acik:#d1fae5;
+  --ana-metin:#065f46; --ana-uzeri:#047857; --ana-2:#34d399;
+  --ana-kenar:#a7f3d0;
+  --ana-golge:rgba(5,150,105,.35); --ana-halka:rgba(5,150,105,.12);
+  --hero-bg:linear-gradient(135deg,#0f172a 0%,#064e3b 55%,#059669 100%);
+}
+:root[data-palet="mor"]{
+  --ana:#7c3aed; --ana-koyu:#6d28d9; --ana-acik:#ede9fe;
+  --ana-metin:#5b21b6; --ana-uzeri:#6d28d9; --ana-2:#a78bfa;
+  --ana-kenar:#ddd6fe;
+  --ana-golge:rgba(124,58,237,.35); --ana-halka:rgba(124,58,237,.12);
+  --hero-bg:linear-gradient(135deg,#0f172a 0%,#4c1d95 55%,#7c3aed 100%);
+}
+:root[data-palet="turuncu"]{
+  --ana:#ea580c; --ana-koyu:#c2410c; --ana-acik:#ffedd5;
+  --ana-metin:#9a3412; --ana-uzeri:#c2410c; --ana-2:#fb923c;
+  --ana-kenar:#fed7aa;
+  --ana-golge:rgba(234,88,12,.35); --ana-halka:rgba(234,88,12,.12);
+  --hero-bg:linear-gradient(135deg,#0f172a 0%,#7c2d12 55%,#ea580c 100%);
+}
+:root[data-palet="bordo"]{
+  --ana:#be123c; --ana-koyu:#9f1239; --ana-acik:#ffe4e6;
+  --ana-metin:#9f1239; --ana-uzeri:#9f1239; --ana-2:#fb7185;
+  --ana-kenar:#fecdd3;
+  --ana-golge:rgba(190,18,60,.35); --ana-halka:rgba(190,18,60,.12);
+  --hero-bg:linear-gradient(135deg,#0f172a 0%,#881337 55%,#be123c 100%);
+}
+:root[data-palet="grafit"]{
+  --ana:#475569; --ana-koyu:#334155; --ana-acik:#e2e8f0;
+  --ana-metin:#334155; --ana-uzeri:#334155; --ana-2:#94a3b8;
+  --ana-kenar:#cbd5e1;
+  --ana-golge:rgba(71,85,105,.35); --ana-halka:rgba(71,85,105,.12);
+  --hero-bg:linear-gradient(135deg,#0f172a 0%,#334155 55%,#64748b 100%);
+}
+
+/* =====================================================================
+   3) KARANLIK + PALET — yumuşak zeminler koyulaşır, üstü metin açılır
+   ===================================================================== */
+:root[data-tema="karanlik"][data-palet="mavi"]{
+  --ana-2:#3b82f6; --ana-acik:#1e3a8a; --ana-metin:#bfdbfe; --ana-uzeri:#bfdbfe; --ana-kenar:#1e40af;
+}
+:root[data-tema="karanlik"][data-palet="turkuaz"]{
+  --ana-2:#22d3ee; --ana-acik:#134e5c; --ana-metin:#a5f3fc; --ana-uzeri:#a5f3fc; --ana-kenar:#155e75;
+}
+:root[data-tema="karanlik"][data-palet="yesil"]{
+  --ana-2:#34d399; --ana-acik:#064e3b; --ana-metin:#a7f3d0; --ana-uzeri:#a7f3d0; --ana-kenar:#065f46;
+}
+:root[data-tema="karanlik"][data-palet="mor"]{
+  --ana-2:#a78bfa; --ana-acik:#3b2c6b; --ana-metin:#ddd6fe; --ana-uzeri:#ddd6fe; --ana-kenar:#4c1d95;
+}
+:root[data-tema="karanlik"][data-palet="turuncu"]{
+  --ana-2:#fb923c; --ana-acik:#51270f; --ana-metin:#fed7aa; --ana-uzeri:#fed7aa; --ana-kenar:#9a3412;
+}
+:root[data-tema="karanlik"][data-palet="bordo"]{
+  --ana-2:#fb7185; --ana-acik:#4c1226; --ana-metin:#fecdd3; --ana-uzeri:#fecdd3; --ana-kenar:#9f1239;
+}
+:root[data-tema="karanlik"][data-palet="grafit"]{
+  --ana-2:#94a3b8; --ana-acik:#293648; --ana-metin:#e2e8f0; --ana-uzeri:#e2e8f0; --ana-kenar:#475569;
+}
+
+/* =====================================================================
+   4) YAN MENÜ VARYANTLARI
+   Kullanıcı "açık menü" derse menü beyaz/açık zemine döner.
+   Aktif menü öğesi HER durumda palet rengini alır (tutarlılık).
+   ===================================================================== */
+:root[data-yan="acik"]{
+  --yan-bg-1:#ffffff; --yan-bg-2:#f8fafc;
+  --yan-metin:#334155; --yan-soluk:#94a3b8;
+  --yan-logo-metin:#0f172a; --yan-hover-metin:#0f172a; --yan-alt-metin:#64748b;
+  --yan-hover:rgba(15,23,42,.05); --yan-cizgi:#e2e8f0;
+}
+/* karanlık temada açık menü: göz yormayan açık gri-mavi */
+:root[data-tema="karanlik"][data-yan="acik"]{
+  --yan-bg-1:#e9eef6; --yan-bg-2:#dbe3ef;
+  --yan-metin:#334155; --yan-soluk:#8494ab;
+  --yan-logo-metin:#0f172a; --yan-hover-metin:#0f172a; --yan-alt-metin:#64748b;
+  --yan-hover:rgba(15,23,42,.06); --yan-cizgi:rgba(15,23,42,.09);
+}
+
+/* =====================================================================
+   5) KARANLIK İNCE AYARLAR
+   Yukarıdaki değişkenler çoğu bileşeni otomatik kapsar; burada yalnız
+   "özel durum" gereken birkaç öğe düzeltilir. Hiçbiri yerleşimi değiştirmez.
+   ===================================================================== */
+
+/* İkincil buton: karanlıkta beyaz zemin yerine yüzey rengi */
+:root[data-tema="karanlik"] .btn.ikincil{
+  background:var(--yuzey);color:var(--gri-700);border-color:var(--cizgi-koyu)
+}
+:root[data-tema="karanlik"] .btn.ikincil:hover{
+  background:var(--gri-50);color:var(--gri-900);border-color:var(--gri-400)
+}
+
+/* Rozet metinleri (koyu zemin üzerine açık metin) */
+:root[data-tema="karanlik"] .rozet.bekliyor{background:var(--gri-200);color:var(--gri-700)}
+:root[data-tema="karanlik"] .rozet.hazir,
+:root[data-tema="karanlik"] .rozet.sari{color:var(--sari-metin)}
+:root[data-tema="karanlik"] .rozet.gonderildi,
+:root[data-tema="karanlik"] .rozet.yesil{color:var(--yesil-metin)}
+:root[data-tema="karanlik"] .rozet.gecikmis,
+:root[data-tema="karanlik"] .rozet.kirmizi{color:var(--kirmizi-metin)}
+:root[data-tema="karanlik"] .rozet.verilmeyecek{color:var(--gri-500)}
+
+/* Uyarı kutuları */
+:root[data-tema="karanlik"] .uyari.basari{color:var(--yesil-metin-koyu)}
+:root[data-tema="karanlik"] .uyari.hata{color:var(--kirmizi-metin)}
+:root[data-tema="karanlik"] .uyari.bilgi{color:var(--ana-metin)}
+:root[data-tema="karanlik"] .uyari.dikkat{color:var(--sari-metin-koyu)}
+
+/* Çizelge (matris) sabit sol sütun ve boş hücreler */
+:root[data-tema="karanlik"] .matris .sol-sabit{background:var(--yuzey)}
+:root[data-tema="karanlik"] .tahakkuk-hucre .atil-not{color:var(--sari-metin)}
+
+/* Giriş (karşılama) ekranı — koyu temada okunur kalsın */
+:root[data-tema="karanlik"] input,
+:root[data-tema="karanlik"] select,
+:root[data-tema="karanlik"] textarea{color-scheme:dark}
+
+/* Kaydırma çubuğu (koyu temada açık çubuk sırıtmasın) */
+:root[data-tema="karanlik"]{color-scheme:dark}
+
+/* =====================================================================
+   6) YAZDIRMA KORUMASI
+   Ekrandan yazdırma (Ctrl+P) koyu temada bile AÇIK basılır: kâğıt ve
+   mürekkep için doğru olan budur. Yazdırma sayfaları zaten bu layout'u
+   kullanmadığı için ayrıca bir şey yapmaya gerek yoktur.
+   ===================================================================== */
+@media print{
+  :root[data-tema="karanlik"]{
+    --yuzey:#ffffff; --cizgi:#e2e8f0; --cizgi-koyu:#cbd5e1;
+    --gri-50:#f8fafc;  --gri-100:#f1f5f9; --gri-200:#e2e8f0; --gri-300:#cbd5e1;
+    --gri-400:#94a3b8; --gri-500:#64748b; --gri-600:#475569; --gri-700:#334155;
+    --gri-800:#1e293b; --gri-900:#0f172a;
+    --golge:none; --golge-md:none; --golge-lg:none;
+    --satir-gecikmis:#fff5f5; --satir-bugun:#fffbeb; --not-dolu:#fffdf5;
+    --hucre-bos-1:#fafafa; --hucre-bos-2:#f1f5f9;
+    --hucre-atil-1:#f7f8fa; --hucre-atil-2:#e6eaef;
+    --yesil-acik:#d1fae5; --kirmizi-acik:#fee2e2; --turuncu-acik:#ffedd5;
+    --sari-acik:#fef9c3;  --mor-acik:#ede9fe;
+    --yesil-metin:#047857; --yesil-metin-koyu:#065f46; --kirmizi-metin:#991b1b;
+    --sari-metin:#a16207;  --sari-metin-koyu:#854d0e; --ana-metin:#1e40af;
+    --ana-uzeri:#1d4ed8;
+  }
+  :root[data-tema="karanlik"] .yan-menu{display:none}
+}

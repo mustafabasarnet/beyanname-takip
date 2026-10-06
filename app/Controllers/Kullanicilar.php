@@ -134,9 +134,44 @@ class Kullanicilar extends BaseController
     // ---------------- Profil ----------------
     public function profil()
     {
+        $kid = (int) $this->aktifKullanici['id'];
+
         return $this->goster('kullanicilar/profil', [
-            'kullanici' => $this->model->find($this->aktifKullanici['id']),
+            'kullanici' => $this->model->find($kid),
+            // Görünüm tercihleri + seçenek listeleri (🎨 Görünüm kartı)
+            'tercih'    => $this->model->temaTercihleri($kid),
+            'temaModlari' => KullaniciModel::TEMA_MODLARI,
+            'paletler'    => KullaniciModel::PALETLER,
+            'yanMenuler'  => KullaniciModel::YAN_MENULER,
+            'temaHazir'   => $this->model->db->fieldExists('tema', 'kullanicilar'),
         ], 'Profilim');
+    }
+
+    /**
+     * GÖRÜNÜM (TEMA) — üst bardaki hızlı geçiş düğmesi (AJAX).
+     *
+     * Yalnız açık ↔ karanlık modu çevirir; palet ve yan menü seçimi
+     * Profil → Görünüm kartından yapılır. Tercih kullanıcı bazlıdır.
+     */
+    public function temaHizliGecis()
+    {
+        $kid  = (int) $this->aktifKullanici['id'];
+        $mod  = (string) $this->request->getPost('tema');
+
+        $sonuc = $this->model->temaKaydet($kid, ['tema' => $mod]);
+
+        if (! $sonuc['durum']) {
+            return $this->jsonHata($sonuc['mesaj']);
+        }
+
+        $this->temaOturumGuncelle($sonuc['tercih']);
+
+        $etiket = KullaniciModel::TEMA_MODLARI[$sonuc['tercih']['tema']] ?? '';
+
+        return $this->jsonBasarili('Tema güncellendi (' . $etiket . ').', [
+            'tema'   => $sonuc['tercih']['tema'],
+            'etiket' => $etiket,
+        ]);
     }
 
     public function profilKaydet()
@@ -177,6 +212,34 @@ class Kullanicilar extends BaseController
         $this->session->set('ad_soyad', $veri['ad_soyad']);
 
         /*
+         * GÖRÜNÜM (TEMA) TERCİHLERİ
+         *
+         * Aynı formda gönderilen tema/palet/yan menü seçimleri ayrı ve
+         * whitelist doğrulamalı yazılır (bkz. KullaniciModel::temaKaydet).
+         * Geçersiz değer gelirse diğer profil alanları yine kaydedilir;
+         * kullanıcı yalnız görünüm için uyarı alır.
+         */
+        $gorunumHata = null;
+
+        if ($this->request->getPost('tema') !== null) {
+            $tercih = array_filter([
+                'tema'     => (string) $this->request->getPost('tema'),
+                'palet'    => (string) $this->request->getPost('palet'),
+                'yan_menu' => (string) $this->request->getPost('yan_menu'),
+            ], static fn ($v) => $v !== '');
+
+            if ($tercih !== []) {
+                $g = $this->model->temaKaydet($id, $tercih);
+
+                if (! $g['durum']) {
+                    $gorunumHata = $g['mesaj'];
+                } else {
+                    $this->temaOturumGuncelle($g['tercih']);
+                }
+            }
+        }
+
+        /*
          * Şifre değiştiyse "beni hatırla" jetonları iptal edilir.
          * Aksi halde çalınmış bir çerez, şifre değiştirilse bile
          * geçerli kalmaya devam ederdi.
@@ -185,7 +248,26 @@ class Kullanicilar extends BaseController
             $this->hatirlamaJetonlariniSil((int) $id);
         }
 
+        if ($gorunumHata !== null) {
+            return redirect()->to(site_url('profil'))->with('hata', $gorunumHata);
+        }
+
         return redirect()->to(site_url('profil'))->with('basari', 'Profiliniz güncellendi.');
+    }
+
+    /**
+     * Oturumdaki görünüm tercihini tazeler.
+     *
+     * BaseController her istekte ek sorgu yapmasın diye tercih oturumda
+     * tutulur; buradan güncel değer yazılır.
+     */
+    protected function temaOturumGuncelle(array $tercih): void
+    {
+        $this->session->set('tema_tercih', [
+            'tema'     => (string) ($tercih['tema'] ?? 'sistem'),
+            'palet'    => (string) ($tercih['palet'] ?? 'mavi'),
+            'yan_menu' => (string) ($tercih['yan_menu'] ?? 'koyu'),
+        ]);
     }
 
     /**

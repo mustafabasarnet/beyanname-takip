@@ -231,7 +231,7 @@
          display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
 .adim p{margin:3px 0 0}
 .kod-satir{margin-top:5px}
-.kod-satir code{background:#fff;padding:2px 7px;border-radius:5px;
+.kod-satir code{background:var(--yuzey);padding:2px 7px;border-radius:5px;
                 border:1px solid var(--gri-300);font-size:11.5px}
 code{font-family:ui-monospace,Menlo,Consolas,monospace}
 </style>

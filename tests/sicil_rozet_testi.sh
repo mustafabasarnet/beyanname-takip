@@ -69,13 +69,32 @@ girisYap personel $JP
 girisYap admin $JA
 PERS_ID=$(db "SELECT id FROM kullanicilar WHERE kullanici_adi='personel' LIMIT 1;")
 ADMIN_ID=$(db "SELECT id FROM kullanicilar WHERE kullanici_adi='admin' LIMIT 1;")
-MUK_ID=$(db "SELECT id FROM mukellefler WHERE deleted_at IS NULL ORDER BY id LIMIT 1;")
 TUR_ID=$(db "SELECT id FROM sicil_degisiklik_turleri ORDER BY id LIMIT 1;")
-ol "kullanıcı/mükellef/tür bulundu" "1" "$([ -n "$PERS_ID" ] && [ -n "$ADMIN_ID" ] && [ -n "$MUK_ID" ] && [ -n "$TUR_ID" ] && echo 1 || echo 0)"
+ol "kullanıcı id'leri + tür bulundu" "1" "$([ -n "$PERS_ID" ] && [ -n "$ADMIN_ID" ] && [ -n "$TUR_ID" ] && echo 1 || echo 0)"
 
 # Temizlik (önceki koşumdan kalanlar) — SROZ- önekli mükellef işlemleri cascade silinir
 db "DELETE FROM sicil_degisiklikleri WHERE konu LIKE 'SROZ-%';" > /dev/null 2>&1
 db "DELETE FROM mukellefler WHERE unvan LIKE 'SROZ-TEST%';" > /dev/null 2>&1
+
+# Test KENDİ mükellefini kurar (müşavir 1 kapsamında).
+# NEDEN: süitte bazı testler `mukellefler` tablosunu boşaltabildiği için hazır
+# kayıtlara bağımlı olmak "tek başına geçer, süitte kırılır" durumu yaratıyordu.
+MUK_ID=$($MDBR -N -B -e "INSERT INTO mukellefler (musavir_id,unvan,mukellef_tipi,defter_tipi,edefter_sorumlu_id,edefter_donem,ise_baslama_tarihi,aktif,created_at,updated_at)
+  VALUES (1,'SROZ-TEST kapsam içi','tuzel','bilanco',NULL,'YOK',CURDATE(),1,NOW(),NOW()); SELECT LAST_INSERT_ID();")
+ol "kapsam içi test mükellefi kuruldu" "1" "$([ -n "$MUK_ID" ] && echo 1 || echo 0)"
+
+# ---------------------------------------------------------------------
+# BAŞLANGIÇ SAYAÇLARI — henüz SROZ- verisi YOK.
+# Rozet kullanıcının TÜM kapsamını saydığı için süitte başka testlerin
+# bıraktığı kayıtlar da sayıya girer; bu yüzden tüm karşılaştırmalar
+# "başlangıç + beklenen fark" (delta) mantığıyla yapılır.
+# ---------------------------------------------------------------------
+curl -s -b $JP -c $JP -o /tmp/sroz_taban.html "$B/panel"
+TABAN=$(rozet /tmp/sroz_taban.html | alan sayi)
+curl -s -b $JA -c $JA -o /tmp/sroz_taban_a.html "$B/panel"
+TABAN_A=$(rozet /tmp/sroz_taban_a.html | alan sayi)
+ol "başlangıç sayaçları okundu" "1" "$([ -n "$TABAN" ] && [ -n "$TABAN_A" ] && echo 1 || echo 0)"
+ol "başlangıç: kapsam içi todo yok (SROZ temiz)" "0" "$(db "SELECT COUNT(*) FROM sicil_bildirim_gorevleri WHERE ad LIKE 'SROZ-%';")"
 
 # İkinci kapsam mükellefi: müşavir 2'ye bağlı (personel bu müşaviri GÖRMEZ)
 MUK2_ID=$($MDBR -N -B -e "INSERT INTO mukellefler (musavir_id,unvan,mukellef_tipi,defter_tipi,edefter_sorumlu_id,edefter_donem,ise_baslama_tarihi,aktif,created_at,updated_at)
@@ -105,10 +124,16 @@ DEG3=$($MDBR -N -B -e "INSERT INTO sicil_degisiklikleri (mukellef_id,turu_id,deg
 $MDBR -e "INSERT INTO sicil_bildirim_gorevleri (sicil_degisikligi_id,kural_id,ad,son_tarih,durum,created_at,updated_at)
   VALUES ($DEG3,NULL,'SROZ-8 silinmiş işlem todo',DATE_SUB(CURDATE(), INTERVAL 2 DAY),'BEKLIYOR',NOW(),NOW());" > /dev/null 2>&1
 
+# ---------------------------------------------------------------------
+# ÖNEMLİ: rozet, kullanıcının TÜM kapsamını sayar. Süitte başka testlerin
+# bıraktığı kayıtlar da sayıya girebilir. Bu yüzden karşılaştırmalar
+# "başlangıç değeri + beklenen fark" (delta) mantığıyla yapılır.
+# ---------------------------------------------------------------------
 T1=$(db "SELECT id FROM sicil_bildirim_gorevleri WHERE ad='SROZ-1 gecikmiş açık';")
 T2=$(db "SELECT id FROM sicil_bildirim_gorevleri WHERE ad='SROZ-2 bugün eski durum';")
 T7=$(db "SELECT id FROM sicil_bildirim_gorevleri WHERE ad='SROZ-7 kapsam dışı gecikmiş';")
 ol "test verisi kuruldu (3 işlem / 8 todo)" "8" "$(db "SELECT COUNT(*) FROM sicil_bildirim_gorevleri WHERE ad LIKE 'SROZ-%';")"
+
 
 echo
 echo "=== 1) ROZET MENÜDE VE HER SAYFADA ==="
@@ -123,7 +148,7 @@ ol "ipucu metni: son günü gelen + gecikmiş açıklaması" "1" \
 
 echo
 echo "=== 2) SAYAÇ = SON GÜNÜ GELMİŞ + GECİKMİŞ AÇIK TODOLAR (personel: 2) ==="
-ol "personel rozeti 2 (SROZ-1 gecikmiş + SROZ-2 bugün/HAZIR)" "2" "$(rozet /tmp/sroz_panel.html | alan sayi)"
+ol "personel rozeti +2 (SROZ-1 gecikmiş + SROZ-2 bugün/HAZIR)" "$((TABAN+2))" "$(rozet /tmp/sroz_panel.html | alan sayi)"
 ol "rozet görünür (gizli değil)" "false" "$(rozet /tmp/sroz_panel.html | alan gizli)"
 ol "DB ile uyumlu (kapsam içi, silinmemiş)" "2" \
    "$(db "SELECT COUNT(*) FROM sicil_bildirim_gorevleri g JOIN sicil_degisiklikleri d ON d.id=g.sicil_degisikligi_id
@@ -147,11 +172,11 @@ ol "silinmiş işlemin todo'su sayılmadı (SROZ-8)" "0" \
 echo
 echo "=== 4) ADMIN KAPSAMI: tümü (kapsam dışı mükellef dahil = 3) ==="
 curl -s -b $JA -c $JA -o /tmp/sroz_panel_a.html "$B/panel"
-ol "admin rozeti 3 (personelin 2 + kapsam dışı 1)" "3" "$(rozet /tmp/sroz_panel_a.html | alan sayi)"
+ol "admin rozeti +3 (personelin 2 + kapsam dışı 1)" "$((TABAN_A+3))" "$(rozet /tmp/sroz_panel_a.html | alan sayi)"
 
 echo
 echo "=== 5) İZOLE: kapsam dışı todo personelin sayacına GİRMEZ ==="
-ol "personel sayısı hâlâ 2" "2" "$(rozet /tmp/sroz_panel.html | alan sayi)"
+ol "personel sayısı hâlâ +2 (kapsam dışı girmiyor)" "$((TABAN+2))" "$(rozet /tmp/sroz_panel.html | alan sayi)"
 ol "kapsam dışı todo DB'de açık+gecikmiş" "1" \
    "$(db "SELECT COUNT(*) FROM sicil_bildirim_gorevleri WHERE ad='SROZ-7 kapsam dışı gecikmiş' AND durum='BEKLIYOR' AND son_tarih <= CURDATE();")"
 
@@ -160,20 +185,20 @@ echo "=== 6) AJAX 'YAPILDI' → ROZET DÜŞER ==="
 T=$(jeton $JP "$B/sicil")
 curl -s -b $JP -c $JP -o /tmp/sroz_json.html -X POST "$B/sicil/todo-durum" -d "csrf_beyanname=$T" -d "id=$T1" -d "durum=TAMAM"
 ol "AJAX durum=true" "true" "$(jalin durum)"
-ol "AJAX rozet=1 döndü (2 → 1)" "1" "$(jalin rozet /tmp/sroz_json.html)"
+ol "AJAX rozet +1 döndü (bir todo yapıldı)" "$((TABAN+1))" "$(jalin rozet /tmp/sroz_json.html)"
 ol "  DB'de todo TAMAM" "TAMAM" "$(db "SELECT durum FROM sicil_bildirim_gorevleri WHERE id=$T1;")"
 curl -s -b $JP -c $JP -o /tmp/sroz_panel2.html "$B/panel"
-ol "sayfa yenilenince personel rozeti 1" "1" "$(rozet /tmp/sroz_panel2.html | alan sayi)"
+ol "sayfa yenilenince personel rozeti +1" "$((TABAN+1))" "$(rozet /tmp/sroz_panel2.html | alan sayi)"
 
 echo
 echo "=== 7) 'TAKİP DIŞI' DA DÜŞÜRÜR → 0 OLUNCA ROZET GİZLENİR ==="
 T=$(jeton $JP "$B/sicil")
 curl -s -b $JP -c $JP -o /tmp/sroz_json2.html -X POST "$B/sicil/todo-durum" -d "csrf_beyanname=$T" -d "id=$T2" -d "durum=GEREKSIZ"
-ol "AJAX rozet=0 döndü" "0" "$(jalin rozet /tmp/sroz_json2.html)"
+ol "AJAX rozet tabana döndü (takip dışı)" "$TABAN" "$(jalin rozet /tmp/sroz_json2.html)"
 curl -s -b $JP -c $JP -o /tmp/sroz_panel3.html "$B/panel"
-ol "rozet 0" "0" "$(rozet /tmp/sroz_panel3.html | alan sayi)"
-ol "rozet GİZLİ (display:none)" "true" "$(rozet /tmp/sroz_panel3.html | alan gizli)"
-ol "admin rozeti hâlâ görünür (1: kapsam dışı)" "1" "$(curl -s -b $JA -c $JA "$B/panel" | python3 -c "
+ol "rozet tabana döndü" "$TABAN" "$(rozet /tmp/sroz_panel3.html | alan sayi)"
+ol "rozet gizliliği taban ile uyumlu" "$([ "$TABAN" = "0" ] && echo true || echo false)" "$(rozet /tmp/sroz_panel3.html | alan gizli)"
+ol "admin rozeti +1 (yalnız kapsam dışı todo açık)" "$((TABAN_A+1))" "$(curl -s -b $JA -c $JA "$B/panel" | python3 -c "
 import re,sys
 h=sys.stdin.read()
 b=re.search(r'id=\"sicil-menu-rozet\"[^>]*>(\d+)</span>',h)
@@ -183,9 +208,9 @@ echo
 echo "=== 8) GERİ AL → SAYI YENİDEN ARTAR ==="
 T=$(jeton $JP "$B/sicil")
 curl -s -b $JP -c $JP -o /tmp/sroz_json3.html -X POST "$B/sicil/todo-durum" -d "csrf_beyanname=$T" -d "id=$T2" -d "durum=BEKLIYOR"
-ol "geri alınca rozet=1" "1" "$(jalin rozet /tmp/sroz_json3.html)"
+ol "geri alınca rozet +1" "$((TABAN+1))" "$(jalin rozet /tmp/sroz_json3.html)"
 curl -s -b $JP -c $JP -o /tmp/sroz_panel4.html "$B/panel"
-ol "sayfada rozet 1 ve görünür" "1|false" "$(rozet /tmp/sroz_panel4.html | python3 -c "import json,sys;d=json.load(sys.stdin);print(str(d['sayi'])+'|'+str(d['gizli']).lower())")"
+ol "sayfada rozet +1 ve görünür" "$((TABAN+1))|false" "$(rozet /tmp/sroz_panel4.html | python3 -c "import json,sys;d=json.load(sys.stdin);print(str(d['sayi'])+'|'+str(d['gizli']).lower())")"
 
 echo
 echo "=== 9) YETKİ / GÜVENLİK ==="

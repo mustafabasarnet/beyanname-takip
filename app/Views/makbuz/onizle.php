@@ -8,10 +8,10 @@ $o       = $sonuc['ozet'];
 
 <style>
 .oz-tablo td{font-size:12.5px;vertical-align:middle}
-.oz-tablo tr.oz-hatali{background:#fef2f2}
-.oz-tablo tr.oz-mukerrer{background:#fffbeb}
+.oz-tablo tr.oz-hatali{background:var(--kirmizi-acik)}
+.oz-tablo tr.oz-mukerrer{background:var(--satir-bugun)}
 .oz-uyari{font-size:11px;color:var(--turuncu,#ea580c);display:block}
-.oz-hata{font-size:11.5px;color:var(--kirmizi,#dc2626)}
+.oz-hata{font-size:11.5px;color:var(--kirmizi,var(--kirmizi))}
 </style>
 
 <div class="kart">

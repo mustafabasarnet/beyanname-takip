@@ -2,7 +2,7 @@
 <html lang="tr"><head><meta charset="UTF-8">
 <title><?= esc($mukellef['unvan']) ?> — <?= $yil ?> Beyanname Çizelgesi</title>
 <link rel="stylesheet" href="<?= base_url('assets/css/stil.css') ?>">
-<style>body{background:#fff;padding:18px}h1{font-size:16px}</style>
+<style>body{background:var(--yuzey);padding:18px}h1{font-size:16px}</style>
 </head><body>
 <h1><?= esc($mukellef['unvan']) ?></h1>
 <div class="kucuk-yazi mb16">

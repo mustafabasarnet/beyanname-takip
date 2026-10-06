@@ -21,10 +21,10 @@
 .gvl-tablo tfoot td{background:var(--gri-50,#f8fafc);font-weight:700;
   border-top:2px solid var(--gri-300,#cbd5e1);font-variant-numeric:tabular-nums}
 .gvl-nokta{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px}
-.gvl-odenecek{color:#b91c1c;font-weight:700}
-.gvl-iade{color:#047857;font-weight:700}
-.gvl-uyari{padding:10px 12px;border-radius:8px;background:#fef3c7;color:#92400e;
-  font-size:12.5px;margin-bottom:12px;border:1px solid #fde68a}
+.gvl-odenecek{color:var(--kirmizi-koyu);font-weight:700}
+.gvl-iade{color:var(--yesil-metin);font-weight:700}
+.gvl-uyari{padding:10px 12px;border-radius:8px;background:var(--sari-acik);color:#92400e;
+  font-size:12.5px;margin-bottom:12px;border:1px solid var(--sari-kenar)}
 .gvl-not{font-size:11.5px;color:var(--gri-500,#64748b);margin:10px 2px 0;line-height:1.5}
 </style>
 

@@ -216,6 +216,12 @@ abstract class BaseController extends Controller
         // Menüdeki "Sicil İşlemleri" rozeti (son günü gelen / gecikmiş todolar)
         $veri['sicilRozet']     = $veri['sicilRozet'] ?? $this->sicilRozet();
 
+        // Görünüm tercihi (tema / palet / yan menü) — kullanıcı bazlı
+        $tema = $this->temaTercihi();
+        $veri['temaModu']  = $veri['temaModu']  ?? $tema['tema'];
+        $veri['temaPalet'] = $veri['temaPalet'] ?? $tema['palet'];
+        $veri['temaYan']   = $veri['temaYan']   ?? $tema['yan_menu'];
+
         return view($view, $veri);
     }
 
@@ -316,6 +322,53 @@ abstract class BaseController extends Controller
             return $onbellek = (int) $s['gecikmis'] + (int) $s['bugun'];
         } catch (\Throwable $e) {
             return $onbellek = 0;
+        }
+    }
+
+    /**
+     * Kullanıcının görünüm (tema) tercihi.
+     *
+     * Kaynak sırası:
+     *   1) Oturumdaki tercih (girişte kullanıcı satırından yazılır — ek sorgu yok)
+     *   2) Oturumda yoksa DB'den okunur ve oturuma yazılır (tek seferlik)
+     *   3) DB'de yoksa / migration koşulmadıysa güvenli varsayılan
+     *
+     * @return array{tema:string, palet:string, yan_menu:string}
+     */
+    protected function temaTercihi(): array
+    {
+        static $onbellek = null;
+
+        if ($onbellek !== null) {
+            return $onbellek;
+        }
+
+        $varsayilan = \App\Models\KullaniciModel::TEMA_VARSAYILAN;
+        $kid        = (int) ($this->aktifKullanici['id'] ?? 0);
+
+        if ($kid <= 0) {
+            return $onbellek = $varsayilan;
+        }
+
+        $oturum = $this->session->get('tema_tercih');
+
+        if (is_array($oturum) && isset($oturum['tema'], $oturum['palet'], $oturum['yan_menu'])) {
+            return $onbellek = [
+                'tema'     => (string) $oturum['tema'],
+                'palet'    => (string) $oturum['palet'],
+                'yan_menu' => (string) $oturum['yan_menu'],
+            ];
+        }
+
+        try {
+            $tercih = (new KullaniciModel())->temaTercihleri($kid);
+
+            // Bir sonraki istekte DB'ye hiç gidilmesin
+            $this->session->set('tema_tercih', $tercih);
+
+            return $onbellek = $tercih;
+        } catch (\Throwable $e) {
+            return $onbellek = $varsayilan;
         }
     }
 

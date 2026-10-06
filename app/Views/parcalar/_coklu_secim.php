@@ -55,7 +55,7 @@ if ($cs_secimSay === 0 || $cs_secimSay === $cs_toplam) {
 .coklu-sec.acik .coklu-panel{display:block}
 .coklu-dugme{width:100%;display:flex;align-items:center;justify-content:space-between;
   gap:6px;padding:7px 10px;font:inherit;font-size:13px;text-align:left;cursor:pointer;
-  background:#fff;border:1px solid #cbd5e1;border-radius:8px}
+  background:var(--yuzey);border:1px solid #cbd5e1;border-radius:8px}
 </style>
 <?php endif; ?>
 <div class="form-grup">

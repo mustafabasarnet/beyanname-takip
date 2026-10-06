@@ -8,7 +8,7 @@
 </head>
 <body class="giris-sayfa">
 <div class="giris-kutu" style="max-width:560px">
-  <div class="logo"><div class="ik" style="background:linear-gradient(135deg,#dc2626,#f87171)">⚠️</div>
+  <div class="logo"><div class="ik" style="background:linear-gradient(135deg,var(--kirmizi),#f87171)">⚠️</div>
     <h1>Veritabanı Bağlantı Hatası</h1></div>
 
   <div class="uyari hata"><span class="ik">✕</span><div><?= esc($mesaj ?? '') ?></div></div>

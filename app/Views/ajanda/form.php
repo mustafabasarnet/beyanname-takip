@@ -10,7 +10,7 @@ $seciliGorunurluk = $d('gorunurluk', 'kisisel');
 $seciliTarih      = $d('tarih', $onOnTarih);
 $seciliMukellef   = (int) $d('mukellef_id', $onMukellef);
 
-$hazirRenkler = ['#2563eb', '#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#0891b2', '#7c3aed', '#db2777'];
+$hazirRenkler = ['#2563eb', 'var(--kirmizi)', '#ea580c', '#ca8a04', '#16a34a', '#0891b2', '#7c3aed', '#db2777'];
 ?>
 
 <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">

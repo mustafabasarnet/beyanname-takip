@@ -34,7 +34,7 @@ if ($satirlar === []) {
     <div class="kart-govde">
       <div class="form-grid" style="grid-template-columns:1fr 1fr 120px">
         <div class="form-grup">
-          <label>Şablon Adı <b style="color:#dc2626">*</b></label>
+          <label>Şablon Adı <b style="color:var(--kirmizi)">*</b></label>
           <input type="text" name="ad" class="girdi" required maxlength="150"
                  value="<?= esc($sablon['ad'] ?? '') ?>" placeholder="örn. Adres Değişikliği">
         </div>

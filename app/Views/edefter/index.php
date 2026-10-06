@@ -15,8 +15,8 @@ $adimSay = count($adimlar);
   font-weight:700;padding:8px 8px;border-bottom:1px solid var(--gri-200,#e2e8f0);white-space:nowrap;text-align:left}
 .ed-tablo td{padding:8px;border-bottom:1px solid var(--gri-100,#f1f5f9);font-size:13px;vertical-align:middle}
 .ed-tablo tbody tr:hover{background:var(--gri-50,#f8fafc)}
-.ed-tablo tr.gecikmis-satir{background:#fef2f2}
-.ed-tablo tr.bugun-satir{background:#fffbeb}
+.ed-tablo tr.gecikmis-satir{background:var(--kirmizi-acik)}
+.ed-tablo tr.bugun-satir{background:var(--satir-bugun)}
 .ed-tablo tr.ed-pasif{opacity:.55}
 .ed-adim-h{text-align:center;width:44px}
 th.ed-adim-h{text-align:center}
@@ -25,7 +25,7 @@ th.ed-adim-h{text-align:center}
 .ed-adim-basi .ad{font-size:9.5px;max-width:56px;white-space:normal;text-align:center}
 /* Kontrol kutusu */
 .ed-kutu{width:24px;height:24px;border-radius:6px;border:2px solid var(--gri-300,#cbd5e1);
-  background:#fff;cursor:pointer;font-size:13px;font-weight:800;color:#fff;line-height:1;
+  background:var(--yuzey);cursor:pointer;font-size:13px;font-weight:800;color:#fff;line-height:1;
   display:inline-flex;align-items:center;justify-content:center;transition:all .12s}
 .ed-kutu:hover:not(:disabled){border-color:var(--ana,#2563eb);transform:scale(1.1)}
 .ed-kutu.dolu{background:#059669;border-color:#059669}

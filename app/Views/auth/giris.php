@@ -8,9 +8,9 @@
 <style>
 /* Gömülü: stil.css kopyalanmamış bir kurulumda da satır dağılmasın */
 .hatirla-satir{display:flex;align-items:center;gap:8px;margin:2px 0 4px;
-  cursor:pointer;font-size:13.5px;color:#334155;user-select:none}
+  cursor:pointer;font-size:13.5px;color:var(--gri-700);user-select:none}
 .hatirla-satir input[type=checkbox]{width:16px;height:16px;accent-color:#2563eb;cursor:pointer}
-.hatirla-satir small{color:#94a3b8;font-size:11.5px}
+.hatirla-satir small{color:var(--gri-400);font-size:11.5px}
 </style>
 </head>
 <body class="giris-sayfa">

@@ -46,8 +46,8 @@ $oncelikMeta = [
         <?php if (! empty($g['metin'])): ?><div class="gorev-not"><?= esc($g['metin']) ?></div><?php endif; ?>
         <div class="gorev-tarih">
           <?php if (! empty($g['son_tarih'])): ?>
-            <?php if ($gecikti): ?><span style="color:#dc2626;font-weight:700">⏰ <?= trTarih($g['son_tarih']) ?> geçti</span>
-            <?php elseif ($bugunMu): ?><span style="color:#dc2626;font-weight:700">🔴 Bugün son gün</span>
+            <?php if ($gecikti): ?><span style="color:var(--kirmizi);font-weight:700">⏰ <?= trTarih($g['son_tarih']) ?> geçti</span>
+            <?php elseif ($bugunMu): ?><span style="color:var(--kirmizi);font-weight:700">🔴 Bugün son gün</span>
             <?php else: ?>📅 Son: <?= trTarih($g['son_tarih']) ?><?php endif; ?>
             ·
           <?php endif; ?>

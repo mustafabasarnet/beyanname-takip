@@ -8,7 +8,7 @@ $seciliSablon = $duzenleme ? (int) $degisiklik['turu_id'] : 0;
 
 <style>
 .mk-sec{position:relative}
-.mk-liste{position:absolute;top:calc(100%+4px);left:0;right:0;z-index:70;background:#fff;
+.mk-liste{position:absolute;top:calc(100%+4px);left:0;right:0;z-index:70;background:var(--yuzey);
   border:1px solid var(--gri-300,#cbd5e1);border-radius:10px;box-shadow:var(--golge-lg);max-height:220px;
   overflow-y:auto;display:none}
 .mk-liste.goster{display:block}
@@ -17,7 +17,7 @@ $seciliSablon = $duzenleme ? (int) $degisiklik['turu_id'] : 0;
 .sablon-ipucu{background:var(--gri-50,#f8fafc);border:1px dashed var(--gri-300,#cbd5e1);border-radius:8px;
   padding:8px 12px;font-size:12px;color:var(--gri-600,#475569);grid-column:1/-1;display:none}
 .sablon-ipucu.goster{display:block}
-.sablon-ipucu .todo{display:inline-block;background:#fff;border:1px solid var(--gri-300,#cbd5e1);
+.sablon-ipucu .todo{display:inline-block;background:var(--yuzey);border:1px solid var(--gri-300,#cbd5e1);
   border-radius:99px;padding:2px 9px;margin:2px 3px 2px 0;font-size:11.5px;color:var(--gri-800)}
 </style>
 
@@ -28,7 +28,7 @@ $seciliSablon = $duzenleme ? (int) $degisiklik['turu_id'] : 0;
     <div class="form-grid" id="islem-form">
       <!-- Mükellef -->
       <div class="form-grup tam mk-sec">
-        <label>Mükellef <b style="color:#dc2626">*</b></label>
+        <label>Mükellef <b style="color:var(--kirmizi)">*</b></label>
         <?php if ($duzenleme || $mukellefId > 0): ?>
           <input type="hidden" id="mk_id" value="<?= (int) ($degisiklik['mukellef_id'] ?? $mukellefId) ?>">
           <input type="text" class="girdi" disabled value="(Mükellef kartından — <?= esc(kisalt($degisiklik['mukellef_unvan'] ?? '', 60)) ?>)">
@@ -43,7 +43,7 @@ $seciliSablon = $duzenleme ? (int) $degisiklik['turu_id'] : 0;
 
       <!-- Şablon -->
       <div class="form-grup tam">
-        <label>Şablon <b style="color:#dc2626">*</b></label>
+        <label>Şablon <b style="color:var(--kirmizi)">*</b></label>
         <?php if ($duzenleme): ?>
           <input type="hidden" id="turu_id" name="turu_id" value="<?= $seciliSablon ?>">
           <input type="text" class="girdi" disabled value="<?= esc($degisiklik['tur_ad'] ?? '') ?>">
@@ -62,7 +62,7 @@ $seciliSablon = $duzenleme ? (int) $degisiklik['turu_id'] : 0;
       </div>
 
       <div class="form-grup">
-        <label>İşlem Tarihi <b style="color:#dc2626">*</b></label>
+        <label>İşlem Tarihi <b style="color:var(--kirmizi)">*</b></label>
         <input type="date" id="degisiklik_tarihi" name="degisiklik_tarihi" class="girdi"
                value="<?= esc($degisiklik['degisiklik_tarihi'] ?? date('Y-m-d')) ?>" max="<?= date('Y-m-d') ?>">
         <span class="yardim">Todo son tarihleri bu tarihten ileriye doğru hesaplanır.</span>

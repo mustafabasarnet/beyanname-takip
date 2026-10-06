@@ -255,8 +255,8 @@ a.stat:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.13)}
    bozmaması için yazı küçük ve dolgu dar tutuldu. */
 .indirim-serit{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
 .rozet-indirim{padding:1px 6px;font-size:10px;font-weight:700;letter-spacing:.2px;cursor:help}
-.rozet-indirim.mavi{background:var(--ana-acik,#dbeafe);color:var(--ana-koyu,#1d4ed8)}
-.rozet-indirim.mor{background:var(--mor-acik,#ede9fe);color:var(--mor,#7c3aed)}
+.rozet-indirim.mavi{background:var(--ana-acik,var(--ana-acik));color:var(--ana-koyu,var(--ana-uzeri))}
+.rozet-indirim.mor{background:var(--mor-acik,var(--mor-acik));color:var(--mor,#7c3aed)}
 .rozet-indirim.turuncu{background:var(--turuncu-acik,#ffedd5);color:var(--turuncu,#ea580c)}
 /* KDV1 ↔ KDV2 belirteci — tür rozetinin yanında, küçük ve tıklanabilir ipuçlu */
 .kdv2-belirtec{font-size:10px;margin-left:3px;cursor:help;white-space:nowrap}

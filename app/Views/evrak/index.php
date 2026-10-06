@@ -253,7 +253,7 @@ $oran        = $toplamHucre > 0 ? round($gelen / $toplamHucre * 100) : 0;
 <style>
 .evrak-menu{
   position:absolute;z-index:300;display:none;min-width:262px;
-  background:#fff;border:1px solid var(--gri-200,#e2e8f0);border-radius:10px;
+  background:var(--yuzey);border:1px solid var(--gri-200,#e2e8f0);border-radius:10px;
   box-shadow:0 10px 30px rgba(15,23,42,.18);padding:6px;font-size:13px
 }
 .evrak-menu.acik{display:block}
@@ -268,7 +268,7 @@ $oran        = $toplamHucre > 0 ? round($gelen / $toplamHucre * 100) : 0;
 }
 .evrak-menu button:hover{background:var(--gri-50,#f8fafc)}
 .evrak-menu button .ac{display:block;font-size:11px;color:var(--gri-500,#64748b);margin-top:1px}
-.evrak-menu button.etkin{background:var(--ana-acik,#eff6ff);color:var(--ana-koyu,#1d4ed8);font-weight:600}
+.evrak-menu button.etkin{background:var(--ana-acik,var(--ana-acik));color:var(--ana-koyu,var(--ana-uzeri));font-weight:600}
 .evrak-menu .ayrac{height:1px;background:var(--gri-100,#f1f5f9);margin:4px 2px}
 </style>
 
