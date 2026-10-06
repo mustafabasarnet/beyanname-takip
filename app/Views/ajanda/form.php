@@ -175,7 +175,7 @@ $hazirRenkler = ['#2563eb', 'var(--kirmizi)', '#ea580c', '#ca8a04', '#16a34a', '
             <label>
               <input type="radio" name="renk" value="" <?= $d('renk') === null || $d('renk') === '' ? 'checked' : '' ?>>
               <span class="aj-renk-yuvarlak"
-                    style="background:repeating-linear-gradient(45deg,#e2e8f0,#e2e8f0 4px,#fff 4px,#fff 8px)"
+                    style="background:repeating-linear-gradient(45deg,var(--cizgi),var(--cizgi) 4px,var(--yuzey) 4px,var(--yuzey) 8px)"
                     title="Önceliğe göre otomatik"></span>
             </label>
             <?php foreach ($hazirRenkler as $r): ?>

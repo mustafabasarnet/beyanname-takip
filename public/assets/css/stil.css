@@ -54,10 +54,33 @@
   --golge-modal:0 22px 60px rgba(0,0,0,.35);
   --hero-bg:linear-gradient(135deg,#0f172a 0%,#1e3a8a 55%,#2563eb 100%);
 
+  /* -----------------------------------------------------------------
+     ETİKET / ROZET renkleri (ajanda öncelik-görünürlük, kişisel etiket,
+     güncelleme madde türü, gelir vergisi kalem türü…)
+     Açık tema değerleri bugüne kadar kullanılan sabit renklerle AYNIDIR;
+     karanlık tema karşılıkları tema.css'te verilir.
+     ----------------------------------------------------------------- */
+  --etiket-mor-acik:#f3e8ff;    --etiket-mor-metin:#6b21a8;    /* kişisel / hayat */
+  --etiket-yesil-acik:#dcfce7;  --etiket-yesil-metin:#166534;  /* genel / yapıldı / sağlık */
+  --etiket-sari-metin:#92400e;                                  /* görev / uyarı metni */
+  --etiket-indigo-acik:#e0e7ff; --etiket-indigo-metin:#3730a3; /* müşavir / etiket */
+  --etiket-pembe-acik:#fce7f3;  --etiket-pembe-metin:#9d174d;  /* şahıs sigorta */
+  --etiket-mavi-acik:#eef2ff;   --etiket-mavi-metin:#3730a3;   /* giriş uyarısı etiketi */
+
+  /* Durum zeminleri (satır/hücre vurguları) */
+  --yesil-cok-acik:#f0fdf4;     /* tamamlanmış/tahsil edilmiş satır */
+  --yesil-kenar-acik:#bbf7d0;   --yesil-dolu-kenar:#86efac;
+  --ana-kenar-acik:#bfdbfe;
+  --gok-mavi-acik:#f0f9ff;      --gok-kenar:#7dd3fc;   /* MUHSGK↔SGK bilgi kutusu */
+  --takvim-haftasonu:#fcfcfd;   --kutu-ust:#fbfcfe;
+
   /* Yan menü (kullanıcı koyu/açık seçebilir) */
   --yan-bg-1:#0f172a; --yan-bg-2:#1e293b;
-  --yan-metin:#cbd5e1; --yan-soluk:#64748b;
+  --yan-metin:#cbd5e1;
   --yan-logo-metin:#ffffff; --yan-hover-metin:#ffffff; --yan-alt-metin:#94a3b8;
+  /* Bölüm başlığı — WCAG AA (koyu menüde 5.16:1). Eskiden #64748b idi: 3.75:1,
+     yani eşiğin altındaydı ve karanlık temada okunmuyordu. */
+  --yan-baslik:#7c8ba1;
   --yan-hover:rgba(255,255,255,.07); --yan-cizgi:rgba(255,255,255,.08);
 }
 
@@ -96,7 +119,7 @@ input,select,textarea,button{font-family:inherit;font-size:inherit}
 .menu-liste::-webkit-scrollbar-thumb{background:var(--yan-hover);border-radius:3px}
 .menu-baslik{
   font-size:10.5px;text-transform:uppercase;letter-spacing:.9px;
-  color:var(--yan-soluk);padding:15px 12px 7px;font-weight:700
+  color:var(--yan-baslik);padding:15px 12px 7px;font-weight:700
 }
 .menu-liste a{
   display:flex;align-items:center;gap:11px;padding:10px 12px;
@@ -276,7 +299,9 @@ table.tablo .orta{text-align:center}
 .rozet.hazir{background:var(--sari-acik);color:var(--sari-metin)}
 .rozet.onaylandi{background:var(--ana-acik);color:var(--ana-uzeri)}
 .rozet.gonderildi{background:var(--yesil-acik);color:var(--yesil-metin)}
-.rozet.verilmeyecek{background:var(--gri-100);color:var(--gri-400);text-decoration:line-through}
+.rozet.verilmeyecek{background:var(--gri-100);color:var(--gri-500);text-decoration:line-through}
+/* Not: metin eskiden --gri-400 idi; açık temada 2.34:1 kalıyordu (WCAG altı).
+   Üstü çizili olduğu için "muted" sayılır ama yine de okunur olmalı. */
 .rozet.gecikmis{background:var(--kirmizi-acik)!important;color:var(--kirmizi)!important}
 .rozet.yesil{background:var(--yesil-acik);color:var(--yesil-metin)}
 .rozet.kirmizi{background:var(--kirmizi-acik);color:var(--kirmizi)}

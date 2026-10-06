@@ -12,7 +12,7 @@ $vkn  = $mukellef['vergi_kimlik_no'] ?: $mukellef['tc_kimlik_no'];
 .md-cubuk i{display:block;height:100%;border-radius:99px}
 .md-tablo td{font-size:13px;vertical-align:middle}
 .md-tablo td.sag,.md-tablo th.sag{text-align:right;font-variant-numeric:tabular-nums}
-.md-tablo tr.md-tahsil{background:#f0fdf4}
+.md-tablo tr.md-tahsil{background:var(--yesil-cok-acik)}
 </style>
 
 <div class="md-ust">

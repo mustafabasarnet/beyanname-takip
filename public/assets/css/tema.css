@@ -78,7 +78,23 @@
 
   /* --- yan menü koyu varyantı (karanlık temada biraz daha koyu) --- */
   --yan-bg-1:#0b1220; --yan-bg-2:#141d2e;
+  --yan-baslik:#8b9ab2;                 /* bölüm başlığı — 6.56:1 */
   --yan-cizgi:rgba(255,255,255,.07);
+
+  /* --- etiket / rozet renkleri (açık zemin → koyu zemin, metin açılır) --- */
+  --etiket-mor-acik:#3b2c6b;    --etiket-mor-metin:#ddd6fe;
+  --etiket-yesil-acik:#064e3b;  --etiket-yesil-metin:#a7f3d0;
+  --etiket-sari-metin:#fde68a;
+  --etiket-indigo-acik:#2a3358; --etiket-indigo-metin:#c7d2fe;
+  --etiket-pembe-acik:#4a1d33;  --etiket-pembe-metin:#fbcfe8;
+  --etiket-mavi-acik:#1e2a45;   --etiket-mavi-metin:#c7d2fe;
+
+  /* --- durum zeminleri --- */
+  --yesil-cok-acik:#0c2a22;
+  --yesil-kenar-acik:#14532d;   --yesil-dolu-kenar:#166534;
+  --ana-kenar-acik:#1e3a8a;
+  --gok-mavi-acik:#10243a;      --gok-kenar:#0e4f6b;
+  --takvim-haftasonu:#141b28;   --kutu-ust:#1b2436;
 
   /* --- giriş/karsilama kahraman alanı --- */
   --hero-bg:linear-gradient(135deg,#0b1220 0%,#172554 55%,#1d4ed8 100%);
@@ -175,14 +191,14 @@
    ===================================================================== */
 :root[data-yan="acik"]{
   --yan-bg-1:#ffffff; --yan-bg-2:#f8fafc;
-  --yan-metin:#334155; --yan-soluk:#94a3b8;
+  --yan-metin:#334155; --yan-baslik:#64748b;   /* açık menü (açık tema) — 4.55:1 */
   --yan-logo-metin:#0f172a; --yan-hover-metin:#0f172a; --yan-alt-metin:#64748b;
   --yan-hover:rgba(15,23,42,.05); --yan-cizgi:#e2e8f0;
 }
 /* karanlık temada açık menü: göz yormayan açık gri-mavi */
 :root[data-tema="karanlik"][data-yan="acik"]{
   --yan-bg-1:#e9eef6; --yan-bg-2:#dbe3ef;
-  --yan-metin:#334155; --yan-soluk:#8494ab;
+  --yan-metin:#334155; --yan-baslik:#556377;   /* açık menü (karanlık tema) — 4.73:1 */
   --yan-logo-metin:#0f172a; --yan-hover-metin:#0f172a; --yan-alt-metin:#64748b;
   --yan-hover:rgba(15,23,42,.06); --yan-cizgi:rgba(15,23,42,.09);
 }
@@ -247,6 +263,15 @@
     --hucre-atil-1:#f7f8fa; --hucre-atil-2:#e6eaef;
     --yesil-acik:#d1fae5; --kirmizi-acik:#fee2e2; --turuncu-acik:#ffedd5;
     --sari-acik:#fef9c3;  --mor-acik:#ede9fe;
+    --etiket-mor-acik:#f3e8ff;    --etiket-mor-metin:#6b21a8;
+    --etiket-yesil-acik:#dcfce7;  --etiket-yesil-metin:#166534;
+    --etiket-sari-metin:#92400e;
+    --etiket-indigo-acik:#e0e7ff; --etiket-indigo-metin:#3730a3;
+    --etiket-pembe-acik:#fce7f3;  --etiket-pembe-metin:#9d174d;
+    --etiket-mavi-acik:#eef2ff;   --etiket-mavi-metin:#3730a3;
+    --yesil-cok-acik:#f0fdf4;     --yesil-kenar-acik:#bbf7d0;  --yesil-dolu-kenar:#86efac;
+    --ana-kenar-acik:#bfdbfe;     --gok-mavi-acik:#f0f9ff;     --gok-kenar:#7dd3fc;
+    --takvim-haftasonu:#fcfcfd;   --kutu-ust:#fbfcfe;
     --yesil-metin:#047857; --yesil-metin-koyu:#065f46; --kirmizi-metin:#991b1b;
     --sari-metin:#a16207;  --sari-metin-koyu:#854d0e; --ana-metin:#1e40af;
     --ana-uzeri:#1d4ed8;

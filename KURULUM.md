@@ -29,6 +29,7 @@ Son geliştirme turunda eklenen/düzeltilenler:
 | **Yeni: Güncelleme Logları** | **🆕 Güncellemeler** ekranı + sürüm notu girildiğinde kullanıcıya **girişte modern pencere**; okunduğunda bir daha gösterilmez (aşağıda ayrıntı) |
 | **Panel — E-Defter kartı** | E-Defter sayılarına (Yüklenen/Hazır/Kalan…) tıklayınca **açılır liste**; üstte **Takip ekranında aç** → süzülmüş E-Defter Takip |
 | **🎨 Renkli tema (kullanıcı bazlı)** | Açık / karanlık / **sistem** teması + **7 renk şablonu** + **yan menü açık-koyu**; kullanıcı kendi profilinden seçer. Açık tema + mavi palet = **bugünkü görünümün aynısı** (aşağıda ayrıntı) |
+| **Karanlık tema okunabilirliği** | Öncelik/görünürlük rozetleri, etiket çipleri ve satır zeminleri karanlıkta okunur hâle getirildi (WCAG AA ≥ 4.5:1); otomatik **kontrast testi** ile korunuyor |
 | **Sicil İşlemleri menü rozeti** | Menüde **Sicil İşlemleri** yanında **son günü gelen / gecikmiş** todo sayısı (ajanda rozeti mantığı); todo işaretlenince sayı **anında düşer**, tümü bitince rozet kaybolur (aşağıda ayrıntı) |
 
 Ayrıntılar: Makbuz Takip bölümü → "Pasifler dahil" · E-Defter bölümü → "7. Yazdırma" ve
@@ -822,6 +823,32 @@ ekranları tema layout'unu kullanmaz; ekrandan yazdırmada (Ctrl+P) bile **açı
 
 > Kurulum: `database/migration_kullanici_tema.sql` (4 kolon; yeni tablo yok).
 > Migration koşulmamışsa program varsayılan görünümle çalışmaya devam eder.
+
+### Karanlık temada okunabilirlik
+
+Tema ilk sürümünde bazı öğeler karanlıkta okunmuyordu: **ajanda öncelik rozetleri**
+(açık zemin + açık metin → metinsiz görünüyordu), **görünürlük etiketleri**,
+**gelir vergisi kalem çipleri**, **kişisel etiketler** ve **tamamlanmış/tahsil
+edilmiş satır zeminleri** sabit açık renklerle yazılmıştı. Hepsi tema
+değişkenlerine bağlandı.
+
+| Öğe | Açık tema | Karanlık tema |
+|---|---|---|
+| Öncelik: Yüksek / Acil | `--turuncu-acik` / `--kirmizi-acik` | koyu amber / koyu kırmızı |
+| Görünürlük: Kişisel / Genel / Görev / Müşavir | `--etiket-*` değişkenleri | koyu zemin + açık metin |
+| Gelir vergisi kalem (hayat / sağlık / şahıs) | `--etiket-mor/yesil/pembe-*` | koyu zemin + açık metin |
+| Tamamlanmış makbuz, tahsil edilmiş satır | `--yesil-cok-acik` | koyu yeşil |
+| MUHSGK ↔ SGK bilgi kutusu | `--gok-mavi-acik` / `--gok-kenar` | koyu mavi |
+
+**Ölçüm:** `tests/tema_kontrast_testi.php` — 28 metin/zemin çiftinin WCAG 2.1
+kontrast oranını **açık ve karanlık temada ayrı ayrı** hesaplar (eşik 4.5:1;
+bilinçli olarak soluk tasarlanmış "Verilmeyecek" rozeti için 3.0:1). Ayrıca
+view'lerde **sabit açık zemin** kalıp kalmadığını tarar ve yeni değişkenlerin
+açık/karanlık/yazdırma katmanlarının üçünde de tanımlı olduğunu doğrular.
+
+> Yan menü bölüm başlığı (`--yan-baslik`) da okunurluk için açıldı: açık temada
+> 3.75:1 → **5.16:1**, karanlık temada 3.93:1 → **6.56:1**. "Verilmeyecek"
+> rozetinin metni `--gri-400` → `--gri-500` (açık temada 2.34:1 → 4.34:1).
 
 ### Migration nasıl çalıştırılır (phpMyAdmin dahil her ortamda)
 

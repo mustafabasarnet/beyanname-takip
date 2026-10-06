@@ -8,7 +8,7 @@
   font-weight:700;font-size:14px}
 .kn-govde{padding:14px 16px}
 .kn-tarih-sec{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.kn-textarea{width:100%;min-height:80px;font:inherit;font-size:13.5px;padding:9px 11px;border:1px solid #cbd5e1;
+.kn-textarea{width:100%;min-height:80px;font:inherit;font-size:13.5px;padding:9px 11px;border:1px solid var(--cizgi-koyu);
   border-radius:8px;resize:vertical;color:var(--gri-800,#1e293b)}
 .kn-textarea:focus{outline:2px solid var(--ana,#2563eb);outline-offset:-1px}
 .gorev-satir{display:flex;align-items:flex-start;gap:10px;padding:9px 4px;border-bottom:1px dashed var(--gri-100,#f1f5f9)}
@@ -32,11 +32,11 @@
 .gecmis-tarih{font-weight:700;font-size:12.5px;color:var(--gri-600,#475569);white-space:nowrap;min-width:88px}
 .gecmis-metin{flex:1;font-size:13px;color:var(--gri-700,#334155);white-space:pre-wrap;word-break:break-word}
 /* Etiket + öncelik rozetleri */
-.kn-etiket{display:inline-block;background:#e0e7ff;color:#3730a3;font-size:10px;font-weight:700;
+.kn-etiket{display:inline-block;background:var(--etiket-indigo-acik);color:var(--etiket-indigo-metin);font-size:10px;font-weight:700;
   padding:1px 7px;border-radius:99px;margin-left:6px;vertical-align:middle}
 .kn-onc{display:inline-block;font-size:9.5px;font-weight:700;padding:1px 7px;border-radius:99px}
 .kn-onc.kirmizi{background:var(--kirmizi-acik);color:var(--kirmizi-metin)}
-.kn-onc.turuncu{background:#ffedd5;color:var(--sari-metin-koyu)}
+.kn-onc.turuncu{background:var(--turuncu-acik);color:var(--sari-metin-koyu)}
 .kn-onc.mavi{background:var(--ana-acik);color:var(--ana-metin)}
 .kn-onc.gri{background:var(--gri-200);color:var(--gri-600)}
 /* Satır içi düzenleme */

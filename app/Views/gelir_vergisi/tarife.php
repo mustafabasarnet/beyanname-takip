@@ -103,14 +103,14 @@ $tabloCiz = static function (array $dilimler, string $tip, int $yil, bool $admin
 .tr-para[readonly]{background:var(--gri-50,#f8fafc);color:var(--gri-500,#64748b)}
 .tr-okunus{font-size:11.5px;color:var(--gri-600,#475569);line-height:1.35}
 .tr-soluk{color:var(--gri-400,#94a3b8);font-style:italic}
-.tr-bos .tr-para{background:#fffdf7}
+.tr-bos .tr-para{background:var(--not-dolu)}
 .tr-sekme{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
 .tr-sekme button{font:inherit;padding:7px 14px;border-radius:7px;border:1px solid var(--gri-300,#cbd5e1);
   background:var(--yuzey);cursor:pointer;font-size:13px}
 .tr-sekme button.aktif{background:#0f172a;color:#fff;border-color:var(--gri-900);font-weight:600}
 .tr-bilgi{padding:10px 12px;border-radius:8px;background:var(--ana-acik);color:var(--ana-metin);
-  font-size:12.5px;margin-bottom:14px;border:1px solid #bfdbfe;line-height:1.5}
-.tr-uyari{padding:10px 12px;border-radius:8px;background:var(--sari-acik);color:#92400e;
+  font-size:12.5px;margin-bottom:14px;border:1px solid var(--ana-kenar-acik);line-height:1.5}
+.tr-uyari{padding:10px 12px;border-radius:8px;background:var(--sari-acik);color:var(--etiket-sari-metin);
   font-size:12.5px;margin-bottom:14px;border:1px solid var(--sari-kenar)}
 .tr-yil-serit{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .tr-yil-serit a{padding:4px 10px;border-radius:99px;border:1px solid var(--gri-300,#cbd5e1);

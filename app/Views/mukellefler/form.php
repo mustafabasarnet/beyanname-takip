@@ -152,7 +152,7 @@ $v = static fn ($alan, $vars = null) => esc(old($alan, $vars ?? ''));
       $edSecili  = old('edefter_donem', $mukellef['edefter_donem'] ?? 'YOK');
       ?>
       <?php if ($edAlanVar): ?>
-      <div class="form-grup tam" style="background:#f0fdf4;padding:12px 14px;
+      <div class="form-grup tam" style="background:var(--yesil-cok-acik);padding:12px 14px;
            border-radius:10px;border:1px solid #86efac">
         <div style="font-weight:700;margin-bottom:4px">📗 E-Defter Berat Takibi</div>
         <div class="kucuk-yazi" style="margin-bottom:10px">

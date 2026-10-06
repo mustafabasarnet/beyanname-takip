@@ -200,7 +200,7 @@
 <style>
 table.tablo tbody tr.satir-atla{background:var(--satir-bugun)}
 table.tablo tbody tr.satir-hata{background:var(--satir-gecikmis)}
-table.tablo tbody tr.satir-ekle:hover{background:#f0fdf4}
+table.tablo tbody tr.satir-ekle:hover{background:var(--yesil-cok-acik)}
 </style>
 
 <?= $this->endSection() ?>

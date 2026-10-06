@@ -53,9 +53,9 @@ $p = static fn ($v) => $v === null || $v === '' ? '' : number_format((float) $v,
 
 /* Sınırlı indirim rozeti ve aşım uyarısı */
 .gv-limit{display:inline-block;margin-left:5px;padding:1px 6px;border-radius:99px;
-  background:#e0e7ff;color:#3730a3;font-size:10px;font-weight:700}
+  background:var(--etiket-indigo-acik);color:var(--etiket-indigo-metin);font-size:10px;font-weight:700}
 .gv-liste-not{margin-top:4px;padding:5px 8px;border-radius:6px;background:var(--ana-acik);
-  color:var(--ana-metin);font-size:11px;line-height:1.35;border:1px solid #bfdbfe}
+  color:var(--ana-metin);font-size:11px;line-height:1.35;border:1px solid var(--ana-kenar-acik)}
 .gv-para[readonly]{background:var(--gri-100,#f1f5f9);color:var(--gri-600,#475569);cursor:not-allowed}
 .gv-asim{margin-top:4px;padding:5px 8px;border-radius:6px;background:var(--sari-acik);
   color:#92400e;font-size:11px;line-height:1.35;border:1px solid var(--sari-kenar)}
@@ -109,7 +109,7 @@ $p = static fn ($v) => $v === null || $v === '' ? '' : number_format((float) $v,
 .kalem-ozet .dg{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px}
 .kalem-ozet .yesil .dg{color:var(--yesil-metin)}
 .kalem-ozet .kirmizi .dg{color:var(--kirmizi-koyu)}
-.kalem-ozet .yesil{background:#f0fdf4;border-color:#bbf7d0}
+.kalem-ozet .yesil{background:var(--yesil-cok-acik);border-color:var(--yesil-kenar-acik)}
 .kalem-ozet .kirmizi{background:var(--kirmizi-acik);border-color:var(--kirmizi-kenar)}
 
 .kalem-tablo{width:100%;border-collapse:collapse}
@@ -134,15 +134,15 @@ $p = static fn ($v) => $v === null || $v === '' ? '' : number_format((float) $v,
 .kalem-rozet{display:inline-block;padding:2px 8px;border-radius:99px;
   font-size:10.5px;font-weight:700;white-space:nowrap}
 .kalem-rozet.t-egitim{background:var(--ana-acik);color:var(--ana-metin)}
-.kalem-rozet.t-saglik{background:#dcfce7;color:#166534}
-.kalem-rozet.t-hayat{background:#f3e8ff;color:#6b21a8}
-.kalem-rozet.t-sahis{background:#fce7f3;color:#9d174d}
+.kalem-rozet.t-saglik{background:var(--etiket-yesil-acik);color:var(--etiket-yesil-metin)}
+.kalem-rozet.t-hayat{background:var(--etiket-mor-acik);color:var(--etiket-mor-metin)}
+.kalem-rozet.t-sahis{background:var(--etiket-pembe-acik);color:var(--etiket-pembe-metin)}
 .kalem-rozet.t-diger{background:var(--gri-200);color:var(--gri-600)}
 
 .kalem-form{display:flex;gap:9px;align-items:flex-end;flex-wrap:wrap;
   margin-top:12px;padding:11px 12px;background:var(--gri-50,#f8fafc);
   border:1px solid var(--gri-200,#e2e8f0);border-radius:9px}
-.kalem-form.duzenleme{background:#fffbeb;border-color:var(--sari-kenar)}
+.kalem-form.duzenleme{background:var(--satir-bugun);border-color:var(--sari-kenar)}
 .kalem-form .alan{display:flex;flex-direction:column;gap:4px}
 .kalem-form .alan.genis{flex:1;min-width:180px}
 .kalem-form .alan.dugme{flex-direction:row;gap:6px}
@@ -172,7 +172,7 @@ $p = static fn ($v) => $v === null || $v === '' ? '' : number_format((float) $v,
   font-variant-numeric:tabular-nums;background:var(--yuzey)}
 .kdv-girdi:focus{outline:none;border-color:var(--ana,#2563eb);
   box-shadow:0 0 0 2px rgba(37,99,235,.12)}
-.kdv-girdi.dolu{background:#f0fdf4;border-color:#86efac}
+.kdv-girdi.dolu{background:var(--yesil-cok-acik);border-color:var(--yesil-dolu-kenar)}
 .kdv-ozet{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 .kdv-ozet div{flex:1;min-width:120px;border:1px solid var(--gri-200,#e2e8f0);
   border-radius:8px;padding:8px 10px;background:var(--gri-50,#f8fafc)}
@@ -180,7 +180,7 @@ $p = static fn ($v) => $v === null || $v === '' ? '' : number_format((float) $v,
   color:var(--gri-500,#64748b);font-weight:700}
 .kdv-ozet .dg{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px}
 .kdv-ozet .mavi .dg{color:#0369a1}
-.kdv-ozet .yesil{background:#f0fdf4;border-color:#bbf7d0}
+.kdv-ozet .yesil{background:var(--yesil-cok-acik);border-color:var(--yesil-kenar-acik)}
 .kdv-ozet .yesil .dg{color:var(--yesil-metin)}
 .gv-hesap tr.gv-ara td{background:var(--gri-50,#f8fafc);font-weight:700;
   border-top:1px solid var(--gri-300,#cbd5e1)}
@@ -198,12 +198,12 @@ $p = static fn ($v) => $v === null || $v === '' ? '' : number_format((float) $v,
 .gv-dilimler td{padding:5px 8px;border-bottom:1px solid var(--gri-100,#f1f5f9)}
 .gv-dilimler td.sag{text-align:right;font-variant-numeric:tabular-nums}
 .gv-dilimler tr.aktif td{background:var(--sari-acik);font-weight:700}
-.gv-dilimler tr.dolu td{background:#f0fdf4}
+.gv-dilimler tr.dolu td{background:var(--yesil-cok-acik)}
 
 .gv-uyari{padding:10px 12px;border-radius:8px;background:var(--sari-acik);color:#92400e;
   font-size:12.5px;margin-bottom:12px;border:1px solid var(--sari-kenar)}
 .gv-bilgi{padding:9px 12px;border-radius:8px;background:var(--ana-acik);color:var(--ana-metin);
-  font-size:12px;margin-bottom:12px;border:1px solid #bfdbfe;line-height:1.45}
+  font-size:12px;margin-bottom:12px;border:1px solid var(--ana-kenar-acik);line-height:1.45}
 
 .gv-ust{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 .gv-onay{display:flex;align-items:flex-start;gap:7px;font-size:12.5px;

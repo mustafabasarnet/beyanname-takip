@@ -64,7 +64,7 @@
 
 /* Sürüm kartı */
 .gn-surum{border:1px solid var(--gri-200,#e2e8f0);border-radius:14px;padding:13px 15px;
-  margin-bottom:12px;background:linear-gradient(180deg,#fbfcfe,#fff)}
+  margin-bottom:12px;background:linear-gradient(180deg,var(--kutu-ust),var(--yuzey))}
 .gn-surum:last-child{margin-bottom:0}
 .gn-surum-bas{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px}
 .gn-versiyon{background:var(--mor-acik);color:var(--mor);font-weight:800;font-size:11.5px;
@@ -82,7 +82,7 @@
   white-space:nowrap;margin-top:1px;display:inline-flex;align-items:center;gap:4px}
 .gn-madde .rz.yesil{background:var(--yesil-acik);color:var(--yesil-metin-koyu)}
 .gn-madde .rz.mavi{background:var(--ana-acik);color:var(--ana-metin)}
-.gn-madde .rz.turuncu{background:#ffedd5;color:var(--sari-metin-koyu)}
+.gn-madde .rz.turuncu{background:var(--turuncu-acik);color:var(--sari-metin-koyu)}
 .gn-madde .rz.gri{background:var(--gri-200);color:var(--gri-600)}
 .gn-madde .mt{flex:1;min-width:0}
 .gn-madde .mt b{color:var(--gri-900,#0f172a);font-weight:700}

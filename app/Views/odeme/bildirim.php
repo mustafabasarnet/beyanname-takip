@@ -174,7 +174,7 @@ $bosDurum = ($grup === null && empty($ucretDahil));
   <?php endif; ?>
 
   <!-- ===== Genel toplam ===== -->
-  <div style="text-align:right;margin-top:18px;padding:14px;background:#f0fdf4;
+  <div style="text-align:right;margin-top:18px;padding:14px;background:var(--yesil-cok-acik);
               border:2px solid #059669;border-radius:10px">
     <div class="kucuk-yazi">
       <?php if ($beyanToplam > 0): ?>

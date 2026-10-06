@@ -475,7 +475,7 @@ a.stat:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.13)}
         satırlarında açılır; kullanıcı iki satırı ayrı ayrı dolaşmaz.
       */ ?>
       <div id="th-sgk-kutu" class="gizle" style="margin-top:14px;padding:12px 14px;
-           background:#f0f9ff;border:1px solid #7dd3fc;border-radius:10px">
+           background:var(--gok-mavi-acik);border:1px solid var(--gok-kenar);border-radius:10px">
         <div style="font-weight:700;margin-bottom:3px">🤝 SGK Prim Bildirgesi</div>
         <div class="kucuk-yazi" style="margin-bottom:10px" id="th-sgk-aciklama"></div>
 
@@ -1208,6 +1208,23 @@ function tahakkukAc(id) {
  *  • Eşleşme yoksa  → bölüm hiç görünmez
  */
 function thSgkHazirla(id, d) {
+  /*
+   * TEMA RENGİ OKUYUCU
+   * ------------------
+   * JS'te element.style.background = 'var(--x)' ÇALIŞMAZ; bu yüzden
+   * değişkenin GERÇEK değeri computed style'dan okunur. Böylece koyu
+   * temada kutu zemini de koyu kalır (eskiden sabit açık renk yazılıydı
+   * ve karanlık temada okunmuyordu).
+   */
+  function temaRenk(ad, yedek) {
+    try {
+      var v = getComputedStyle(document.documentElement).getPropertyValue(ad);
+      return (v && v.trim()) ? v.trim() : yedek;
+    } catch (e) {
+      return yedek;
+    }
+  }
+
   var kutu = document.getElementById('th-sgk-kutu');
   if (!kutu) { return; }          // eski şablon: sessizce geç
 
@@ -1226,8 +1243,8 @@ function thSgkHazirla(id, d) {
   if (es.rol !== 'ana') {
     // SGK satırı: kullanıcıyı MUHSGK'ya yönlendir
     kutu.className = '';
-    kutu.style.background = '#f8fafc';
-    kutu.style.borderColor = '#e2e8f0';
+    kutu.style.background = temaRenk('--gri-50', '#f8fafc');
+    kutu.style.borderColor = temaRenk('--cizgi', '#e2e8f0');
     if (tutarAlan) { tutarAlan.closest('.form-grid').style.display = 'none'; }
     if (aciklama) {
       aciklama.innerHTML = 'Bu kayıt <b>' + es.esler[0].tur + '</b> (' + es.esler[0].donem +
@@ -1243,8 +1260,8 @@ function thSgkHazirla(id, d) {
   window.__thSgk = hedef;
 
   kutu.className = '';
-  kutu.style.background = '#f0f9ff';
-  kutu.style.borderColor = '#7dd3fc';
+  kutu.style.background = temaRenk('--gok-mavi-acik', '#f0f9ff');
+  kutu.style.borderColor = temaRenk('--gok-kenar', '#7dd3fc');
   if (tutarAlan) {
     tutarAlan.closest('.form-grid').style.display = '';
     tutarAlan.value = hedef.tutar || '';

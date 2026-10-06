@@ -13,7 +13,7 @@
 .mk-tablo td.sag{text-align:right;font-variant-numeric:tabular-nums}
 .mk-tablo td.orta{text-align:center}
 .mk-tablo tbody tr:hover{background:var(--gri-50,#f8fafc)}
-.mk-tablo tr.mk-tamam{background:#f0fdf4}
+.mk-tablo tr.mk-tamam{background:var(--yesil-cok-acik)}
 .mk-tablo tr.mk-asim{background:var(--kirmizi-acik)}
 .mk-tablo tr.mk-ucretsiz{opacity:.7}
 .mk-cubuk{display:inline-block;width:62px;height:7px;border-radius:99px;background:var(--gri-200,#e2e8f0);

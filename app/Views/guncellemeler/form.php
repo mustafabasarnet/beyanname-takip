@@ -27,7 +27,7 @@ $duzenleme = ! empty($kayit['id']);
 .gn-madde .rz{flex:0 0 auto;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:99px;white-space:nowrap}
 .gn-madde .rz.yesil{background:var(--yesil-acik);color:var(--yesil-metin-koyu)}
 .gn-madde .rz.mavi{background:var(--ana-acik);color:var(--ana-metin)}
-.gn-madde .rz.turuncu{background:#ffedd5;color:var(--sari-metin-koyu)}
+.gn-madde .rz.turuncu{background:var(--turuncu-acik);color:var(--sari-metin-koyu)}
 .gn-madde .rz.gri{background:var(--gri-200);color:var(--gri-600)}
 .gn-madde .mt b{color:var(--gri-900,#0f172a)}
 </style>

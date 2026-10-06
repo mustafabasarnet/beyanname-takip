@@ -67,9 +67,9 @@
   font-size:10.5px;font-weight:700;white-space:nowrap}
 .ks-yak{background:var(--gri-200);color:var(--gri-700);padding:1px 8px;border-radius:99px;
   font-size:10.5px;font-weight:700;white-space:nowrap}
-.ks-etiket{background:#eef2ff;color:#3730a3;padding:1px 7px;border-radius:6px;
+.ks-etiket{background:var(--etiket-mavi-acik);color:var(--etiket-mavi-metin);padding:1px 7px;border-radius:6px;
   font-size:10.5px;font-weight:600;margin-left:6px}
-.ks-altbilgi{margin-top:14px;padding-top:10px;border-top:1px dashed #e2e8f0;
+.ks-altbilgi{margin-top:14px;padding-top:10px;border-top:1px dashed var(--cizgi);
   color:var(--gri-500);font-size:12px}
 </style>
 

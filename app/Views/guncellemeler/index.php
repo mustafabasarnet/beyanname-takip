@@ -20,7 +20,7 @@ $yeniSayi   = (int) ($yeniSayi ?? 0);
 .gn-kart:hover{box-shadow:0 6px 22px rgba(15,23,42,.08)}
 .gn-kart.yeni{border-color:#c4b5fd;box-shadow:0 0 0 3px var(--mor-acik) inset}
 .gn-bas{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 16px;
-  background:linear-gradient(120deg,#faf5ff,#f0f9ff);border-bottom:1px solid var(--gri-100,#f1f5f9)}
+  background:linear-gradient(120deg,var(--etiket-mor-acik),var(--gok-mavi-acik));border-bottom:1px solid var(--gri-100,#f1f5f9)}
 .gn-bas .surum{background:var(--mor-acik);color:var(--mor);font-weight:800;font-size:11.5px;
   padding:3px 10px;border-radius:99px;letter-spacing:.3px}
 .gn-bas .tarih{color:var(--gri-500,#64748b);font-size:12px}
@@ -34,7 +34,7 @@ $yeniSayi   = (int) ($yeniSayi ?? 0);
   white-space:nowrap;margin-top:1px;display:inline-flex;align-items:center;gap:4px}
 .gn-madde .rz.yesil{background:var(--yesil-acik);color:var(--yesil-metin-koyu)}
 .gn-madde .rz.mavi{background:var(--ana-acik);color:var(--ana-metin)}
-.gn-madde .rz.turuncu{background:#ffedd5;color:var(--sari-metin-koyu)}
+.gn-madde .rz.turuncu{background:var(--turuncu-acik);color:var(--sari-metin-koyu)}
 .gn-madde .rz.gri{background:var(--gri-200);color:var(--gri-600)}
 .gn-madde .mt b{color:var(--gri-900,#0f172a)}
 .gn-yeni-rozet{background:#7c3aed;color:#fff;font-size:10px;font-weight:800;
