@@ -823,6 +823,32 @@ ekranları tema layout'unu kullanmaz; ekrandan yazdırmada (Ctrl+P) bile **açı
 > Kurulum: `database/migration_kullanici_tema.sql` (4 kolon; yeni tablo yok).
 > Migration koşulmamışsa program varsayılan görünümle çalışmaya devam eder.
 
+### Migration nasıl çalıştırılır (phpMyAdmin dahil her ortamda)
+
+Dosya **`information_schema` kullanmaz** ve `PREPARE/EXECUTE` içermez; yalnız
+`ALTER TABLE … ADD COLUMN IF NOT EXISTS` cümleleri ile sonunda bir
+`SHOW COLUMNS` doğrulaması vardır. Bu sayede veritabanı kullanıcısına
+`information_schema` erişimi verilmeyen sunucularda (paylaşımlı hosting, bazı
+phpMyAdmin kurulumları) şu hata **alınmaz**:
+
+```
+#1044 - Access denied for user '…' to database 'information_schema'
+```
+
+| Ortam | Adım |
+|---|---|
+| **phpMyAdmin** | Veritabanını seçin → **SQL** sekmesi → dosyanın tamamını yapıştırın → **Git/Çalıştır** |
+| **Komut satırı** | `mysql -u KULLANICI -p beyanname_takip < database/migration_kullanici_tema.sql` |
+
+- **Tekrar koşulabilir:** ikinci/üçüncü çalıştırmada hata vermez, kolon çoğaltmaz,
+  kullanıcıların seçtiği tema/palet **ezilmez**.
+- **MySQL notu (MariaDB değilse):** MySQL `ADD COLUMN IF NOT EXISTS` sözdizimini
+  desteklemez; bu durumda 4 cümleden `IF NOT EXISTS` ifadesini silin. İlk çalıştırmada
+  sorunsuz geçer; tekrar çalıştırırsanız "Duplicate column name" hatası kolonun zaten
+  var olduğunu gösterir → o satırı atlayıp kalanlarla devam edin.
+- Doğrulama: dosyanın sonundaki `SHOW COLUMNS` çıktısında 4 satır
+  (`tema`, `palet`, `yan_menu`, `hizli_gecis`) görünmelidir.
+
 ---
 
 ## 🧾 Sicil İşlemleri — Menü Rozeti (Son Günü Gelen İşler)
