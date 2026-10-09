@@ -177,6 +177,64 @@
     return satir;
   }
 
+  /* ---- Yapışkan not hatırlatmaları (Faz 2) ---- */
+  function hatSatirYap(h) {
+    var satir = document.createElement('div');
+    satir.className = 'ks-is';
+
+    var kutu = document.createElement('button');
+    kutu.type = 'button';
+    kutu.className = 'ks-kutu';
+    kutu.title = 'Tamam (hatırlatma tarihi silinmez)';
+    kutu.addEventListener('click', function () { hatTamamla(h.id, satir, kutu); });
+    satir.appendChild(kutu);
+
+    var ad = document.createElement('div');
+    ad.className = 'ad';
+    var bag = document.createElement('a');
+    bag.href = '<?= site_url('kisisel/yapiskan') ?>';
+    bag.textContent = (h.baslik && h.baslik.trim() !== '') ? h.baslik : (h.metin || '(başlıksız not)');
+    ad.appendChild(bag);
+
+    var alt = document.createElement('small');
+    alt.textContent = '📌 Yapışkan not · ⏰ ' + h.tarih + (h.gecmis ? ' · geçti' : ' · bugün');
+    ad.appendChild(alt);
+    satir.appendChild(ad);
+
+    var rz = document.createElement('span');
+    rz.className = h.gecmis ? 'ks-gec' : 'ks-bug';
+    rz.textContent = h.gecmis ? 'geçti' : 'bugün';
+    satir.appendChild(rz);
+
+    return satir;
+  }
+
+  function hatTamamla(id, satir, kutu) {
+    kutu.disabled = true;
+    gonder('<?= site_url('kisisel/yapiskan/guncelle') ?>', { id: id, tamam: '1' })
+      .then(function (j) {
+        if (!j.durum) { throw new Error(j.mesaj || 'Güncellenemedi.'); }
+        tamamlanan++;
+        satir.style.transition = 'opacity .2s';
+        satir.style.opacity = '0';
+        setTimeout(function () { satir.remove(); kalanGuncelle(); }, 220);
+      })
+      .catch(function () { kutu.disabled = false; });
+  }
+
+  function hatGrupYap(liste) {
+    if (!liste || !liste.length) { return null; }
+
+    var kap = document.createElement('div');
+    var h = document.createElement('div');
+    h.className = 'ks-grup bug';
+    h.textContent = '🔔 Hatırlatmalar — Yapışkan Notlar (' + liste.length + ')';
+    kap.appendChild(h);
+    liste.forEach(function (x) { kap.appendChild(hatSatirYap(x)); });
+
+    return kap;
+  }
+
   function grupYap(baslik, sinif, liste) {
     if (!liste || !liste.length) { return null; }
 
@@ -239,6 +297,9 @@
     var kutu = document.getElementById('ks-uyari-liste');
     kutu.innerHTML = '';
 
+    var hatGrup = hatGrupYap(v.hatirlatmalar || []);
+    if (hatGrup) { kutu.appendChild(hatGrup); }
+
     [
       ['⚠ Gecikmiş — dünden kalanlar', 'gec', v.gecikmis],
       ['⏰ Bugün son gün',              'bug', v.bugun],
@@ -257,7 +318,7 @@
     }
 
     var ozet = document.getElementById('ks-uyari-ozet');
-    if (ozet) { ozet.textContent = v.toplam + ' görev bekliyor'; }
+    if (ozet) { ozet.textContent = (v.toplam + (v.hatirlatmaSayi || 0)) + ' görev/hatırlatma bekliyor'; }
 
     // Menü rozetini sunucudaki gerçek açık görev sayısıyla eşitle
     if (window.kisiselRozetGuncelle && typeof v.acik === 'number') {

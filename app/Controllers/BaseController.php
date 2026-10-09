@@ -287,8 +287,25 @@ abstract class BaseController extends Controller
                 return $onbellek = 0;
             }
 
-            return $onbellek = (new \App\Models\KisiselNotModel())
-                ->acikGorevSayisi((int) $this->aktifKullanici['id']);
+            $kid = (int) $this->aktifKullanici['id'];
+
+            // Açık görevler (Faz 1 — her zaman)
+            $gorev = (new \App\Models\KisiselNotModel())->acikGorevSayisi($kid);
+
+            // Bekleyen yapışkan not hatırlatmaları (Faz 2). Migration eksikse
+            // ya da sorgu hata verirse YALNIZ bu kısım 0 sayılır; görev rozeti
+            // etkilenmez.
+            $hatirlatma = 0;
+            try {
+                if ($db->tableExists('kisisel_sticky_notlar')) {
+                    $hatirlatma = (new \App\Models\StickyNotModel())
+                        ->bekleyenHatirlatmaSayisi($kid, date('Y-m-d'));
+                }
+            } catch (\Throwable $e) {
+                $hatirlatma = 0;
+            }
+
+            return $onbellek = $gorev + $hatirlatma;
         } catch (\Throwable $e) {
             return $onbellek = 0;
         }

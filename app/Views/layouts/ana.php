@@ -146,7 +146,7 @@ $firma = $firma ?? ['ad' => 'Beyanname Takip', 'logo_var' => false];
     <a href="<?= site_url('kisisel') ?>" class="<?= aktifMenu('kisisel') ?>">
       <span class="ikon">📝</span> Kişisel Notlar
       <span class="menu-rozet kisisel" id="kisisel-menu-rozet"
-            title="Yapılmamış kişisel görevler"
+            title="Yapılmamış kişisel görevler ve bugün/geçmiş hatırlatmalar"
             style="<?= ! empty($kisiselRozet) ? '' : 'display:none' ?>"><?= (int) ($kisiselRozet ?? 0) ?></span>
     </a>
 

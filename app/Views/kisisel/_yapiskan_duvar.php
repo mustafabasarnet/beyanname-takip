@@ -1,14 +1,11 @@
 <?php
 /*
- * YAPIŞKAN NOT DUVARI — kart listesi (sunucu tarafından üretilir)
- * Beklenen: $notlar, $renkler, $yazi
- *
- * Güvenlik: metin esc() ile basılır; renk ve sabit değerleri sunucu
- * whitelist'inden gelir (stil değerleri sabit palet anahtarından türetilir).
+ * YAPIŞKAN NOT DUVARI — aktif kartlar (arşiv HARİÇ)
+ * Beklenen: $notlar, $renkler, $yazi, $bugun (opsiyonel)
  */
 $notlar  = $notlar ?? [];
 $renkler = $renkler ?? [];
-$yazi    = $yazi ?? '#1f2937';
+$bugun   = $bugun ?? date('Y-m-d');
 ?>
 <?php if ($notlar === []): ?>
   <div class="yk-bos">
@@ -26,13 +23,13 @@ $yazi    = $yazi ?? '#1f2937';
     <div class="yk-baslik">📌 Sabitlenenler</div>
   <?php endif; ?>
   <?php foreach ($sabitler as $n): ?>
-    <?= view('kisisel/_yapiskan_kart', ['n' => $n, 'renkler' => $renkler]) ?>
+    <?= view('kisisel/_yapiskan_kart', ['n' => $n, 'renkler' => $renkler, 'bugun' => $bugun]) ?>
   <?php endforeach; ?>
 
   <?php if ($sabitler !== [] && $digerler !== []): ?>
     <div class="yk-baslik">Diğer notlar</div>
   <?php endif; ?>
   <?php foreach ($digerler as $n): ?>
-    <?= view('kisisel/_yapiskan_kart', ['n' => $n, 'renkler' => $renkler]) ?>
+    <?= view('kisisel/_yapiskan_kart', ['n' => $n, 'renkler' => $renkler, 'bugun' => $bugun]) ?>
   <?php endforeach; ?>
 <?php endif; ?>

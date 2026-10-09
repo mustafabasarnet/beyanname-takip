@@ -23,8 +23,11 @@ class StickyNotModel extends Model
 
     protected $allowedFields = [
         'kullanici_id', 'baslik', 'metin', 'renk', 'sabit', 'sira',
-        'hatirlat_tarih', 'arsiv_at',
+        'hatirlat_tarih', 'hatirlat_tamam_at', 'arsiv_at',
     ];
+
+    /** Kart başlığı en fazla bu kadar karakter (Faz 2). */
+    public const MAX_BASLIK = 40;
 
     /** Kart metni en fazla bu kadar karakter. */
     public const MAX_METIN = 1000;
@@ -80,6 +83,91 @@ class StickyNotModel extends Model
             ->findAll();
     }
 
+    /** Arşivdeki kartlar (en son arşivlenen üstte). */
+    public function arsivListesi(int $kullaniciId): array
+    {
+        return $this->where('kullanici_id', $kullaniciId)
+            ->where('arsiv_at IS NOT NULL', null, false)
+            ->orderBy('arsiv_at', 'DESC')
+            ->orderBy('id', 'DESC')
+            ->findAll();
+    }
+
+    /** Arşivdeki kart sayısı. */
+    public function arsivSayi(int $kullaniciId): int
+    {
+        return (int) $this->where('kullanici_id', $kullaniciId)
+            ->where('arsiv_at IS NOT NULL', null, false)
+            ->countAllResults();
+    }
+
+    /**
+     * Rozet ve giriş penceresinde gösterilecek hatırlatmalar:
+     * tarihi bugün veya geçmiş, "tamam" denmemiş, arşivde olmayan kartlar.
+     * Gelecek tarihli hatırlatmalar BURAYA GİRMEZ.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function bekleyenHatirlatmalar(int $kullaniciId, string $bugun): array
+    {
+        return $this->where('kullanici_id', $kullaniciId)
+            ->where('arsiv_at', null)
+            ->where('hatirlat_tarih IS NOT NULL', null, false)
+            ->where('hatirlat_tarih <=', $bugun)
+            ->where('hatirlat_tamam_at', null)
+            ->orderBy('hatirlat_tarih', 'ASC')
+            ->orderBy('id', 'ASC')
+            ->findAll();
+    }
+
+    /** Bekleyen hatırlatma sayısı (menü rozeti için). */
+    public function bekleyenHatirlatmaSayisi(int $kullaniciId, string $bugun): int
+    {
+        return count($this->bekleyenHatirlatmalar($kullaniciId, $bugun));
+    }
+
+    /**
+     * Hatırlatma durumu (kart rozeti için). Sunucu tarafında tek noktada hesaplanır.
+     *
+     * @return string yok | tamam | gecmis | bugun | yakin | normal
+     */
+    public static function hatirlatmaDurumu(?string $tarih, ?string $tamamAt, string $bugun): string
+    {
+        if ($tarih === null || $tarih === '') {
+            return 'yok';
+        }
+
+        if ($tamamAt !== null && $tamamAt !== '') {
+            return 'tamam';
+        }
+
+        if ($tarih < $bugun) {
+            return 'gecmis';
+        }
+
+        if ($tarih === $bugun) {
+            return 'bugun';
+        }
+
+        $fark = (int) round((strtotime($tarih) - strtotime($bugun)) / 86400);
+
+        return $fark <= 3 ? 'yakin' : 'normal';
+    }
+
+    /**
+     * Yalnız gerçek bir YYYY-AA-GG tarihini kabul eder (örn. 2026-13-45 reddedilir).
+     */
+    public static function tarihGecerli(string $tarih): bool
+    {
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $tarih)) {
+            return false;
+        }
+
+        $d = \DateTime::createFromFormat('Y-m-d', $tarih);
+
+        return $d !== false && $d->format('Y-m-d') === $tarih;
+    }
+
     /** Aktif kart sayısı (üst sınır kontrolü için). */
     public function aktifSayi(int $kullaniciId): int
     {
@@ -119,9 +207,15 @@ class StickyNotModel extends Model
     }
 
     /**
-     * Kartı günceller — YALNIZ sahibi için. Desteklenen alanlar: metin, renk, sabit.
+     * Kartı günceller — YALNIZ sahibi için.
      *
-     * @return bool kart bulundu ve güncellendi mi
+     * Desteklenen alanlar:
+     *   metin, baslik, renk, sabit           (Faz 1)
+     *   hatirlat_tarih ('' = kaldır)         (Faz 2) — değişince "tamam" sıfırlanır
+     *   arsiv (0|1)                          (Faz 2)
+     *   tamam (1)                            (Faz 2) — yalnız tarihli hatırlatmada
+     *
+     * @return bool kart bulundu ve geçerli veriyle güncellendi mi
      */
     public function guncelle(int $kullaniciId, int $id, array $veri): bool
     {
@@ -129,6 +223,10 @@ class StickyNotModel extends Model
 
         if (array_key_exists('metin', $veri)) {
             $izinli['metin'] = mb_substr((string) $veri['metin'], 0, self::MAX_METIN);
+        }
+
+        if (array_key_exists('baslik', $veri)) {
+            $izinli['baslik'] = mb_substr(trim((string) $veri['baslik']), 0, self::MAX_BASLIK);
         }
 
         if (array_key_exists('renk', $veri)) {
@@ -143,13 +241,40 @@ class StickyNotModel extends Model
             $izinli['sabit'] = ((int) $veri['sabit']) === 1 ? 1 : 0;
         }
 
+        if (array_key_exists('arsiv', $veri)) {
+            $izinli['arsiv_at'] = ((int) $veri['arsiv']) === 1 ? date('Y-m-d H:i:s') : null;
+        }
+
+        if (array_key_exists('hatirlat_tarih', $veri)) {
+            $t = trim((string) $veri['hatirlat_tarih']);
+
+            if ($t === '') {
+                $izinli['hatirlat_tarih']   = null;
+                $izinli['hatirlat_tamam_at'] = null;
+            } elseif (self::tarihGecerli($t)) {
+                $izinli['hatirlat_tarih']   = $t;
+                $izinli['hatirlat_tamam_at'] = null; // yeni/değişen tarih yeniden bekler
+            } else {
+                return false;
+            }
+        }
+
+        if (array_key_exists('tamam', $veri) && (int) $veri['tamam'] === 1) {
+            // "Tamam" yalnız tarihli bir hatırlatma için anlamlıdır
+            $mevcut = $this->where('id', $id)->where('kullanici_id', $kullaniciId)->first();
+
+            if ($mevcut === null || empty($mevcut['hatirlat_tarih'])) {
+                return false;
+            }
+
+            $izinli['hatirlat_tamam_at'] = date('Y-m-d H:i:s');
+        }
+
         if ($izinli === []) {
             return false;
         }
 
-        $sahip = $this->sahibiMi($kullaniciId, $id);
-
-        if (! $sahip) {
+        if (! $this->sahibiMi($kullaniciId, $id)) {
             return false;
         }
 

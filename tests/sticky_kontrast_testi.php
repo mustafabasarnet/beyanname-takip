@@ -109,6 +109,20 @@ foreach ($m as $r) {
     ol(sprintf('%-8s alt satır', $r[1]), kontrast($karisik, $r[2]));
 }
 
+echo "\n=== 3b) HATIRLATMA ROZETLERİ (Faz 2) — görünüm dosyasından ===\n";
+$gorunumCss = file_get_contents($kok . '/app/Views/kisisel/yapiskan.php');
+$rozetler = ['gecmis' => '#ffffff', 'bugun' => '#ffffff', 'yakin' => '#78350f'];
+foreach ($rozetler as $ad => $beklenenYazi) {
+    if (preg_match('/\\.yk-hat-' . $ad . '\\{background:(#[0-9a-fA-F]{3,6});color:(#[0-9a-fA-F]{3,6})/', $gorunumCss, $r)) {
+        $zemin = strlen($r[1]) === 4 ? '#' . str_repeat($r[1][1], 2) . str_repeat($r[1][2], 2) . str_repeat($r[1][3], 2) : $r[1];
+        $yazi  = strlen($r[2]) === 4 ? '#' . str_repeat($r[2][1], 2) . str_repeat($r[2][2], 2) . str_repeat($r[2][3], 2) : $r[2];
+        ol(sprintf('rozet %-7s %s üzerine %s', $ad, $zemin, $yazi), kontrast($yazi, $zemin));
+    } else {
+        echo "  [HATA] rozet $ad CSS'te bulunamadı\n";
+        $k++;
+    }
+}
+
 echo "\n=== 4) ALGI — 6 RENK ARASI AYIRT EDİLEBİLİRLİK ===\n";
 $kartlar = array_column($m, 2);
 $ayni = count($kartlar) - count(array_unique($kartlar));

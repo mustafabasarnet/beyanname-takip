@@ -74,7 +74,7 @@ ol "rozet sayısı = yapılmamış görev sayısı" "$ADMIN_ACIK" "$(rozet /tmp/
 ol "rozet kişisel sayfasında da var" "$ADMIN_ACIK" \
    "$(curl -s -b $JA "$B/kisisel" -o /tmp/krz_k0.html; rozet /tmp/krz_k0.html)"
 ol "rozet başlığı açıklayıcı" "1" \
-   "$(grep -c 'title="Yapılmamış kişisel görevler"' /tmp/krz_panel0.html | awk '{print ($1>0)?1:0}')"
+   "$(grep -c 'title="Yapılmamış kişisel görevler ve bugün/geçmiş hatırlatmalar"' /tmp/krz_panel0.html | awk '{print ($1>0)?1:0}')"
 
 echo
 echo "=== 2) GÖREV EKLE → SAYI ARTAR ==="

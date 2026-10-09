@@ -29,7 +29,7 @@ Son geliştirme turunda eklenen/düzeltilenler:
 | **Yeni: Güncelleme Logları** | **🆕 Güncellemeler** ekranı + sürüm notu girildiğinde kullanıcıya **girişte modern pencere**; okunduğunda bir daha gösterilmez (aşağıda ayrıntı) |
 | **Panel — E-Defter kartı** | E-Defter sayılarına (Yüklenen/Hazır/Kalan…) tıklayınca **açılır liste**; üstte **Takip ekranında aç** → süzülmüş E-Defter Takip |
 | **🎨 Renkli tema (kullanıcı bazlı)** | Açık / karanlık / **sistem** teması + **7 renk şablonu** + **yan menü açık-koyu**; kullanıcı kendi profilinden seçer. Açık tema + mavi palet = **bugünkü görünümün aynısı** (aşağıda ayrıntı) |
-| **📌 Yapışkan Notlar** | Kişisel Notlar'da ikinci sekme: renkli kâğıt kartlar (6 renk), 📌 sabitleme, sürükleyerek sıralama, otomatik kayıt, arama. **Yalnız sahibi görür** (yönetici dâhil) |
+| **📌 Yapışkan Notlar** | Kişisel Notlar'da ikinci sekme: renkli kâğıt kartlar (6 renk), 📌 sabitleme, sürükleyerek sıralama, otomatik kayıt, arama, **kart başlığı**, **arşiv**, **hatırlatma tarihi** (menü rozeti + giriş penceresi), **klavye kısayolları**. **Yalnız sahibi görür** (yönetici dâhil) |
 | **Firma kimliği (sol üst)** | Ayarlar → **🏢 Firma / Büro Kimliği**: kendi **logonuzu** yükleyin (PNG/JPG/WEBP/GIF, ≤1 MB) + **firma/büro adı**; sol üst köşede ve **giriş ekranında** görünür |
 | **Karanlık tema okunabilirliği** | Öncelik/görünürlük rozetleri, etiket çipleri ve satır zeminleri karanlıkta okunur hâle getirildi (WCAG AA ≥ 4.5:1); otomatik **kontrast testi** ile korunuyor |
 | **Sicil İşlemleri menü rozeti** | Menüde **Sicil İşlemleri** yanında **son günü gelen / gecikmiş** todo sayısı (ajanda rozeti mantığı); todo işaretlenince sayı **anında düşer**, tümü bitince rozet kaybolur (aşağıda ayrıntı) |
@@ -826,7 +826,23 @@ kimliğinden türetilir, sayfa yenilense de değişmez.
 **Testler:** `tests/sticky_not_testi.sh` (60) · `tests/sticky_migration_testi.sh` (20) ·
 `tests/sticky_kontrast_testi.php` (21) · tarayıcı testi `js_ui_testi/sticky_dom_testi.js` (29).
 
-> **Faz 2 (sonraki sürüm):** arşiv, kart başlığı, hatırlatma tarihi, klavye kısayolları.
+### Faz 2 — arşiv, başlık, hatırlatma, kısayollar
+
+| Özellik | Nasıl kullanılır |
+|---|---|
+| **Kart başlığı** | Kartın üst şeridindeki *Başlık ekle* alanına en çok **40 karakter** yazın. Yazdıkça kendiliğinden kaydedilir ve arama başlıkta da çalışır. |
+| **Arşiv** | Kartın 🗃 düğmesi notu silmeden sayfanın altındaki **🗃 Arşiv (N)** bölümüne taşır. Arşivde **↩ Geri al** ile geri getirilir veya **🗑 Kalıcı sil** ile tamamen silinir. Arşivdeki kartlar hatırlatma rozetine girmez. |
+| **Hatırlatma tarihi** | Kartın **⏰ Hatırlatma** düğmesinden bir tarih seçin. Tarih geçince kart kırmızı çerçeve ve **⏰ … · geçti** rozeti alır; 3 gün veya daha az kaldıysa sarı uyarı çıkar. Gelecek tarihli hatırlatmalar bildirime girmez. |
+| **✓ Tamam** | Tarihi gelen hatırlatmada görünür. Hatırlatmayı rozetten ve pencereden düşürür; **tarih silinmez**. Tarihi değiştirince yeniden bekler. |
+| **Menü rozeti** | "Kişisel Notlar" yanındaki sayı; açık görevler **ve** bugün/geçmişte kalan, "tamam" denmemiş hatırlatmaların toplamıdır. |
+| **Giriş penceresi** | Oturum açınca bugün/geçmiş hatırlatmalar **🔔 Hatırlatmalar** grubunda listelenir. Günde bir kez açılır; kapatınca o gün tekrar çıkmaz. Hatırlatma satırındaki ✓ ile pencereden de tamamlanabilir. |
+| **Klavye kısayolları** | `Ctrl+Enter` yeni not · `Esc` düzenlemeyi ya da açık pencereyi kapat · `/` aramaya odaklan. **⌨ Kısayollar** düğmesi bu listeyi gösterir. |
+
+**Gizlilik:** Hatırlatma, rozet ve giriş penceresi yalnız kart sahibine aittir; yönetici dâhil başkası görmez.
+
+**Kurulum:** `database/migration_sticky_not_faz2.sql` (tek kolon: `hatirlat_tamam_at`; `information_schema` kullanmaz, tekrar çalıştırılabilir).
+
+**Testler:** `tests/sticky_faz2_testi.sh` (48) · `tests/sticky_faz2_migration_testi.sh` (16) · `tests/sticky_kontrast_testi.php` (24) · tarayıcı testi `js_ui_testi/sticky_faz2_dom_testi.js` (36).
 
 ---
 

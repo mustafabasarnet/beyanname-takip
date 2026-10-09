@@ -223,13 +223,32 @@ class Kisisel extends BaseController
         $gun   = (int) $ayar->oku('kisisel_uyari_gun', '3');
         $liste = $this->model->uyarilacakGorevler($kid, $gun);
 
-        if ($liste['toplam'] === 0) {
+        // Yapışkan notlardaki bugün/geçmiş hatırlatmalar (Faz 2)
+        $bugun      = date('Y-m-d');
+
+        // Faz 2 migration'ı eksikse pencere yine çalışır (yalnız hatırlatmalar boş)
+        try {
+            $hatirlat = $this->sticky->bekleyenHatirlatmalar($kid, $bugun);
+        } catch (\Throwable $e) {
+            $hatirlat = [];
+        }
+        $hatSayi    = count($hatirlat);
+
+        if ($liste['toplam'] === 0 && $hatSayi === 0) {
             return $this->response->setJSON([
                 'durum'     => true,
                 'goster'    => false,
                 'tarihsiz'  => $this->model->tarihsizAcikSayisi($kid),
             ]);
         }
+
+        $hatirlatmaSatirlari = array_map(static fn ($h) => [
+            'id'        => (int) $h['id'],
+            'baslik'    => (string) ($h['baslik'] ?? ''),
+            'metin'     => kisalt((string) ($h['metin'] ?? ''), 90),
+            'tarih'     => trTarih((string) $h['hatirlat_tarih']),
+            'gecmis'    => (string) $h['hatirlat_tarih'] < $bugun,
+        ], $hatirlat);
 
         $cevir = static fn (array $satirlar) => array_map(static fn ($g) => [
             'id'          => (int) $g['id'],
@@ -250,10 +269,11 @@ class Kisisel extends BaseController
             'bugun'    => $cevir($liste['bugun']),
             'yaklasan' => $cevir($liste['yaklasan']),
             'toplam'   => (int) $liste['toplam'],
+            'hatirlatmalar' => $hatirlatmaSatirlari,
+            'hatirlatmaSayi' => $hatSayi,
             'tarihsiz' => $this->model->tarihsizAcikSayisi($kid),
-            // Menü rozeti için: kullanıcının TÜM açık görevi (pencerede
-            // görünmeyen uzak tarihli/tarihsiz görevler dahil)
-            'acik'     => $this->model->acikGorevSayisi($kid),
+            // Menü rozeti için: açık görevler + bekleyen hatırlatmalar
+            'acik'     => $this->model->acikGorevSayisi($kid) + $hatSayi,
             'gun'      => max(0, min(30, $gun)),
         ]);
     }
@@ -290,30 +310,53 @@ class Kisisel extends BaseController
     /** Sekme sayfası: kartların duvarı. */
     public function yapiskan()
     {
+        $kid = $this->ben();
+
         return $this->goster('kisisel/yapiskan', [
-            'notlar'  => $this->sticky->liste($this->ben()),
-            'renkler' => StickyNotModel::RENKLER,
-            'yazi'    => StickyNotModel::YAZI,
-            'maksMetin' => StickyNotModel::MAX_METIN,
-            'maksKart'  => StickyNotModel::MAX_KART,
+            'notlar'     => $this->sticky->liste($kid),
+            'arsivNotlar' => $this->sticky->arsivListesi($kid),
+            'renkler'    => StickyNotModel::RENKLER,
+            'yazi'       => StickyNotModel::YAZI,
+            'bugun'      => date('Y-m-d'),
+            'maksMetin'  => StickyNotModel::MAX_METIN,
+            'maksKart'   => StickyNotModel::MAX_KART,
+            'maksBaslik' => StickyNotModel::MAX_BASLIK,
         ], 'Yapışkan Notlar');
     }
 
     /** Duvar HTML'i + durum (her değişiklik sonrası istemci duvarı yeniler). */
     protected function stickyYanit(string $mesaj = '', bool $durum = true, int $kod = 200)
     {
+        $kid   = $this->ben();
+        $bugun = date('Y-m-d');
+
+        // Faz 2 migration'ı eksikse hatırlatma sayısı 0 döner; Faz 1 kartları çalışmaya devam eder
+        try {
+            $hatirlatmaSayi = $this->sticky->bekleyenHatirlatmaSayisi($kid, $bugun);
+        } catch (\Throwable $e) {
+            $hatirlatmaSayi = 0;
+        }
+
         $html = view('kisisel/_yapiskan_duvar', [
-            'notlar'  => $this->sticky->liste($this->ben()),
+            'notlar'  => $this->sticky->liste($kid),
             'renkler' => StickyNotModel::RENKLER,
             'yazi'    => StickyNotModel::YAZI,
+            'bugun'   => $bugun,
+        ]);
+
+        $arsivHtml = view('kisisel/_yapiskan_arsiv', [
+            'arsivNotlar' => $this->sticky->arsivListesi($kid),
         ]);
 
         return $this->response->setStatusCode($durum ? $kod : ($kod === 200 ? 400 : $kod))
             ->setJSON([
-                'durum'     => $durum,
-                'mesaj'     => $mesaj,
-                'listeHtml' => $html,
-                'sayi'      => $this->sticky->aktifSayi($this->ben()),
+                'durum'      => $durum,
+                'mesaj'      => $mesaj,
+                'listeHtml'  => $html,
+                'arsivHtml'  => $arsivHtml,
+                'sayi'       => $this->sticky->aktifSayi($kid),
+                'arsivSayi'  => $this->sticky->arsivSayi($kid),
+                'hatirlatma' => $hatirlatmaSayi,
             ]);
     }
 
@@ -344,7 +387,7 @@ class Kisisel extends BaseController
      */
     public function yapiskanGuncelle()
     {
-        $id = (int) $this->request->getPost('id');
+        $id   = (int) $this->request->getPost('id');
         $veri = [];
 
         if ($this->request->getPost('metin') !== null) {
@@ -360,12 +403,28 @@ class Kisisel extends BaseController
             $veri['metin'] = $metin;
         }
 
-        if ($this->request->getPost('renk') !== null) {
-            $veri['renk'] = (string) $this->request->getPost('renk');
+        if ($this->request->getPost('baslik') !== null) {
+            $baslik = (string) $this->request->getPost('baslik');
+
+            if (mb_strlen(trim($baslik)) > StickyNotModel::MAX_BASLIK) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'durum' => false,
+                    'mesaj' => 'Başlık en fazla ' . StickyNotModel::MAX_BASLIK . ' karakter olabilir.',
+                ]);
+            }
+
+            $veri['baslik'] = $baslik;
         }
 
-        if ($this->request->getPost('sabit') !== null) {
-            $veri['sabit'] = (string) $this->request->getPost('sabit');
+        foreach (['renk', 'sabit', 'arsiv', 'tamam'] as $alan) {
+            if ($this->request->getPost($alan) !== null) {
+                $veri[$alan] = (string) $this->request->getPost($alan);
+            }
+        }
+
+        // Hatırlatma: boş metin = kaldır; geçersiz tarih model tarafından reddedilir
+        if ($this->request->getPost('hatirlat') !== null) {
+            $veri['hatirlat_tarih'] = (string) $this->request->getPost('hatirlat');
         }
 
         $ok = $this->sticky->guncelle($this->ben(), $id, $veri);
@@ -373,12 +432,13 @@ class Kisisel extends BaseController
         if (! $ok) {
             return $this->response->setStatusCode(400)->setJSON([
                 'durum' => false,
-                'mesaj' => 'Not güncellenemedi (bulunamadı veya geçersiz değer).',
+                'mesaj' => 'Not güncellenemedi (bulunamadı, geçersiz değer veya eksik hatırlatma tarihi).',
             ]);
         }
 
-        // Metin dışı değişikliklerde (renk, sabit) duvar yeniden çizilir
-        if (array_key_exists('metin', $veri) && count($veri) === 1) {
+        // Metin ve başlık yazılırken duvar YENİLENMEZ (imleç kaybolmasın)
+        $yazmaAlanlari = ['metin', 'baslik'];
+        if (array_diff(array_keys($veri), $yazmaAlanlari) === []) {
             return $this->response->setJSON(['durum' => true, 'mesaj' => 'Kaydedildi.']);
         }
 
