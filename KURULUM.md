@@ -29,6 +29,7 @@ Son geliştirme turunda eklenen/düzeltilenler:
 | **Yeni: Güncelleme Logları** | **🆕 Güncellemeler** ekranı + sürüm notu girildiğinde kullanıcıya **girişte modern pencere**; okunduğunda bir daha gösterilmez (aşağıda ayrıntı) |
 | **Panel — E-Defter kartı** | E-Defter sayılarına (Yüklenen/Hazır/Kalan…) tıklayınca **açılır liste**; üstte **Takip ekranında aç** → süzülmüş E-Defter Takip |
 | **🎨 Renkli tema (kullanıcı bazlı)** | Açık / karanlık / **sistem** teması + **7 renk şablonu** + **yan menü açık-koyu**; kullanıcı kendi profilinden seçer. Açık tema + mavi palet = **bugünkü görünümün aynısı** (aşağıda ayrıntı) |
+| **📌 Yapışkan Notlar** | Kişisel Notlar'da ikinci sekme: renkli kâğıt kartlar (6 renk), 📌 sabitleme, sürükleyerek sıralama, otomatik kayıt, arama. **Yalnız sahibi görür** (yönetici dâhil) |
 | **Firma kimliği (sol üst)** | Ayarlar → **🏢 Firma / Büro Kimliği**: kendi **logonuzu** yükleyin (PNG/JPG/WEBP/GIF, ≤1 MB) + **firma/büro adı**; sol üst köşede ve **giriş ekranında** görünür |
 | **Karanlık tema okunabilirliği** | Öncelik/görünürlük rozetleri, etiket çipleri ve satır zeminleri karanlıkta okunur hâle getirildi (WCAG AA ≥ 4.5:1); otomatik **kontrast testi** ile korunuyor |
 | **Sicil İşlemleri menü rozeti** | Menüde **Sicil İşlemleri** yanında **son günü gelen / gecikmiş** todo sayısı (ajanda rozeti mantığı); todo işaretlenince sayı **anında düşer**, tümü bitince rozet kaybolur (aşağıda ayrıntı) |
@@ -772,6 +773,60 @@ Görev atandığı an, ilgili kişi bir sonraki sayfa geçişinde rozeti görür
   döndürür; `ajandaGorevRozetGuncelle()` bu değeri rozete yazar. Böylece sayı
   sayfa yenilenmeden **anında** düşer.
 - Migration gerekmez; **yeni tablo/kolon yok**.
+
+---
+
+## 📌 Yapışkan Notlar (Kişisel Kartlar)
+
+Günlük not ve to-do'dan ayrı, **tarihe bağlı olmayan** kişisel kartlar. Sürekli
+görünmesi gereken bilgiler için (şifre ipucu, sık kullanılan numaralar, her ay
+yapılacaklar kuralı…) **Kişisel Notlar → 📌 Yapışkan Notlar** sekmesinde tutulur.
+
+```
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│ ● 📌 Sabit 🎨 📌 🗑│ │              │  │              │
+│ Telefon      │  │ Her ay: SGK  │  │ Müşavir      │
+│ listesi…     │  │ kontrolü…    │  │ toplantısı…  │
+│      0/1000  │  │      25/1000 │  │      12/1000 │
+└──────────────┘  └──────────────┘  └──────────────┘
+```
+
+### Kullanım
+
+| İşlem | Nasıl |
+|---|---|
+| **Yeni kart** | **➕ Yeni not** → kart açılır, doğrudan yazmaya başlanır |
+| **Düzenle** | Kartın içine tıklayıp yazın; yazmayı bıraktıktan ~1 sn sonra **otomatik kaydedilir** (alt satırda *Kaydedildi ✓*) |
+| **Renk** | Kartın 🎨 düğmesi → 6 renkten biri (Gök mavisi, Nane yeşili, Limon sarısı, Pembe, Gökyüzü, Turuncu) |
+| **Sabitle** | 📌 düğmesi → kart en üste geçer, **📌 Sabitlenenler** bölümünde toplanır |
+| **Sırala** | Kartı sürükleyip başka bir kartın üstüne bırakın. Sabitler ve diğer notlar **ayrı gruplarda** kalır (sabit bir notu sabit olmayanların arasına sürükleyemezsiniz) |
+| **Ara** | Üstteki 🔎 kutusu yazdıkça kartları süzer |
+| **Sil** | 🗑 → onay penceresi → kalıcı silme |
+| **Sınır** | Kart başına **1000** karakter · hesap başına en çok **200** kart (üstte *N / 200 not* sayacı) |
+
+Kartların hafif eğik durması (±1°) bilinçli bir tasarım tercihidir; her kartın eğimi
+kimliğinden türetilir, sayfa yenilense de değişmez.
+
+### Gizlilik
+
+- Her kart **yalnız sahibine** görünür. **Yönetici dâhil** hiçbir kullanıcı başkasının
+  kartını göremez, düzenleyemez, silemez veya sıralayamaz (Ajanda kişisel kayıt kuralıyla aynı).
+- Kullanıcı silinirse kartları da **otomatik** silinir (veritabanı kaskadı).
+
+### Teknik
+
+| Konu | Karar |
+|---|---|
+| Tablo | `kisisel_sticky_notlar` (günlük not tablosundan ayrı) |
+| Kurulum | `database/migration_sticky_not.sql` — `information_schema` kullanmaz, tekrar koşulabilir |
+| Renkler | Sunucu tarafında sabit palet (serbest renk kodu kabul edilmez); yazı rengi her renkte koyu (**kontrast ≥ 4.5:1**, `tests/sticky_kontrast_testi.php` ile ölçülür) |
+| Güvenlik | Tüm uçlar oturum + CSRF korumalı; her sorgu kullanıcı kimliğiyle süzülür; metin çıktıda kaçırılır (XSS) |
+| Yeni bağımlılık | Yok (sürükleme tarayıcının kendi özelliğiyle) |
+
+**Testler:** `tests/sticky_not_testi.sh` (60) · `tests/sticky_migration_testi.sh` (20) ·
+`tests/sticky_kontrast_testi.php` (21) · tarayıcı testi `js_ui_testi/sticky_dom_testi.js` (29).
+
+> **Faz 2 (sonraki sürüm):** arşiv, kart başlığı, hatırlatma tarihi, klavye kısayolları.
 
 ---
 

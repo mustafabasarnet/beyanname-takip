@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\AyarModel;
 use App\Models\KisiselNotModel;
+use App\Models\StickyNotModel;
 
 /**
  * KİŞİSEL GÜNLÜK NOT + TO-DO
@@ -18,10 +19,12 @@ use App\Models\KisiselNotModel;
 class Kisisel extends BaseController
 {
     protected KisiselNotModel $model;
+    protected StickyNotModel $sticky;
 
     public function __construct()
     {
         $this->model = new KisiselNotModel();
+        $this->sticky = new StickyNotModel();
     }
 
     /** Giriş yapan kullanıcının id'si (her zaman var: auth filtresi) */
@@ -278,5 +281,129 @@ class Kisisel extends BaseController
             ->where('kullanici_id', $kullaniciId)
             ->where('tarih', date('Y-m-d'))
             ->countAllResults() > 0;
+    }
+
+    // =================================================================
+    //  YAPIŞKAN NOTLAR (sticky) — yalnız sahibi görür
+    // =================================================================
+
+    /** Sekme sayfası: kartların duvarı. */
+    public function yapiskan()
+    {
+        return $this->goster('kisisel/yapiskan', [
+            'notlar'  => $this->sticky->liste($this->ben()),
+            'renkler' => StickyNotModel::RENKLER,
+            'yazi'    => StickyNotModel::YAZI,
+            'maksMetin' => StickyNotModel::MAX_METIN,
+            'maksKart'  => StickyNotModel::MAX_KART,
+        ], 'Yapışkan Notlar');
+    }
+
+    /** Duvar HTML'i + durum (her değişiklik sonrası istemci duvarı yeniler). */
+    protected function stickyYanit(string $mesaj = '', bool $durum = true, int $kod = 200)
+    {
+        $html = view('kisisel/_yapiskan_duvar', [
+            'notlar'  => $this->sticky->liste($this->ben()),
+            'renkler' => StickyNotModel::RENKLER,
+            'yazi'    => StickyNotModel::YAZI,
+        ]);
+
+        return $this->response->setStatusCode($durum ? $kod : ($kod === 200 ? 400 : $kod))
+            ->setJSON([
+                'durum'     => $durum,
+                'mesaj'     => $mesaj,
+                'listeHtml' => $html,
+                'sayi'      => $this->sticky->aktifSayi($this->ben()),
+            ]);
+    }
+
+    /** Yeni kart (AJAX) */
+    public function yapiskanEkle()
+    {
+        $id = $this->sticky->ekle(
+            $this->ben(),
+            (string) $this->request->getPost('metin'),
+            (string) $this->request->getPost('renk')
+        );
+
+        if ($id === 0) {
+            return $this->stickyYanit(
+                'En fazla ' . StickyNotModel::MAX_KART . ' yapışkan not ekleyebilirsiniz.',
+                false, 400
+            );
+        }
+
+        return $this->stickyYanit('Not eklendi.');
+    }
+
+    /**
+     * Metin / renk / sabit güncelle (AJAX).
+     *
+     * Metin yazılırken ARAYÜZ YENİLENMEZ (imleç kaybolmasın); bu yüzden
+     * metin kaydı yanıtında liste HTML'i dönmez.
+     */
+    public function yapiskanGuncelle()
+    {
+        $id = (int) $this->request->getPost('id');
+        $veri = [];
+
+        if ($this->request->getPost('metin') !== null) {
+            $metin = (string) $this->request->getPost('metin');
+
+            if (mb_strlen($metin) > StickyNotModel::MAX_METIN) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'durum' => false,
+                    'mesaj' => 'Not en fazla ' . StickyNotModel::MAX_METIN . ' karakter olabilir.',
+                ]);
+            }
+
+            $veri['metin'] = $metin;
+        }
+
+        if ($this->request->getPost('renk') !== null) {
+            $veri['renk'] = (string) $this->request->getPost('renk');
+        }
+
+        if ($this->request->getPost('sabit') !== null) {
+            $veri['sabit'] = (string) $this->request->getPost('sabit');
+        }
+
+        $ok = $this->sticky->guncelle($this->ben(), $id, $veri);
+
+        if (! $ok) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'durum' => false,
+                'mesaj' => 'Not güncellenemedi (bulunamadı veya geçersiz değer).',
+            ]);
+        }
+
+        // Metin dışı değişikliklerde (renk, sabit) duvar yeniden çizilir
+        if (array_key_exists('metin', $veri) && count($veri) === 1) {
+            return $this->response->setJSON(['durum' => true, 'mesaj' => 'Kaydedildi.']);
+        }
+
+        return $this->stickyYanit('Güncellendi.');
+    }
+
+    /** Kart sil (AJAX) */
+    public function yapiskanSil()
+    {
+        $ok = $this->sticky->sil($this->ben(), (int) $this->request->getPost('id'));
+
+        if (! $ok) {
+            return $this->stickyYanit('Not bulunamadı.', false, 404);
+        }
+
+        return $this->stickyYanit('Not silindi.');
+    }
+
+    /** Sürükle-bırak sırası (AJAX) */
+    public function yapiskanSirala()
+    {
+        $idler = (array) $this->request->getPost('idler');
+
+        $this->sticky->sirala($this->ben(), $idler);
+
+        return $this->stickyYanit('Sıra kaydedildi.');
     }
 }

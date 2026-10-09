@@ -171,6 +171,13 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
         $routes->get('giris-uyarisi', 'Kisisel::girisUyarisi');  // AJAX (günde bir kez)
         $routes->post('uyari-okundu', 'Kisisel::uyariOkundu');   // AJAX
         $routes->post('gecmis-sil', 'Kisisel::gecmisSil');       // AJAX
+
+        // Yapışkan notlar (sticky) — yalnız sahibi (controller her sorguyu kullanıcı id'siyle süzer)
+        $routes->get('yapiskan', 'Kisisel::yapiskan');
+        $routes->post('yapiskan/ekle', 'Kisisel::yapiskanEkle');         // AJAX
+        $routes->post('yapiskan/guncelle', 'Kisisel::yapiskanGuncelle'); // AJAX
+        $routes->post('yapiskan/sil', 'Kisisel::yapiskanSil');           // AJAX
+        $routes->post('yapiskan/sirala', 'Kisisel::yapiskanSirala');     // AJAX
     });
 
     // ----------------- GELİR VERGİSİ HESABI (mali müşavir bazında) -----------------

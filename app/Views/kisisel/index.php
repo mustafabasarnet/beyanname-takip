@@ -51,6 +51,8 @@
   <span class="kucuk-yazi">Yalnız siz görürsünüz — yönetici dahil kimse erişemez.</span>
 </div>
 
+<?= $this->include('kisisel/_sekme') ?>
+
 <div id="kn-bildirim" style="margin-bottom:10px"></div>
 
 <!-- ================= GÜNLÜK NOT ================= -->
