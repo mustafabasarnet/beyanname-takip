@@ -480,14 +480,21 @@ kanuni tarihe göre yapılır.
 | **GEKAP** (Tem–Ara dönemi) | 31.01 | kaydırma varsa Şubat başı | ✅ **Ocak** |
 | KDV1 (Ocak 2026 dönemi) | 28.02.2026 Cumartesi | 02.03.2026 | ✅ **Şubat 2026** |
 | KDV1 (Eylül 2026 dönemi) | 28.10.2026 | 30.10.2026 (29 Ekim tatili) | ✅ Ekim 2026 (ay değişmedi) |
+| **SGK ödemesi** (Eylül 2026 dönemi, ay sonu ödeme) | 31.10.2026 Cumartesi | **02.11.2026 Pazartesi** | ✅ **Ekim 2026** ödeme listesi (Kasım'da çıkmaz) |
 
 Satırda **kanuni tarih** (Son Tarih sütununun solunda) ve **fiili tarih** (kalın,
 yanında `↷ Cumartesi, Pazar` açıklaması) ayrı ayrı görünür — hangi gün
 gönderileceği kaybolmaz.
 
 > **Gecikme, geri sayım ve "≤7 gün" kartları FİİLİ tarihi kullanır** (değişmedi).
-> Ödeme listesi de fiili/ödeme tarihine göre çalışır; yalnız **beyan ayı**
-> kanuni tarihe göre belirlenir.
+> **Ödeme listesi de AY'ı kanuni tarihe göre belirler** (beyanname listesiyle aynı kural).
+> Ekranda gösterilen ödeme tarihi ise yine fiili (kaydırılmış) tarihtir.
+>
+> *Neden ayrı bir kolon?* SGK gibi ödemesi ay sonunda yapılan türlerde kanuni ödeme
+> günü (ör. 31 Ekim) `odeme_yasal_tarih` kolonunda tutulur; `odeme_son_tarih` kaydırılmış
+> gerçek günü gösterir. Eskiden liste fiili tarihe baktığı için SGK Ekim'de değil Kasım'da
+> görünüyordu (düzeltildi; `migration_odeme_yasal.sql`). Mevcut SGK kayıtları migration ile
+> doldurulur; diğer dönemler **🔄 Toplu Dönem Üret** ile güncellenir (durumlar korunur).
 
 Önceki yıla ait bir dönem listeye girdiğinde, Dönem sütununda mor bir
 **"2026 dönemi"** rozetiyle işaretlenir; karışıklık olmaz.

@@ -118,6 +118,7 @@ class DonemUretici
                 // Örn. SGK: bildirge 26'sında onaylanır, primi ay sonunda ödenir.
                 // Tür tanımında odeme_offset_ay boşsa beyan tarihi geçerlidir.
                 $odemeSon = null;
+                $odemeYasal = null;   // kaydırılmamış (kanuni) ödeme son günü — AY ATAMASI için
 
                 if (isset($tur['odeme_offset_ay']) && $tur['odeme_offset_ay'] !== null
                     && $tur['odeme_offset_ay'] !== '') {
@@ -141,6 +142,7 @@ class DonemUretici
                     'yasal_son_tarih'   => $yasal,
                     'son_tarih'         => $kaydirma['tarih'],
                     'odeme_son_tarih'   => $odemeSon,
+                    'odeme_yasal_tarih' => $odemeYasal,
                     'kaydirma_nedeni'   => $kaydirma['kaydirildi'] ? $kaydirma['neden'] : null,
                     'durum'             => 'BEKLIYOR',
                 ];

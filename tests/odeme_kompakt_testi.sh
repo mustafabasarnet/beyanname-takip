@@ -224,6 +224,11 @@ ol "Boş ayda 'bulunamadı' mesajı" "1" \
 ol "Boş ayda grup yok" "0" "$(grupSay /tmp/ok_bos.html)"
 
 echo "=== 9) YETKİ ==="
+# Kapsam bağımlılığı: müşavir kullanıcısını müşavir 2'ye bağla (test başına kendi kurulumu;
+# musavir_filtre_testi gibi önceki testlerin bıraktığı bağlantıya güvenilmez)
+$MDBR -e "DELETE FROM kullanici_musavirleri WHERE kullanici_id IN (SELECT id FROM kullanicilar WHERE kullanici_adi='musavir');" >/dev/null 2>&1
+$MDBR -e "UPDATE kullanicilar SET musavir_id=2 WHERE kullanici_adi='musavir';" >/dev/null 2>&1
+$MDBR -e "INSERT INTO kullanici_musavirleri (kullanici_id,musavir_id,created_at) SELECT id,2,NOW() FROM kullanicilar WHERE kullanici_adi='musavir';" >/dev/null 2>&1
 giris musavir $JM
 curl -s -b $JM "$B/odeme?yil=2026&ay=8&adet=250" -o /tmp/ok_mus.html
 MUS=$($MDB -e "SELECT COUNT(DISTINCT bt.mukellef_id) FROM beyanname_takip bt
@@ -244,6 +249,11 @@ for u in "odeme?yil=2026&ay=8" "odeme/excel?yil=2026&ay=8" "odeme/yazdir?yil=202
   ol "/$u HTTP 200" "200" "$c"
   ol "/$u hata yok" "0" "$(grep -cE 'ErrorException|Fatal error|Undefined variable' /tmp/ok_s.html | awk '{print ($1>0)?1:0}')"
 done
+
+# Temizlik: müşavir kullanıcısını varsayılan bağlantısına (müşavir 1) döndür
+$MDBR -e "DELETE FROM kullanici_musavirleri WHERE kullanici_id IN (SELECT id FROM kullanicilar WHERE kullanici_adi='musavir');" >/dev/null 2>&1
+$MDBR -e "UPDATE kullanicilar SET musavir_id=1 WHERE kullanici_adi='musavir';" >/dev/null 2>&1
+$MDBR -e "INSERT INTO kullanici_musavirleri (kullanici_id,musavir_id,created_at) SELECT id,1,NOW() FROM kullanicilar WHERE kullanici_adi='musavir';" >/dev/null 2>&1
 
 echo
 echo "================================================"

@@ -174,9 +174,10 @@ ol "geçmiş son tarihli kayıtlar gecikmiş listesinde (dönem modu saymaz)" "1
 
 echo
 echo "=== 8) ÖDEME LİSTESİ MODU FİİLİ TARİHE GÖRE (değişmedi) ==="
-# SGK benzeri: ödeme modu hâlâ son_tarih/odeme_son_tarih kullanır
-ol "ödeme sorgusu fiili tarihi kullanıyor" "1" \
-   "$(grep -c 'COALESCE(beyanname_takip.odeme_son_tarih, beyanname_takip.son_tarih)' app/Models/BeyannameTakipModel.php | awk '{print ($1>0)?1:0}')"
+# Ödeme modu AY ataması kanuni ödeme tarihine göre yapılır (odeme_yasal_tarih →
+# yasal_son_tarih). Tatil/hafta sonu kaydırması ayı değiştirmez (SGK 31 Ekim → Ekim listesi).
+ol "ödeme sorgusu kanuni (kaydırılmamış) tarihe göre ay alır" "1" \
+   "$(grep -c 'COALESCE(beyanname_takip.odeme_yasal_tarih, beyanname_takip.yasal_son_tarih' app/Models/BeyannameTakipModel.php | awk '{print ($1>0)?1:0}')"
 
 echo
 echo "=== 9) ÖZET SAYAÇLAR LİSTE İLE AYNI (Ekim) ==="

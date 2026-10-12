@@ -15,7 +15,7 @@ class BeyannameTakipModel extends Model
 
     protected $allowedFields = [
         'mukellef_id', 'beyanname_turu_id', 'yil', 'donem_no', 'donem_adi',
-        'donem_baslangic', 'donem_bitis', 'yasal_son_tarih', 'son_tarih', 'odeme_son_tarih',
+        'donem_baslangic', 'donem_bitis', 'yasal_son_tarih', 'son_tarih', 'odeme_son_tarih', 'odeme_yasal_tarih',
         'kaydirma_nedeni', 'durum', 'tahakkuk_tutari', 'damga_tutari', 'tahakkuk_fis_no',
         'odendi', 'odeme_tarihi',
         'gonderim_tarihi', 'onaylayan_id', 'onay_tarihi', 'not_metni',
@@ -369,6 +369,7 @@ class BeyannameTakipModel extends Model
             $degisti = $eski['son_tarih'] !== $h['son_tarih']
                 || $eski['yasal_son_tarih'] !== $h['yasal_son_tarih']
                 || ($eski['odeme_son_tarih'] ?? null) !== ($h['odeme_son_tarih'] ?? null)
+                || ($eski['odeme_yasal_tarih'] ?? null) !== ($h['odeme_yasal_tarih'] ?? null)
                 || $eski['donem_adi'] !== $h['donem_adi'];
 
             if ($degisti) {
@@ -379,6 +380,7 @@ class BeyannameTakipModel extends Model
                     'yasal_son_tarih' => $h['yasal_son_tarih'],
                     'son_tarih'       => $h['son_tarih'],
                     'odeme_son_tarih' => $h['odeme_son_tarih'],
+                    'odeme_yasal_tarih' => $h['odeme_yasal_tarih'] ?? null,
                     'kaydirma_nedeni' => $h['kaydirma_nedeni'],
                 ]);
                 $guncellenen++;
@@ -973,15 +975,19 @@ class BeyannameTakipModel extends Model
             ->join('musavirler mus', 'mus.id = m.musavir_id', 'left')
             ->where('m.deleted_at', null);
 
-        // Ödeme listesi ÖDEME son tarihine göre çalışır.
-        // SGK gibi ödemesi beyandan farklı olan türlerde odeme_son_tarih doludur;
-        // diğerlerinde beyan son tarihi geçerlidir (COALESCE).
+        // AY ATAMASI: satır hangi ayın listesinde görünecek?
+        // Kanuni ödeme tarihine göre (odeme_yasal_tarih → yasal_son_tarih).
+        // Hafta sonu/tatil kaydırması AYI DEĞİŞTİRMEZ: örneğin SGK ödemesi
+        // 31 Ekim Cumartesi ise (2 Kasım'a kayar) yine EKİM listesinde görünür.
+        // Ekranda gösterilen son tarih ise kaydırılmış gerçek tarihtir.
+        $ayTarihi = 'COALESCE(beyanname_takip.odeme_yasal_tarih, beyanname_takip.yasal_son_tarih, beyanname_takip.son_tarih)';
+
         if (! empty($f['yil'])) {
-            $b->where('YEAR(COALESCE(beyanname_takip.odeme_son_tarih, beyanname_takip.son_tarih))', (int) $f['yil']);
+            $b->where("YEAR({$ayTarihi})", (int) $f['yil']);
         }
 
         if (! empty($f['ay'])) {
-            $b->where('MONTH(COALESCE(beyanname_takip.odeme_son_tarih, beyanname_takip.son_tarih))', (int) $f['ay']);
+            $b->where("MONTH({$ayTarihi})", (int) $f['ay']);
         }
 
         if (! empty($f['musavir_id'])) {
