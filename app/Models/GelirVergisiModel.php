@@ -204,9 +204,9 @@ class GelirVergisiModel extends Model
                       COALESCE(SUM(CASE WHEN mk.tahsil_edildi=1 THEN 1 ELSE 0 END),0)         AS tahsil_adet')
             ->join('mukellefler m', 'm.id = mk.mukellef_id')
             ->where('m.deleted_at', null)
-            // Mükellefin bağlı olduğu müşavire göre (makbuzu kesen değil) —
-            // Makbuz Takip ile aynı eksende tutarlı hesap
-            ->where('m.musavir_id', $musavirId)
+            // Makbuzu KESEN müşavire göre (vergi kesenin kazancıdır) —
+            // Makbuz Takip özetiyle aynı eksen
+            ->where('mk.musavir_id', $musavirId)
             ->where('mk.yil', $yil)
             ->get()->getRowArray();
 
@@ -241,16 +241,38 @@ class GelirVergisiModel extends Model
      */
     public function ucretToplami(int $musavirId, int $yil): array
     {
-        $rows = $this->db->table('mukellef_ucretleri u')
-            ->select('u.mukellef_id, u.tutar, m.unvan, m.kod, m.aktif,
-                      m.vergi_kimlik_no, m.tc_kimlik_no')
-            ->join('mukellefler m', 'm.id = u.mukellef_id')
-            ->where('m.deleted_at', null)
-            ->where('m.musavir_id', $musavirId)
-            ->where('u.yil', $yil)
-            ->where('u.tutar >', 0)
-            ->orderBy('u.tutar', 'DESC')
-            ->get()->getResultArray();
+        // Kapsam: müşavirin o yılda SÖZLEŞME DÖNEMİ payı olan mükellefler.
+        // Tutar, müşavirin ay payı kadardır (yıllık ücret × ay / 12).
+        $donem = new MusavirDonemModel();
+        $mids  = $donem->mukellefKapsami([$musavirId], $yil);
+        $rows  = [];
+
+        if ($mids !== []) {
+            $ucretler = $this->db->table('mukellef_ucretleri u')
+                ->select('u.mukellef_id, u.tutar, m.unvan, m.kod, m.aktif,
+                          m.vergi_kimlik_no, m.tc_kimlik_no')
+                ->join('mukellefler m', 'm.id = u.mukellef_id')
+                ->where('m.deleted_at', null)
+                ->whereIn('u.mukellef_id', $mids)
+                ->where('u.yil', $yil)
+                ->where('u.tutar >', 0)
+                ->get()->getResultArray();
+
+            $harita = $donem->dagilimHaritasi(array_map(static fn ($r) => (int) $r['mukellef_id'], $ucretler), $yil);
+
+            foreach ($ucretler as $r) {
+                $ay = MusavirDonemModel::aySayisi($harita[(int) $r['mukellef_id']] ?? [], [(int) $musavirId]);
+
+                if ($ay <= 0) {
+                    continue;
+                }
+
+                $r['tutar'] = round((float) $r['tutar'] * $ay / 12, 2);
+                $rows[]     = $r;
+            }
+
+            usort($rows, static fn ($a, $b) => (float) $b['tutar'] <=> (float) $a['tutar']);
+        }
 
         $stopajOran = $this->ucretStopajOran();
         $kdvOran    = $this->ucretKdvOran();
@@ -301,9 +323,9 @@ class GelirVergisiModel extends Model
                       COALESCE(SUM(mk.stopaj),0) AS stopaj')
             ->join('mukellefler m', 'm.id = mk.mukellef_id')
             ->where('m.deleted_at', null)
-            // Mükellefin bağlı olduğu müşavire göre (makbuzu kesen değil) —
-            // Makbuz Takip ile aynı eksende tutarlı hesap
-            ->where('m.musavir_id', $musavirId)
+            // Makbuzu KESEN müşavire göre (vergi kesenin kazancıdır) —
+            // Makbuz Takip özetiyle aynı eksen
+            ->where('mk.musavir_id', $musavirId)
             ->where('mk.yil', $yil)
             ->groupBy('mk.ay')
             ->get()->getResultArray();

@@ -137,6 +137,12 @@ class MakbuzModel extends Model
      */
     public function cizelge(array $f): array
     {
+        // Müşavir filtresi varsa ücret/kesilen YALNIZ o müşavirin payı olarak
+        // hesaplanır (sözleşme dönemine göre). Tam liste ayrı yoldan gelir.
+        if ($this->musavirFiltreli($f)) {
+            return $this->sayfala($this->musavirPaylisi($f), $f);
+        }
+
         $b = $this->cizelgeSorgusu($f);
 
         $b->orderBy('m.unvan', 'ASC');
@@ -162,7 +168,135 @@ class MakbuzModel extends Model
 
     public function cizelgeSayisi(array $f): int
     {
+        if ($this->musavirFiltreli($f)) {
+            return count($this->musavirPaylisi($f));
+        }
+
         return $this->cizelgeSorgusu($f)->countAllResults();
+    }
+
+    /** Müşavir filtresi (tekil veya liste) aktif mi? */
+    protected function musavirFiltreli(array $f): bool
+    {
+        return $this->idListesi($f['musavir_id'] ?? null) !== [];
+    }
+
+    /** Tekil/liste müşavir girdisini temiz tamsayı listesine çevirir */
+    protected function idListesi($deger): array
+    {
+        $liste = is_array($deger) ? $deger : [$deger];
+
+        return array_values(array_unique(array_filter(array_map('intval', $liste), static fn ($x) => $x > 0)));
+    }
+
+    /** Liste sayfalama (müşavir yolunda SQL LIMIT yerine PHP'de) */
+    protected function sayfala(array $satirlar, array $f): array
+    {
+        if (empty($f['limit'])) {
+            return $satirlar;
+        }
+
+        return array_slice($satirlar, (int) ($f['ofset'] ?? 0), (int) $f['limit']);
+    }
+
+    /** Ücret/kesilen/kalan/oran alanlarını hesaplar (tek yerde) */
+    protected function satirHesapla(array &$r): void
+    {
+        $r['ucret']   = (float) $r['ucret'];
+        $r['kesilen'] = (float) $r['kesilen'];
+        $r['kalan']   = round($r['ucret'] - $r['kesilen'], 2);
+        $r['oran']    = $r['ucret'] > 0
+            ? min(100, (int) round($r['kesilen'] / $r['ucret'] * 100))
+            : ($r['kesilen'] > 0 ? 100 : 0);
+        $r['adet']    = (int) $r['adet'];
+    }
+
+    /** Durum süzgeci (PHP tarafı; SQL ile aynı kurallar) */
+    protected function durumUyar(array $r, string $durum): bool
+    {
+        return match ($durum) {
+            'UCRETSIZ'  => $r['ucret'] <= 0,
+            'BASLAMADI' => $r['ucret'] > 0 && $r['kesilen'] <= 0,
+            'DEVAM'     => $r['ucret'] > 0 && $r['kesilen'] > 0 && $r['kesilen'] < $r['ucret'],
+            'TAMAM'     => $r['ucret'] > 0 && $r['kesilen'] >= $r['ucret'],
+            'ASIM'      => $r['ucret'] > 0 && $r['kesilen'] > $r['ucret'],
+            default     => true,
+        };
+    }
+
+    /**
+     * MÜŞAVİR PAYI LİSTESİ (tam, sayfalanmamış).
+     *
+     * Mükellef satırı, seçili müşavirin SÖZLEŞME DÖNEMİ payına göre:
+     *   ucret   = yıllık ücret × müşavirin ay payı / 12
+     *   kesilen = seçili müşavirin KESTİĞİ makbuzların brüt toplamı
+     */
+    protected function musavirPaylisi(array $f): array
+    {
+        $yil   = (int) ($f['yil'] ?? date('Y'));
+        $ids   = $this->idListesi($f['musavir_id'] ?? null);
+        $donem = new MusavirDonemModel();
+
+        $mids = $donem->mukellefKapsami($ids, $yil);
+
+        if ($mids === []) {
+            return [];
+        }
+
+        $sorgu = $f;
+        // durum SQL'de toplam üzerinden süzülmez; pay üzerinden PHP'de süzülür
+        unset($sorgu['musavir_id'], $sorgu['limit'], $sorgu['ofset'], $sorgu['durum']);
+
+        $b = $this->cizelgeSorgusu($sorgu);
+        $b->whereIn('m.id', $mids)->orderBy('m.unvan', 'ASC');
+        $rows = $b->get()->getResultArray();
+
+        if ($rows === []) {
+            return [];
+        }
+
+        $mukIdler = array_map(static fn ($r) => (int) $r['mukellef_id'], $rows);
+        $harita   = $donem->dagilimHaritasi($mukIdler, $yil);
+
+        // Mükellef × kesen müşavir gruplaması (yalnız seçili müşavirler)
+        $kesim = [];
+
+        $gruplar = $this->db->table('makbuzlar')
+            ->select('mukellef_id, musavir_id, SUM(brut) AS brut, COUNT(*) AS adet, MAX(tarih) AS son')
+            ->where('yil', $yil)
+            ->whereIn('mukellef_id', $mukIdler)
+            ->whereIn('musavir_id', $ids)
+            ->groupBy('mukellef_id, musavir_id')
+            ->get()->getResultArray();
+
+        foreach ($gruplar as $g) {
+            $mid = (int) $g['mukellef_id'];
+            $kesim[$mid]['kesilen'] = ($kesim[$mid]['kesilen'] ?? 0.0) + (float) $g['brut'];
+            $kesim[$mid]['adet']    = ($kesim[$mid]['adet'] ?? 0) + (int) $g['adet'];
+            $kesim[$mid]['son']     = max((string) ($kesim[$mid]['son'] ?? ''), (string) $g['son']) ?: null;
+        }
+
+        $cikti = [];
+
+        foreach ($rows as $r) {
+            $mid = (int) $r['mukellef_id'];
+            $ay  = MusavirDonemModel::aySayisi($harita[$mid] ?? [], $ids);
+            $k   = $kesim[$mid] ?? [];
+
+            $r['ay_payi'] = $ay;
+            $r['ucret']   = round((float) $r['ucret'] * $ay / 12, 2);
+            $r['kesilen'] = round((float) ($k['kesilen'] ?? 0), 2);
+            $r['adet']    = (int) ($k['adet'] ?? 0);
+            $r['son_makbuz'] = $k['son'] ?? null;
+
+            $this->satirHesapla($r);
+
+            if ($this->durumUyar($r, (string) ($f['durum'] ?? ''))) {
+                $cikti[] = $r;
+            }
+        }
+
+        return $cikti;
     }
 
     /**
@@ -288,63 +422,93 @@ class MakbuzModel extends Model
      */
     public function musavirOzeti(int $yil, $musavirId = null, bool $pasifDahil = false): array
     {
-        // Hedef: müşavirin portföyündeki mükelleflerin yıllık ücret toplamı
-        $hedefB = $this->db->table('mukellefler m')
-            ->select('m.musavir_id, mus.ad_soyad, mus.renk,
-                      COUNT(m.id) AS mukellef,
-                      COALESCE(SUM(u.tutar),0) AS ucret')
+        $donem  = new MusavirDonemModel();
+        $ids    = $this->idListesi($musavirId);
+        $filtre = $ids === [] ? null : $ids;
+
+        // Hedef: mükellef kapsamı + yıllık ücret; ücret, sözleşme dönemlerine
+        // göre AY payı kadar her müşavire yazılır (dönem dışı ay = atanmamış).
+        $mb = $this->db->table('mukellefler m')
+            ->select('m.id, COALESCE(u.tutar, 0) AS ucret')
             ->join("mukellef_ucretleri u", "u.mukellef_id = m.id AND u.yil = {$yil}", 'left')
-            ->join('musavirler mus', 'mus.id = m.musavir_id', 'left')
             ->where('m.deleted_at', null);
 
         // Pasif (terk etmiş) mükellefler: ekrandaki "Pasifler dahil" durumuna uyar.
-        // Varsayılan pasifleri DAHİL eder — üst özet kartıyla aynı kapsam olsun.
         if (! $pasifDahil) {
-            $hedefB->where('m.aktif', 1);
+            $mb->where('m.aktif', 1);
         }
 
-        $this->musavirKosulu($hedefB, $musavirId);
+        $mukellefler = $mb->get()->getResultArray();
+        $mids        = array_map(static fn ($r) => (int) $r['id'], $mukellefler);
+        $harita      = $donem->dagilimHaritasi($mids, $yil);
 
-        $hedef = $hedefB->groupBy('m.musavir_id, mus.ad_soyad, mus.renk')->get()->getResultArray();
+        $hedef = [];
+        $sayi  = [];
 
-        // Gerçekleşen: mükellefin BAĞLI OLDUĞU müşavire göre makbuz toplamı.
-        // Makbuzu kim keserse kessin (izinli meslektaş vb.), hasılat mükellefin
-        // portföy sahibinde görünür — böylece üst özet kartı, mükellef listesi
-        // ve Vergi Yükü hesapları tek eksende tutarlı olur.
+        foreach ($mukellefler as $m) {
+            $mid   = (int) $m['id'];
+            $ucret = (float) $m['ucret'];
+
+            foreach (MusavirDonemModel::paylar($harita[$mid] ?? []) as $mus => $ay) {
+                if ($filtre !== null && ! in_array($mus, $filtre, true)) {
+                    continue;
+                }
+
+                $hedef[$mus] = ($hedef[$mus] ?? 0.0) + $ucret * $ay / 12;
+                $sayi[$mus]  = ($sayi[$mus] ?? 0) + 1;
+            }
+        }
+
+        // Gerçekleşen: makbuzu KESEN müşavire göre (vergi, kesenin kazancıdır).
         $kesB = $this->db->table('makbuzlar mk')
-            ->select('m.musavir_id, COUNT(*) AS adet, SUM(mk.brut) AS kesilen,
+            ->select('mk.musavir_id, COUNT(*) AS adet, SUM(mk.brut) AS kesilen,
                       SUM(mk.stopaj) AS stopaj, SUM(mk.kdv) AS kdv')
             ->join('mukellefler m', 'm.id = mk.mukellef_id')
             ->where('m.deleted_at', null)
             ->where('mk.yil', $yil);
 
-        // Kesilen tarafı da pasif kapsamıyla aynı hizada olsun
         if (! $pasifDahil) {
             $kesB->where('m.aktif', 1);
         }
 
-        $this->musavirKosulu($kesB, $musavirId);
+        if ($filtre !== null) {
+            $kesB->whereIn('mk.musavir_id', $filtre);
+        }
 
         $kesilenler = [];
 
-        foreach ($kesB->groupBy('m.musavir_id')->get()->getResultArray() as $r) {
-            $kesilenler[(int) $r['musavir_id']] = $r;
+        foreach ($kesB->groupBy('mk.musavir_id')->get()->getResultArray() as $r) {
+            $kesilenler[(int) $r['musavir_id']] = $r;   // NULL → 0 (atanmamış)
+        }
+
+        $anahtarlar = $filtre !== null
+            ? $filtre
+            : array_values(array_unique(array_merge(array_keys($hedef), array_keys($kesilenler))));
+
+        // Müşavir adları (0 = atanmamış)
+        $adlar = [];
+        $gercek = array_values(array_filter($anahtarlar, static fn ($x) => $x > 0));
+
+        if ($gercek !== []) {
+            foreach ($this->db->table('musavirler')->select('id, ad_soyad, renk')
+                         ->whereIn('id', $gercek)->get()->getResultArray() as $r) {
+                $adlar[(int) $r['id']] = $r;
+            }
         }
 
         $out = [];
 
-        foreach ($hedef as $h) {
-            $mid = (int) $h['musavir_id'];
-            $k   = $kesilenler[$mid] ?? ['adet' => 0, 'kesilen' => 0, 'stopaj' => 0, 'kdv' => 0];
-
-            $ucret   = (float) $h['ucret'];
+        foreach ($anahtarlar as $mus) {
+            $ad      = $adlar[$mus] ?? null;
+            $ucret   = round((float) ($hedef[$mus] ?? 0.0), 2);
+            $k       = $kesilenler[$mus] ?? ['adet' => 0, 'kesilen' => 0, 'stopaj' => 0, 'kdv' => 0];
             $kesilen = (float) $k['kesilen'];
 
             $out[] = [
-                'musavir_id' => $mid,
-                'ad_soyad'   => $h['ad_soyad'] ?: '— Atanmamış —',
-                'renk'       => $h['renk'] ?: '#94a3b8',
-                'mukellef'   => (int) $h['mukellef'],
+                'musavir_id' => (int) $mus,
+                'ad_soyad'   => ($ad['ad_soyad'] ?? '') !== '' && $ad !== null ? $ad['ad_soyad'] : '— Atanmamış —',
+                'renk'       => $ad['renk'] ?? '#94a3b8',
+                'mukellef'   => (int) ($sayi[$mus] ?? 0),
                 'ucret'      => $ucret,
                 'kesilen'    => $kesilen,
                 'kalan'      => round($ucret - $kesilen, 2),
@@ -443,7 +607,18 @@ class MakbuzModel extends Model
             ->where('m.deleted_at', null)
             ->where('m.aktif', 1);
 
-        $this->musavirKosulu($b, $musavirId);
+        // Kapsam: seçili müşavirin kaynak yılda payı olan mükellefler
+        $kapsamIds = $this->idListesi($musavirId);
+
+        if ($kapsamIds !== []) {
+            $mids = (new MusavirDonemModel())->mukellefKapsami($kapsamIds, $kaynakYil);
+
+            if ($mids === []) {
+                return ['eklenen' => 0, 'atlanan' => 0];
+            }
+
+            $b->whereIn('u.mukellef_id', $mids);
+        }
 
         $sonuc = ['eklenen' => 0, 'atlanan' => 0];
         $carpan = 1 + ($zamYuzde / 100);

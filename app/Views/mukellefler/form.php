@@ -26,7 +26,7 @@ $v = static fn ($alan, $vars = null) => esc(old($alan, $vars ?? ''));
       ?>
       <div class="form-grup">
         <label>Mali Müşavir <span class="zorunlu">*</span></label>
-        <select name="musavir_id" id="musavir_sec" required <?= count($musavirler) === 1 ? 'data-tek="1"' : '' ?>>
+        <select name="musavir_id" id="musavir_sec" required data-mevcut="<?= (int) ($mukellef['musavir_id'] ?? 0) ?>" <?= count($musavirler) === 1 ? 'data-tek="1"' : '' ?>>
           <?php if (count($musavirler) !== 1): ?>
             <option value="">— Seçiniz —</option>
           <?php endif; ?>
@@ -37,6 +37,11 @@ $v = static fn ($alan, $vars = null) => esc(old($alan, $vars ?? ''));
           <?php endforeach; ?>
         </select>
         <span class="yardim">Mükellefin bağlı olduğu portföy. Yalnızca yetkili olduğunuz müşavirler listelenir.</span>
+      </div>
+      <div class="form-grup" id="musavir-gecerlilik-kutu" style="display:none">
+        <label>Müşavir değişikliği geçerlilik ayı</label>
+        <input type="month" name="musavir_gecerlilik" id="musavir_gecerlilik" value="<?= date('Y-m') ?>" max="<?= date('Y-m') ?>">
+        <span class="yardim">Yeni müşavir bu aydan itibaren geçerli olur (geçiş ayı yeni müşavirindir). Önceki müşavirin dönemi bir önceki ayın sonunda kapanır. Geçmiş dönemler için Detay → Mali Müşavir Dönemleri.</span>
       </div>
 
       <div class="form-grup">
@@ -756,6 +761,20 @@ $evSecili   = $evEskiSec !== null ? array_map('intval', (array) $evEskiSec) : $e
     }
     // disabled input'lar POST edilmez; sorun değil çünkü zaten seçili değiller
   });
+})();
+</script>
+<script>
+(function () {
+  var sec  = document.getElementById('musavir_sec');
+  var kutu = document.getElementById('musavir-gecerlilik-kutu');
+  if (!sec || !kutu) { return; }
+  function goster() {
+    var mevcut = sec.getAttribute('data-mevcut');
+    var degisti = !!mevcut && mevcut !== '0' && sec.value !== '' && sec.value !== mevcut;
+    kutu.style.display = degisti ? '' : 'none';
+  }
+  sec.addEventListener('change', goster);
+  goster();
 })();
 </script>
 <?= $this->endSection() ?>

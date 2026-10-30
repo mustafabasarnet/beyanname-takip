@@ -3,6 +3,7 @@
 namespace App\Libraries;
 
 use App\Models\MakbuzModel;
+use App\Models\MusavirDonemModel;
 use App\Models\MukellefModel;
 
 /**
@@ -155,8 +156,8 @@ class MakbuzIceAktar
             'mesaj'    => null,
         ];
 
-        $kimlikHarita = $this->kimlikHaritasi($musavirId);
-        $unvanHarita  = $this->unvanHaritasi($musavirId);
+        $kimlikHarita = $this->kimlikHaritasi($musavirId, $yil);
+        $unvanHarita  = $this->unvanHaritasi($musavirId, $yil);
         $dosyaIcinde  = [];   // dosya içi mükerrer kontrolü
 
         foreach ($satirlar as $i => $satir) {
@@ -352,7 +353,9 @@ class MakbuzIceAktar
         $satir['veri'] = [
             'mukellef_id' => (int) $mukellef['id'],
             'unvan'       => $mukellef['unvan'],
-            'musavir_id'  => $mukellef['musavir_id'] ? (int) $mukellef['musavir_id'] : null,
+            // Kesen müşavir: makbuz tarihindeki dönem müşaviri (yoksa güncel)
+            'musavir_id'  => (new MusavirDonemModel())->musavirAt((int) $mukellef['id'], $tarih)
+                ?? ($mukellef['musavir_id'] ? (int) $mukellef['musavir_id'] : null),
             'yil'         => $yil,
             'ay'          => (int) date('n', strtotime($tarih)),
             'makbuz_no'   => $makbuzNo ?: null,
@@ -463,14 +466,14 @@ class MakbuzIceAktar
     // =================================================================
 
     /** VKN/TCKN → mükellef eşlemesi */
-    protected function kimlikHaritasi(?int $musavirId): array
+    protected function kimlikHaritasi(?int $musavirId, int $yil): array
     {
         $b = $this->mukModel->builder()
             ->select('id, unvan, musavir_id, vergi_kimlik_no, tc_kimlik_no')
             ->where('deleted_at', null);
 
         if ($musavirId) {
-            $b->where('musavir_id', $musavirId);
+            $this->musavirKapsamiKosulu($b, $musavirId, $yil);
         }
 
         $out = [];
@@ -488,15 +491,26 @@ class MakbuzIceAktar
         return $out;
     }
 
+    /**
+     * Müşavir kapsamı: o yılda sözleşme dönemi payı olan (ya da o müşavirin
+     * kestiği makbuzu bulunan) mükellefler. Sözleşmesi değişen mükellefin
+     * geçmiş makbuzları eski müşavirin içe aktarımında da eşleşir.
+     */
+    protected function musavirKapsamiKosulu($b, int $musavirId, int $yil): void
+    {
+        $mids = (new MusavirDonemModel())->mukellefKapsami([$musavirId], $yil);
+        $b->whereIn('id', $mids !== [] ? $mids : [0]);
+    }
+
     /** Sadeleştirilmiş ünvan → mükellef (çakışma varsa 'COKLU') */
-    protected function unvanHaritasi(?int $musavirId): array
+    protected function unvanHaritasi(?int $musavirId, int $yil): array
     {
         $b = $this->mukModel->builder()
             ->select('id, unvan, musavir_id, vergi_kimlik_no, tc_kimlik_no')
             ->where('deleted_at', null);
 
         if ($musavirId) {
-            $b->where('musavir_id', $musavirId);
+            $this->musavirKapsamiKosulu($b, $musavirId, $yil);
         }
 
         $out = [];

@@ -14,7 +14,7 @@ Son geliştirme turunda eklenen/düzeltilenler:
 | Alan | Değişiklik |
 |---|---|
 | **Makbuz Takip** | "Pasifler dahil" **varsayılan olarak açık**; üst özet ve mali müşavir kartları aynı kapsamı izler (aşağıda ayrıntı) |
-| **Makbuz Takip + Vergi Yükü** | "Kesilen / hasılat" hep **mükellefin portföy sahibine** göre — makbuzu kesen değil (tutarlılık) |
+| **Makbuz Takip — müşavir sözleşme dönemleri** | Mükellef yıl içinde müşavir değiştirebilir. **Hasılat = makbuzu kesen müşavir**; **yıllık ücret (hedef) = sözleşme dönemine göre ay payı**. Ayrıntı: Makbuz Takip → "Mali müşavir sözleşme dönemleri" |
 | **E-Defter Takip** | 🖨️ **Kompakt yazdırma** sayfası (kontrol çıktısı, A4 yatay) |
 | **E-Defter Takip** | **Durum** ve **Sorumlu Personel** filtrelerinde **çoklu seçim** (Beyanname Takip bileşeniyle aynı) |
 | **Yeni: Kişisel Notlar** | Her kullanıcıya özel **günlük not + to-do list**; yönetici dahil kimse başkasınınkini göremez |
@@ -1322,7 +1322,7 @@ düğme). Excel'e ihtiyaç duymadan tek tek giriş:
 | **Makbuz No** | Mükerrer koruma bu numaraya göre işler |
 | **Brüt Tutar** | Stopaj matrahı (KDV hariç) |
 | **Stopaj / KDV** | Boş bırakılırsa Ayarlar'daki oranlardan hesaplanır |
-| **Kesen Mali Müşavir** | Boşsa mükellefin portföy sahibi yazılır |
+| **Kesen Mali Müşavir** | **Zorunlu.** Makbuz tarihindeki sözleşme dönemi müşaviri otomatik önerilir; farklı seçilirse kayıt yine yapılır ve bir not gösterilir |
 | **Tahsil edildi / tarihi** | İşaretlenirse listede yeşil satır olur |
 | **Açıklama** | Serbest metin |
 
@@ -1450,6 +1450,38 @@ Sadece iki durum: **Geldi ✓ / Gelmedi ✕** — istediğiniz gibi sade tutuldu
 Evrak türleri (varsayılan 8 adet) **Tanımlar → Evrak Türleri** ile düzenlenebilir.
 
 ### Dönem mi, toplama ayı mı?
+### 1A. Mali müşavir sözleşme dönemleri (müşavir değişikliği)
+
+Bir mükellef yıl içinde müşavir değiştirebilir (örn. **Atikay Ltd.**: Ocak–Şubat
+Ahmet, Mart–Aralık Mahmut). Bu durumda:
+
+| Kavram | Kural |
+|---|---|
+| **Hasılat (makbuz)** | Makbuzu **kesen** müşavirde kalır. Ocak–Şubat makbuzları Ahmet'in, Mart sonrası Mahmut'un kestiği makbuzlar olarak görünür. |
+| **Yıllık ücret (hedef)** | Sözleşme dönemlerine **ay bazında** bölünür: 12.000 TL, Ahmet 2 ay → 2.000 TL, Mahmut 10 ay → 10.000 TL. |
+| **Geçiş ayı** | Yeni müşavirin sayılır (Mart'ta değişirse Mart Mahmut'un). |
+| **Güncel müşavir** | Mükellef listesi, portföy filtreleri ve yetki kontrolü bugün başlamış son dönemin müşavirine bakar. |
+
+**Nasıl girilir?**
+
+- **Müşavir değişikliği:** Mükellef → Düzenle → Mali Müşavir'i değiştirin. Çıkan
+  **"Geçerlilik ayı"** alanına yeni müşavirin başlangıç ayını seçin (varsayılan bu ay).
+  Önceki müşavirin dönemi bir önceki ayın sonunda kapanır.
+- **Geçmiş dönem girişi:** Mükellef → Detay → **Mali Müşavir Dönemleri** kartı.
+  Başlangıç/bitiş ayı ile dönem ekleyin veya silin.
+
+**Kurallar:** Dönemler çakışamaz; gelecek bir ay başlatılamaz. Hiçbir dönemin
+kapsamadığı aylar "Atanmamış" sayılır ve detay sayfasında uyarı çıkar.
+Geçmişte müşavir değişmiş mükelleflerin eski dönemlerini sistem tahmin edemez;
+bunları ilk kez **elle** girmeniz gerekir. Girilene kadar hedef, mükellefin
+güncel müşavirinde tam yıl görünür.
+
+**Kurulum:** `database/migration_musavir_donem.sql` (idempotent). Her mükellef için
+bugünkü müşaviriyle açık uçlu bir ilk dönem açar; eski makbuzlarda boş kalan
+kesen müşavir de mükellefin o anki müşaviriyle doldurulur. Dolu kayıtlara dokunmaz.
+
+Testler: `tests/musavir_donem_testi.php` (43), `tests/musavir_donem_http_testi.sh` (41).
+
 
 Evraklar bir ay gecikmeli toplanır: **Ağustos'ta Temmuz'un** evraklarını
 alırsınız. Program bu ayrımı yapar:

@@ -183,8 +183,8 @@ $vkn  = $mukellef['vergi_kimlik_no'] ?: $mukellef['tc_kimlik_no'];
           </div>
           <div class="form-grup">
             <label>Kesen Mali Müşavir</label>
-            <select name="musavir_id" id="mb-musavir">
-              <option value="">— Portföy sahibi —</option>
+            <select name="musavir_id" id="mb-musavir" required>
+              <option value="">— Seçiniz —</option>
               <?php foreach ($musavirler as $mid => $mad): ?>
                 <option value="<?= $mid ?>"><?= esc($mad) ?></option>
               <?php endforeach; ?>
@@ -234,6 +234,21 @@ $vkn  = $mukellef['vergi_kimlik_no'] ?: $mukellef['tc_kimlik_no'];
 
 <?= $this->section('script') ?>
 <script>
+// Yeni makbuzda kesen müşavir: makbuz tarihindeki sözleşme dönemi müşaviri
+function mbMusavirOner() {
+  var t = document.getElementById('mb-tarih').value;
+  if (!t) { return; }
+  fetch('<?= site_url('makbuz/donem-musavir') ?>?mukellef_id=<?= (int) $mukellef['id'] ?>&tarih=' + encodeURIComponent(t),
+        { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d && d.musavir_id && !document.getElementById('mb-id').value) {
+        document.getElementById('mb-musavir').value = String(d.musavir_id);
+      }
+    })
+    .catch(function () {});
+}
+document.getElementById('mb-tarih').addEventListener('change', mbMusavirOner);
 function makbuzAc(m) {
   m = m || {};
   document.getElementById('mb-baslik').textContent = m.id ? '🧾 Makbuzu Düzenle' : '🧾 Makbuz Ekle';
@@ -245,6 +260,7 @@ function makbuzAc(m) {
   document.getElementById('mb-stopaj').value  = m.stopaj ? bicim(m.stopaj) : '';
   document.getElementById('mb-kdv').value     = m.kdv ? bicim(m.kdv) : '';
   document.getElementById('mb-musavir').value = m.musavir_id || '';
+  if (!m.id) { mbMusavirOner(); }
   document.getElementById('mb-tahsil').checked = String(m.tahsil_edildi) === '1';
   document.getElementById('mb-tahsil-tarih').value = m.tahsil_tarihi ? String(m.tahsil_tarihi).substr(0, 10) : '';
   document.getElementById('mb-aciklama').value = m.aciklama || '';

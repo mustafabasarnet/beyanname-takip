@@ -61,6 +61,8 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
         $routes->get('donem-uret/(:num)', 'Mukellefler::donemUret/$1');
         $routes->get('cizelge/(:num)', 'Mukellefler::cizelge/$1');
         $routes->get('ara', 'Mukellefler::ara');                  // AJAX — sicil formu mükellef arama
+        $routes->post('donem/ekle/(:num)', 'Mukellefler::donemEkle/$1');          // müşavir dönemi
+        $routes->post('donem/sil/(:num)/(:num)', 'Mukellefler::donemSil/$1/$2');  // müşavir dönemi
 
         // Excel/CSV'den toplu aktarma (yalnızca admin ve müşavir)
         $routes->get('ice-aktar', 'Mukellefler::iceAktar', ['filter' => 'auth:admin,musavir']);
@@ -110,6 +112,7 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
         $routes->post('ucret', 'Makbuz::ucret');                  // AJAX
         $routes->post('ucret-kopyala', 'Makbuz::ucretKopyala');
         $routes->get('ice-aktar', 'Makbuz::iceAktar');
+        $routes->get('donem-musavir', 'Makbuz::donemMusaviri');   // AJAX: tarihteki müşavir
         $routes->post('ice-aktar/onizle', 'Makbuz::onizle');
         $routes->post('ice-aktar/onayla', 'Makbuz::onayla');
         $routes->get('sablon', 'Makbuz::sablon');

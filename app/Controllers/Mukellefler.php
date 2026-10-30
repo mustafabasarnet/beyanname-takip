@@ -10,6 +10,7 @@ use App\Models\EvrakMuafiyetModel;
 use App\Models\EvrakTuruModel;
 use App\Models\KullaniciModel;
 use App\Models\MukellefModel;
+use App\Models\MusavirDonemModel;
 use App\Models\MusavirModel;
 
 class Mukellefler extends BaseController
@@ -146,6 +147,73 @@ class Mukellefler extends BaseController
         ], 'Mükellef Düzenle');
     }
 
+    /** Müşavir dönemi ekleme (geçmiş dönem girişi dahil) */
+    public function donemEkle(int $id)
+    {
+        $mukellef = $this->model->find($id);
+
+        if ($mukellef === null || ! $this->mukellefeErisebilirMi($mukellef)) {
+            return redirect()->to(site_url('mukellefler'))->with('hata', 'Mükellef bulunamadı.');
+        }
+
+        $musavirId = (int) $this->request->getPost('musavir_id');
+        $yanit     = redirect()->to(site_url('mukellefler/detay/' . $id) . '#musavir-donemleri');
+
+        if (! array_key_exists($musavirId, $this->secilebilirMusavirler())) {
+            return $yanit->with('hata', 'Geçerli bir mali müşavir seçin.');
+        }
+
+        $hata = (new MusavirDonemModel())->donemEkle(
+            $id,
+            $musavirId,
+            (string) $this->request->getPost('baslangic'),
+            $this->request->getPost('bitis') ?: null
+        );
+
+        return $hata !== null
+            ? $yanit->with('hata', $hata)
+            : $yanit->with('basari', 'Müşavir dönemi eklendi.');
+    }
+
+    /** Müşavir dönemi silme */
+    public function donemSil(int $id, int $donemId)
+    {
+        $mukellef = $this->model->find($id);
+
+        if ($mukellef === null || ! $this->mukellefeErisebilirMi($mukellef)) {
+            return redirect()->to(site_url('mukellefler'))->with('hata', 'Mükellef bulunamadı.');
+        }
+
+        $yanit = redirect()->to(site_url('mukellefler/detay/' . $id) . '#musavir-donemleri');
+
+        if (! (new MusavirDonemModel())->donemSil($id, $donemId)) {
+            return $yanit->with('hata', 'Dönem bulunamadı.');
+        }
+
+        return $yanit->with('basari', 'Müşavir dönemi silindi.');
+    }
+
+    /**
+     * Bu yılın bugüne kadarki aylarında hiçbir müşavirin kapsamadığı aylar.
+     * @return string[] ay adları (boşsa sorun yok)
+     */
+    protected function donemBoslukAylari(int $id): array
+    {
+        $yil    = (int) date('Y');
+        $harita = (new MusavirDonemModel())->ayHaritasi((new MusavirDonemModel())->donemler($id), $yil);
+        $aylar  = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz',
+                   'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+        $bosluk = [];
+
+        for ($ay = 1; $ay <= (int) date('n'); $ay++) {
+            if (($harita[$ay] ?? 0) === 0) {
+                $bosluk[] = $aylar[$ay - 1];
+            }
+        }
+
+        return $bosluk;
+    }
+
     public function guncelle(int $id)
     {
         $mukellef = $this->model->find($id);
@@ -156,8 +224,41 @@ class Mukellefler extends BaseController
 
         $veri = $this->formVerisi();
 
+        // MÜŞAVİR DEĞİŞİKLİĞİ: doğrudan kolona yazılmaz; müşavir dönemi olarak
+        // kaydedilir (önceki dönem kapanır, geçiş ayı yeni müşavirin olur).
+        // Böylece geçmiş makbuz ve ücret payları yeni müşavire kaymaz.
+        $yeniMusavir = (int) ($veri['musavir_id'] ?? 0);
+        $musavirDegisti = $yeniMusavir > 0 && $yeniMusavir !== (int) $mukellef['musavir_id'];
+        $gecerlilik = trim((string) $this->request->getPost('musavir_gecerlilik'));
+        unset($veri['musavir_id']);
+
+        $db = db_connect();
+        $db->transStart();
+
         if (! $this->model->update($id, $veri)) {
+            $db->transRollback();
+
             return redirect()->back()->withInput()->with('hatalar', $this->model->errors());
+        }
+
+        if ($musavirDegisti) {
+            $hata = (new MusavirDonemModel())->musavirDegistir(
+                $id,
+                $yeniMusavir,
+                $gecerlilik !== '' ? $gecerlilik : date('Y-m')
+            );
+
+            if ($hata !== null) {
+                $db->transRollback();
+
+                return redirect()->back()->withInput()->with('hata', $hata);
+            }
+        }
+
+        $db->transComplete();
+
+        if (! $db->transStatus()) {
+            return redirect()->back()->withInput()->with('hata', 'Mükellef kaydedilemedi.');
         }
 
         $turler = $this->request->getPost('turler') ?? [];
@@ -170,8 +271,11 @@ class Mukellefler extends BaseController
         // Tarih/tür değişmiş olabilir -> dönemleri yeniden senkronize et
         $this->donemleriOtomatikUret($id);
 
-        return redirect()->to(site_url('mukellefler/detay/' . $id))
-            ->with('basari', 'Mükellef güncellendi, dönemler yeniden hesaplandı.');
+        $mesaj = $musavirDegisti
+            ? 'Mükellef güncellendi. Müşavir değişikliği dönem olarak kaydedildi; dönemler yeniden hesaplandı.'
+            : 'Mükellef güncellendi, dönemler yeniden hesaplandı.';
+
+        return redirect()->to(site_url('mukellefler/detay/' . $id))->with('basari', $mesaj);
     }
 
     // -----------------------------------------------------------------
@@ -205,6 +309,10 @@ class Mukellefler extends BaseController
             'durumlar' => BeyannameTakipModel::DURUMLAR,
             'maliYetki'    => $this->maliYetkiVarMi(),
             'sicilGecmis'  => $sicilGecmis,
+            // Müşavir sözleşme dönemleri
+            'donemler'         => (new MusavirDonemModel())->donemler($id),
+            'donemMusavirleri' => $this->secilebilirMusavirler(),
+            'donemBosluk'      => $this->donemBoslukAylari($id),
         ], $mukellef['unvan']);
     }
 

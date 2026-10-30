@@ -83,6 +83,7 @@ echo "  kapsam: musavir kullanıcısı → müşavir [$IZIN] · yetkisiz mükell
 ol "test mükellefleri bulundu (kapsam içi + kapsam dışı)" "1" \
    "$([ -n "$MK" ] && [ -n "$MK2" ] && echo 1 || echo 0)"
 
+MKMUS=$(db "SELECT musavir_id FROM mukellefler WHERE id=$MK;")  # kesen müşavir (zorunlu alan)
 db "DELETE FROM makbuzlar WHERE aciklama LIKE 'MKF-TEST%';" >/dev/null 2>&1
 
 echo
@@ -100,7 +101,7 @@ ol "Excel girişi hâlâ duruyor (regresyon)" "1" \
 
 echo
 echo "=== 2) FORM İLE KAYIT (otomatik stopaj/KDV) ==="
-kaydet $J -d "id=0" -d "mukellef_id=$MK" -d "yil=$YIL" -d "tarih=$BUGUN" \
+kaydet $J -d "id=0" -d "mukellef_id=$MK" -d "musavir_id=$MKMUS" -d "yil=$YIL" -d "tarih=$BUGUN" \
   -d "makbuz_no=MKF-001" -d "brut=10000" -d "stopaj=" -d "kdv=" -d "donus=liste" \
   -d "aciklama=MKF-TEST otomatik oran"
 ol "kayıt başarılı → listeye döner" "/makbuz?yil=$YIL" "$(hedef)"
@@ -116,11 +117,11 @@ ol "net = brüt − stopaj + KDV" \
 ol "yıl doğru kaydedildi" "$YIL" "$(db "SELECT yil FROM makbuzlar WHERE id=$MID;")"
 ol "ay tarihten türetildi" "$(date -d "$BUGUN" +%-m)" "$(db "SELECT ay FROM makbuzlar WHERE id=$MID;")"
 ol "makbuz no kaydedildi" "MKF-001" "$(db "SELECT makbuz_no FROM makbuzlar WHERE id=$MID;")"
-ol "müşavir portföyden geldi (müşavir 1)" "1" "$(db "SELECT musavir_id FROM makbuzlar WHERE id=$MID;")"
+ol "kesen müşavir formdan kaydedildi" "$MKMUS" "$(db "SELECT musavir_id FROM makbuzlar WHERE id=$MID;")"
 
 echo
 echo "=== 3) ELLE GİRİLEN STOPAJ/KDV KORUNUR ==="
-kaydet $J -d "id=0" -d "mukellef_id=$MK" -d "yil=$YIL" -d "tarih=$BUGUN" \
+kaydet $J -d "id=0" -d "mukellef_id=$MK" -d "musavir_id=$MKMUS" -d "yil=$YIL" -d "tarih=$BUGUN" \
   -d "makbuz_no=MKF-002" -d "brut=5000" -d "stopaj=900" -d "kdv=1000" -d "donus=liste" \
   -d "aciklama=MKF-TEST elle tutar"
 MID2=$(db "SELECT id FROM makbuzlar WHERE aciklama='MKF-TEST elle tutar' LIMIT 1;")
@@ -130,7 +131,7 @@ ol "net elle tutarlarla: 5000-900+1000 = 5100" "5100.00" "$(db "SELECT net FROM 
 
 echo
 echo "=== 4) TÜRKÇE BİÇİMLİ TUTAR (1.250,50) ==="
-kaydet $J -d "id=0" -d "mukellef_id=$MK" -d "yil=$YIL" -d "tarih=$BUGUN" \
+kaydet $J -d "id=0" -d "mukellef_id=$MK" -d "musavir_id=$MKMUS" -d "yil=$YIL" -d "tarih=$BUGUN" \
   -d "makbuz_no=MKF-003" -d "brut=1.250,50" -d "stopaj=0" -d "kdv=0" -d "donus=liste" \
   -d "aciklama=MKF-TEST virgüllü tutar"
 MID3=$(db "SELECT id FROM makbuzlar WHERE aciklama='MKF-TEST virgüllü tutar' LIMIT 1;")
@@ -139,7 +140,7 @@ ol "1.250,50 → 1250.50 okundu" "1250.50" "$(db "SELECT brut FROM makbuzlar WHE
 echo
 echo "=== 5) MÜKERRER KORUMA (aynı makbuz no) ==="
 ONCE=$(db "SELECT COUNT(*) FROM makbuzlar WHERE aciklama LIKE 'MKF-TEST%';")
-kaydet $J -d "id=0" -d "mukellef_id=$MK" -d "yil=$YIL" -d "tarih=$BUGUN" \
+kaydet $J -d "id=0" -d "mukellef_id=$MK" -d "musavir_id=$MKMUS" -d "yil=$YIL" -d "tarih=$BUGUN" \
   -d "makbuz_no=MKF-001" -d "brut=10000" -d "donus=liste" \
   -d "aciklama=MKF-TEST mukerrer deneme"
 ol "mükerrer kayıt ENGELLENDİ (kayıt sayısı sabit)" "$ONCE" \
@@ -150,7 +151,7 @@ curl -s -b $J -c $J -o /tmp/mkf_mesaj.html "$B/makbuz?yil=$YIL"
 ol "  kullanıcıya açıklayıcı hata gösterildi" "1" \
    "$(grep -c 'zaten kayıtlı' /tmp/mkf_mesaj.html | awk '{print ($1>0)?1:0}')"
 
-kaydet $J -d "id=0" -d "mukellef_id=$MK" -d "yil=$YIL" -d "tarih=$BUGUN" \
+kaydet $J -d "id=0" -d "mukellef_id=$MK" -d "musavir_id=$MKMUS" -d "yil=$YIL" -d "tarih=$BUGUN" \
   -d "makbuz_no=MKF-001" -d "brut=10000" -d "zorla=1" -d "donus=liste" \
   -d "aciklama=MKF-TEST bilincli mukerrer"
 ol "zorla=1 ile kaydedildi (bilinçli tekrar)" "1" \
@@ -182,7 +183,7 @@ ol "mükellef detayında $SAYI makbuz satırı" "$SAYI" "$DETAY_SAYI"
 
 echo
 echo "=== 7) TAHHİL İŞARETİ VE DİĞER ALANLAR ==="
-kaydet $J -d "id=0" -d "mukellef_id=$MK" -d "yil=$YIL" -d "tarih=$BUGUN" \
+kaydet $J -d "id=0" -d "mukellef_id=$MK" -d "musavir_id=$MKMUS" -d "yil=$YIL" -d "tarih=$BUGUN" \
   -d "makbuz_no=MKF-004" -d "brut=2000" -d "stopaj=0" -d "kdv=0" \
   -d "tahsil_edildi=1" -d "tahsil_tarihi=$BUGUN" -d "musavir_id=1" -d "donus=liste" \
   -d "aciklama=MKF-TEST tahsil"

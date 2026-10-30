@@ -14,6 +14,9 @@ class MukellefModel extends Model
     protected $useSoftDeletes = true;
     protected $deletedField   = 'deleted_at';
 
+    // Yeni mükellefin ilk müşavir dönemini aç (bkz. MusavirDonemModel)
+    protected $afterInsert = ['musavirDonemiAc'];
+
     protected $allowedFields = [
         'musavir_id', 'sorumlu_kullanici_id', 'kod', 'unvan', 'mukellef_tipi', 'vergi_kimlik_no', 'tc_kimlik_no',
         'vergi_dairesi', 'defter_tipi',
@@ -58,6 +61,20 @@ class MukellefModel extends Model
         ],
         'tc_kimlik_no'    => ['exact_length' => 'TC kimlik no 11 haneli olmalıdır.'],
     ];
+
+    /**
+     * Yeni mükellef kaydedilince ilk müşavir dönemini açar.
+     * Böylece her mükellefin en az bir dönemi olur (ay haritası boş kalmaz).
+     */
+    protected function musavirDonemiAc(array $olay): array
+    {
+        if (! empty($olay['result']) && ! empty($olay['id'])
+            && ! empty($olay['data']['musavir_id'])) {
+            (new MusavirDonemModel())->ilkDonem((int) $olay['id'], (int) $olay['data']['musavir_id']);
+        }
+
+        return $olay;
+    }
 
     // -----------------------------------------------------------------
     //  Listeleme

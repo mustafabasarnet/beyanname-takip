@@ -156,6 +156,77 @@ $terkli = ! empty($mukellef['terk_tarihi']);
   </div>
 </div>
 
+<!-- ============ MALİ MÜŞAVİR DÖNEMLERİ ============ -->
+<div class="kart" id="musavir-donemleri">
+  <div class="kart-baslik"><h2>👥 Mali Müşavir Dönemleri</h2></div>
+  <div class="kart-govde">
+    <p class="kucuk-yazi" style="margin:0 0 10px">
+      Mükellef yıl içinde müşavir değiştirdiyse dönemleri girin. Yıllık sözleşme ücreti bu dönemlere
+      <b>ay bazında</b> bölünür; makbuz hasılatı ise makbuzu <b>kesen</b> müşavirde kalır.
+      Müşavir değişikliği mükellef düzenleme ekranından da yapılabilir (geçerlilik ayıyla).
+    </p>
+
+    <?php if (! empty($donemBosluk)): ?>
+      <div class="uyari dikkat"><span class="ik">⚠</span><div>
+        Bu yılın şu aylarında mali müşavir tanımlı değil: <b><?= esc(implode(', ', $donemBosluk)) ?></b>.
+        Bu aylardaki ücret payı "Atanmamış" sayılır; gerekiyorsa aşağıdan dönem ekleyin.
+      </div></div>
+    <?php endif; ?>
+
+    <?php if ($donemler === []): ?>
+      <div class="kucuk-yazi">Henüz müşavir dönemi yok.</div>
+    <?php else: ?>
+      <div class="tablo-sar">
+      <table class="tablo">
+        <thead><tr><th>Mali Müşavir</th><th>Başlangıç</th><th>Bitiş</th><th class="sag">İşlem</th></tr></thead>
+        <tbody>
+          <?php foreach (array_reverse($donemler) as $d): ?>
+            <tr>
+              <td><b><?= esc($donemMusavirleri[(int) $d['musavir_id']] ?? ('#' . $d['musavir_id'])) ?></b></td>
+              <td><?= esc(\App\Models\MusavirDonemModel::ayEtiketi($d['baslangic'])) ?></td>
+              <td><?= empty($d['bitis']) ? '<span class="rozet">Açık</span>' : esc(\App\Models\MusavirDonemModel::ayEtiketi($d['bitis'])) ?></td>
+              <td class="sag">
+                <form method="post" action="<?= site_url('mukellefler/donem/sil/' . $mukellef['id'] . '/' . $d['id']) ?>"
+                      style="display:inline" onsubmit="return confirm('Bu müşavir dönemi silinsin mi?');">
+                  <?= csrf_field() ?>
+                  <button type="submit" class="btn ikincil kucuk">Sil</button>
+                </form>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+      </div>
+    <?php endif; ?>
+
+    <div class="bolucu"></div>
+    <form method="post" action="<?= site_url('mukellefler/donem/ekle/' . $mukellef['id']) ?>" class="form-grid">
+      <?= csrf_field() ?>
+      <div class="form-grup">
+        <label>Mali Müşavir</label>
+        <select name="musavir_id" required>
+          <option value="">— Seçiniz —</option>
+          <?php foreach ($donemMusavirleri as $mid => $mad): ?>
+            <option value="<?= $mid ?>"><?= esc($mad) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="form-grup">
+        <label>Başlangıç ayı</label>
+        <input type="month" name="baslangic" required max="<?= date('Y-m') ?>">
+      </div>
+      <div class="form-grup">
+        <label>Bitiş ayı <span class="kucuk-yazi">(boş = açık)</span></label>
+        <input type="month" name="bitis">
+      </div>
+      <div class="form-grup" style="align-self:end">
+        <button type="submit" class="btn">+ Dönem Ekle</button>
+      </div>
+    </form>
+    <span class="yardim">Dönemler çakışamaz. Geçiş ayı yeni müşavirin sayılır. Gelecek bir ay başlatılamaz.</span>
+  </div>
+</div>
+
 <!-- ============ BEYANNAME TÜRLERİ ============ -->
 <div class="kart">
   <div class="kart-baslik"><h2>🗂️ Verilen Beyannameler</h2></div>

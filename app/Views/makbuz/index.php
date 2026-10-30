@@ -385,8 +385,8 @@
           </div>
           <div class="form-grup">
             <label>Kesen Mali Müşavir</label>
-            <select name="musavir_id" id="mk-musavir">
-              <option value="">— Portföy sahibi —</option>
+            <select name="musavir_id" id="mk-musavir" required>
+              <option value="">— Seçiniz —</option>
               <?php foreach ($musavirler as $mid => $mad): ?>
                 <option value="<?= $mid ?>"><?= esc($mad) ?></option>
               <?php endforeach; ?>
@@ -587,6 +587,21 @@ window.addEventListener('scroll', function () {
     }
   }
 
+  // Kesen müşavir varsayılanı: makbuz tarihindeki sözleşme dönemi müşaviri
+  var mkTarih = document.getElementById('mk-tarih');
+  var mkMus   = document.getElementById('mk-musavir');
+
+  function mkMusavirOner() {
+    if (!mkId.value || !mkTarih.value) { return; }
+    fetch('<?= site_url('makbuz/donem-musavir') ?>?mukellef_id=' + encodeURIComponent(mkId.value)
+          + '&tarih=' + encodeURIComponent(mkTarih.value),
+          { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { if (d && d.musavir_id) { mkMus.value = String(d.musavir_id); } })
+      .catch(function () {});
+  }
+  mkTarih.addEventListener('change', mkMusavirOner);
+
   mkAra.addEventListener('input', function () {
     clearTimeout(zaman);
     secimiTemizle();
@@ -611,6 +626,7 @@ window.addEventListener('scroll', function () {
 
             div.addEventListener('click', function () {
               mkId.value = m.id;
+              mkMusavirOner();
               mkAra.value = m.unvan;
               if (mkSecili) {
                 mkSecili.textContent = '✓ Seçildi: ' + m.unvan + (vkn ? ' (' + vkn + ')' : '');
