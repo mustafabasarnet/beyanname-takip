@@ -175,6 +175,35 @@ class Mukellefler extends BaseController
             : $yanit->with('basari', 'Müşavir dönemi eklendi.');
     }
 
+    /** Müşavir dönemi düzenleme (müşavir, başlangıç ve bitiş ayı) */
+    public function donemGuncelle(int $id, int $donemId)
+    {
+        $mukellef = $this->model->find($id);
+
+        if ($mukellef === null || ! $this->mukellefeErisebilirMi($mukellef)) {
+            return redirect()->to(site_url('mukellefler'))->with('hata', 'Mükellef bulunamadı.');
+        }
+
+        $musavirId = (int) $this->request->getPost('musavir_id');
+        $yanit     = redirect()->to(site_url('mukellefler/detay/' . $id) . '#musavir-donemleri');
+
+        if (! array_key_exists($musavirId, $this->secilebilirMusavirler())) {
+            return $yanit->with('hata', 'Geçerli bir mali müşavir seçin.');
+        }
+
+        $hata = (new MusavirDonemModel())->donemGuncelle(
+            $id,
+            $donemId,
+            $musavirId,
+            (string) $this->request->getPost('baslangic'),
+            $this->request->getPost('bitis') ?: null
+        );
+
+        return $hata !== null
+            ? $yanit->with('hata', $hata)
+            : $yanit->with('basari', 'Müşavir dönemi güncellendi.');
+    }
+
     /** Müşavir dönemi silme */
     public function donemSil(int $id, int $donemId)
     {

@@ -249,6 +249,55 @@ t('Silinince güncel müşavir geri 1\'e döner',
   (int) $db->table('mukellefler')->select('musavir_id')->where('id', $mid)->get()->getRow()->musavir_id === 1);
 
 // -----------------------------------------------------------------
+echo "\n=== 5b) DÖNEM DÜZENLEME ===\n";
+$hazirlik = $model->musavirDegistir((int) $mid, 2, '2026-03');
+t('Düzenleme için Mart 2026 Veli dönemi hazırlandı', $hazirlik === null);
+$veliDonem = null;
+foreach ($model->donemler((int) $mid) as $d) { if ((int) $d['musavir_id'] === 2) { $veliDonem = $d; } }
+t('Veli dönemi bulunur', $veliDonem !== null);
+
+if ($veliDonem !== null) {
+    $vid = (int) $veliDonem['id'];
+
+    t('Aynı kayıt değişmeden kaydedilebilir (kendisiyle çakışmaz)',
+      $model->donemGuncelle((int) $mid, $vid, 2, '2026-03', null) === null);
+
+    t('Başlangıç Nisan\'a ertelenebilir (Mart atanmamış kalır)',
+      $model->donemGuncelle((int) $mid, $vid, 2, '2026-04', null) === null);
+    $g = $model->donemler((int) $mid);
+    $guncel = null;
+    foreach ($g as $d) { if ((int) $d['id'] === $vid) { $guncel = $d; } }
+    t('Güncellenen başlangıç 2026-04-01', $guncel !== null && $guncel['baslangic'] === '2026-04-01',
+      json_encode($guncel));
+
+    t('Bitiş ayı ile kapatılabilir (2026-08)',
+      $model->donemGuncelle((int) $mid, $vid, 2, '2026-04', '2026-08') === null);
+
+    $cakisma = $model->donemGuncelle((int) $mid, $vid, 2, '2026-02', null);
+    t('Ali dönemiyle çakışan düzenleme reddedilir', $cakisma !== null && str_contains($cakisma, 'çakışıyor'),
+      (string) $cakisma);
+
+    t('Bitiş başlangıçtan önce olamaz', $model->donemGuncelle((int) $mid, $vid, 2, '2026-06', '2026-05') !== null);
+    t('Gelecek ay başlatılamaz', $model->donemGuncelle((int) $mid, $vid, 2, $gelecek, null) !== null);
+    t('Olmayan dönem güncellenemez', $model->donemGuncelle((int) $mid, 999999, 2, '2026-04', null) !== null);
+
+    t('Müşavir değiştirilebilir (Veli → Ali)',
+      $model->donemGuncelle((int) $mid, $vid, 1, '2026-04', '2026-08') === null);
+    t('Müşavir değişince güncel müşavir senkron (Ali, 2026-04 başlamış son dönem)',
+      (int) $db->table('mukellefler')->select('musavir_id')->where('id', $mid)->get()->getRow()->musavir_id === 1);
+
+    t('Düzenlenen dönem bitiş/başlangıç değerleri saklanır',
+      (function () use ($model, $mid, $vid) {
+          foreach ($model->donemler((int) $mid) as $d) {
+              if ((int) $d['id'] === $vid) {
+                  return $d['baslangic'] === '2026-04-01' && $d['bitis'] === '2026-08-31' && (int) $d['musavir_id'] === 1;
+              }
+          }
+          return false;
+      })());
+}
+
+// -----------------------------------------------------------------
 echo "\n=== 6) TEMİZLİK ===\n";
 $db->query("DELETE FROM mukellefler WHERE id = " . (int) $mid);
 t('Fikstür silindi (dönem ve makbuzlar kaskad)',

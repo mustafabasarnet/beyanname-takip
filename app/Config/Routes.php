@@ -62,6 +62,7 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
         $routes->get('cizelge/(:num)', 'Mukellefler::cizelge/$1');
         $routes->get('ara', 'Mukellefler::ara');                  // AJAX — sicil formu mükellef arama
         $routes->post('donem/ekle/(:num)', 'Mukellefler::donemEkle/$1');          // müşavir dönemi
+        $routes->post('donem/guncelle/(:num)/(:num)', 'Mukellefler::donemGuncelle/$1/$2'); // müşavir dönemi
         $routes->post('donem/sil/(:num)/(:num)', 'Mukellefler::donemSil/$1/$2');  // müşavir dönemi
 
         // Excel/CSV'den toplu aktarma (yalnızca admin ve müşavir)

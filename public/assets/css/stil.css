@@ -230,6 +230,27 @@ label .zorunlu{color:var(--kirmizi)}
 }
 .girdi:disabled,select:disabled,textarea:disabled{background:var(--gri-100);color:var(--gri-400);cursor:not-allowed}
 textarea{resize:vertical;min-height:78px}
+/* Tarih ve ay seçiciler: metin alanlarıyla aynı çerçeve/yazı; takvim simgesi
+   tema renklerine uyar (:where → sınıf kuralları, örn. .girdi, önceliğini korur) */
+:where(input[type="date"],input[type="month"]){
+  width:100%;padding:9px 12px;border:1px solid var(--gri-300);border-radius:var(--radius-sm);
+  background:var(--yuzey);color:var(--gri-800);font-size:13.5px;font-family:inherit;
+  transition:.15s;cursor:pointer
+}
+:where(input[type="date"],input[type="month"]):focus{
+  outline:none;border-color:var(--ana);box-shadow:0 0 0 3px var(--ana-halka)
+}
+:where(input[type="date"],input[type="month"])::-webkit-calendar-picker-indicator{
+  cursor:pointer;opacity:.6;padding:3px;border-radius:4px
+}
+:where(input[type="date"],input[type="month"])::-webkit-calendar-picker-indicator:hover{
+  opacity:1;background:var(--gri-100)
+}
+/* Müşavir dönemi formları: alanlar alt hizada, eylem düğmeleri yan yana */
+.donem-form{align-items:end}
+.donem-form .donem-eylem{flex-direction:row;gap:8px;align-items:center;flex-wrap:wrap}
+.donem-form .donem-eylem .btn{white-space:nowrap}
+.donem-duzen>td{background:var(--gri-50);padding:14px 16px}
 .yardim{font-size:11.5px;color:var(--gri-500)}
 .form-alt{
   display:flex;gap:10px;padding-top:18px;margin-top:18px;border-top:1px solid var(--gri-200);flex-wrap:wrap

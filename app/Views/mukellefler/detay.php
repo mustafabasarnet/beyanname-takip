@@ -177,7 +177,7 @@ $terkli = ! empty($mukellef['terk_tarihi']);
       <div class="kucuk-yazi">Henüz müşavir dönemi yok.</div>
     <?php else: ?>
       <div class="tablo-sar">
-      <table class="tablo">
+      <table class="tablo donem-tablo">
         <thead><tr><th>Mali Müşavir</th><th>Başlangıç</th><th>Bitiş</th><th class="sag">İşlem</th></tr></thead>
         <tbody>
           <?php foreach (array_reverse($donemler) as $d): ?>
@@ -185,11 +185,42 @@ $terkli = ! empty($mukellef['terk_tarihi']);
               <td><b><?= esc($donemMusavirleri[(int) $d['musavir_id']] ?? ('#' . $d['musavir_id'])) ?></b></td>
               <td><?= esc(\App\Models\MusavirDonemModel::ayEtiketi($d['baslangic'])) ?></td>
               <td><?= empty($d['bitis']) ? '<span class="rozet">Açık</span>' : esc(\App\Models\MusavirDonemModel::ayEtiketi($d['bitis'])) ?></td>
-              <td class="sag">
+              <td class="sag" style="white-space:nowrap">
+                <button type="button" class="btn ikincil kucuk" data-donem-ac="<?= (int) $d['id'] ?>">Düzenle</button>
                 <form method="post" action="<?= site_url('mukellefler/donem/sil/' . $mukellef['id'] . '/' . $d['id']) ?>"
                       style="display:inline" onsubmit="return confirm('Bu müşavir dönemi silinsin mi?');">
                   <?= csrf_field() ?>
                   <button type="submit" class="btn ikincil kucuk">Sil</button>
+                </form>
+              </td>
+            </tr>
+            <tr class="donem-duzen" id="donem-duzen-<?= (int) $d['id'] ?>" hidden>
+              <td colspan="4">
+                <form method="post" action="<?= site_url('mukellefler/donem/guncelle/' . $mukellef['id'] . '/' . $d['id']) ?>"
+                      class="form-grid donem-form">
+                  <?= csrf_field() ?>
+                  <div class="form-grup">
+                    <label>Mali Müşavir</label>
+                    <select name="musavir_id" required>
+                      <?php foreach ($donemMusavirleri as $mid => $mad): ?>
+                        <option value="<?= $mid ?>" <?= (int) $mid === (int) $d['musavir_id'] ? 'selected' : '' ?>><?= esc($mad) ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </div>
+                  <div class="form-grup">
+                    <label>Başlangıç ayı</label>
+                    <input type="month" class="girdi" name="baslangic" required max="<?= date('Y-m') ?>"
+                           value="<?= esc(substr((string) $d['baslangic'], 0, 7)) ?>">
+                  </div>
+                  <div class="form-grup">
+                    <label>Bitiş ayı <span class="kucuk-yazi">(boş = açık)</span></label>
+                    <input type="month" class="girdi" name="bitis"
+                           value="<?= esc(empty($d['bitis']) ? '' : substr((string) $d['bitis'], 0, 7)) ?>">
+                  </div>
+                  <div class="form-grup donem-eylem">
+                    <button type="submit" class="btn kucuk">Kaydet</button>
+                    <button type="button" class="btn ikincil kucuk" data-donem-kapat="<?= (int) $d['id'] ?>">Vazgeç</button>
+                  </div>
                 </form>
               </td>
             </tr>
@@ -200,7 +231,7 @@ $terkli = ! empty($mukellef['terk_tarihi']);
     <?php endif; ?>
 
     <div class="bolucu"></div>
-    <form method="post" action="<?= site_url('mukellefler/donem/ekle/' . $mukellef['id']) ?>" class="form-grid">
+    <form method="post" action="<?= site_url('mukellefler/donem/ekle/' . $mukellef['id']) ?>" class="form-grid donem-form">
       <?= csrf_field() ?>
       <div class="form-grup">
         <label>Mali Müşavir</label>
@@ -213,19 +244,38 @@ $terkli = ! empty($mukellef['terk_tarihi']);
       </div>
       <div class="form-grup">
         <label>Başlangıç ayı</label>
-        <input type="month" name="baslangic" required max="<?= date('Y-m') ?>">
+        <input type="month" class="girdi" name="baslangic" required max="<?= date('Y-m') ?>">
       </div>
       <div class="form-grup">
         <label>Bitiş ayı <span class="kucuk-yazi">(boş = açık)</span></label>
-        <input type="month" name="bitis">
+        <input type="month" class="girdi" name="bitis">
       </div>
-      <div class="form-grup" style="align-self:end">
+      <div class="form-grup donem-eylem">
         <button type="submit" class="btn">+ Dönem Ekle</button>
       </div>
     </form>
     <span class="yardim">Dönemler çakışamaz. Geçiş ayı yeni müşavirin sayılır. Gelecek bir ay başlatılamaz.</span>
   </div>
 </div>
+<script>
+(function () {
+  // Düzenle: ilgili satırın altındaki düzenleme satırını aç/kapat (aynı anda tek satır)
+  function kapat() {
+    document.querySelectorAll('.donem-duzen').forEach(function (r) { r.hidden = true; });
+  }
+  document.querySelectorAll('[data-donem-ac]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var satir = document.getElementById('donem-duzen-' + b.getAttribute('data-donem-ac'));
+      var acik = satir && satir.hidden;
+      kapat();
+      if (satir && acik) { satir.hidden = false; }
+    });
+  });
+  document.querySelectorAll('[data-donem-kapat]').forEach(function (b) {
+    b.addEventListener('click', kapat);
+  });
+})();
+</script>
 
 <!-- ============ BEYANNAME TÜRLERİ ============ -->
 <div class="kart">

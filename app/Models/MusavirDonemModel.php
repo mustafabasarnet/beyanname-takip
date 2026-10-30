@@ -341,6 +341,33 @@ class MusavirDonemModel extends Model
      */
     public function donemEkle(int $mukellefId, int $musavirId, string $basAy, ?string $bitAy = null): ?string
     {
+        return $this->donemYaz(null, $mukellefId, $musavirId, $basAy, $bitAy);
+    }
+
+    /**
+     * Mevcut dönemi düzenleme (müşavir, başlangıç ve bitiş ayı).
+     * Kayıt kendi çakışma kontrolünden hariç tutulur.
+     *
+     * @return string|null hata mesajı; başarılıysa null
+     */
+    public function donemGuncelle(int $mukellefId, int $donemId, int $musavirId, string $basAy, ?string $bitAy = null): ?string
+    {
+        $mevcut = $this->where('id', $donemId)->where('mukellef_id', $mukellefId)->first();
+
+        if ($mevcut === null) {
+            return 'Dönem bulunamadı.';
+        }
+
+        return $this->donemYaz($donemId, $mukellefId, $musavirId, $basAy, $bitAy);
+    }
+
+    /**
+     * Ortak doğrulama + yazma (ekleme: $haricId = null, güncelleme: dönem id).
+     *
+     * @return string|null hata mesajı; başarılıysa null
+     */
+    private function donemYaz(?int $haricId, int $mukellefId, int $musavirId, string $basAy, ?string $bitAy): ?string
+    {
         $bas = self::ayBasi($basAy);
 
         if ($bas === null) {
@@ -369,6 +396,10 @@ class MusavirDonemModel extends Model
         [$ys, $ye] = self::aralik($yeni);
 
         foreach ($this->donemler($mukellefId) as $d) {
+            if ($haricId !== null && (int) $d['id'] === $haricId) {
+                continue;
+            }
+
             [$s, $e] = self::aralik($d);
 
             if ($ys <= $e && $s <= $ye) {
@@ -378,13 +409,21 @@ class MusavirDonemModel extends Model
             }
         }
 
-        $this->db->transStart();
-        $this->insert([
+        $veri = [
             'mukellef_id' => $mukellefId,
             'musavir_id'  => $musavirId,
             'baslangic'   => $bas,
             'bitis'       => $bit,
-        ]);
+        ];
+
+        $this->db->transStart();
+
+        if ($haricId === null) {
+            $this->insert($veri);
+        } else {
+            $this->update($haricId, $veri);
+        }
+
         $this->senkronle($mukellefId);
         $this->db->transComplete();
 

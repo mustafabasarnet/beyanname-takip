@@ -184,6 +184,27 @@ ol "kapsam dışı müşavir seçilemez (müşavir 2)" "1" "$(echo "$HTML" | gre
 ol "kapsam dışı seçimde DB'ye dönem yazılmadı (1)" "1" "$(db "SELECT COUNT(*) FROM mukellef_musavir_donemleri WHERE mukellef_id=$A;")"
 
 # ---------------------------------------------------------------------
+echo; echo "=== 8B) DÖNEM DÜZENLEME (HTTP) ==="
+post $J $B/mukellefler/donem/ekle/$A -d musavir_id=2 -d baslangic=2026-03 -d bitis=
+VEL_D=$(db "SELECT id FROM mukellef_musavir_donemleri WHERE mukellef_id=$A AND musavir_id=2;")
+ol "düzenleme için Veli dönemi eklendi" "1" "$([ -n "$VEL_D" ] && echo 1 || echo 0)"
+ol "düzenle: token yok → 403" "403" "$(postCsrfsiz $J $B/mukellefler/donem/guncelle/$A/$VEL_D -d musavir_id=2 -d baslangic=2026-03)"
+post $J $B/mukellefler/donem/guncelle/$A/$VEL_D -d musavir_id=2 -d baslangic=2026-03 -d bitis=2026-09
+ol "düzenleme: bitiş ayı kaydedildi (2026-09-30)" "2026-09-30" \
+   "$(db "SELECT bitis FROM mukellef_musavir_donemleri WHERE id=$VEL_D;")"
+post $J $B/mukellefler/donem/guncelle/$A/$VEL_D -d musavir_id=2 -d baslangic=2026-02 -d bitis=
+HTML=$(sayfa $J "$(cut -d'|' -f2 /tmp/mdh_post.txt)")
+ol "düzenleme: çakışma reddedilir (mesaj)" "1" "$(echo "$HTML" | grep -c 'çakışıyor' | awk '{print ($1>0)?1:0}')"
+ol "düzenleme: çakışmada DB değişmedi (2026-03)" "2026-03-01" \
+   "$(db "SELECT baslangic FROM mukellef_musavir_donemleri WHERE id=$VEL_D;")"
+post $JM $B/mukellefler/donem/guncelle/$Bm/$(db "SELECT id FROM mukellef_musavir_donemleri WHERE mukellef_id=$Bm LIMIT 1;") -d musavir_id=1 -d baslangic=2025-01 -d bitis=
+HTML=$(sayfa $JM "$(cut -d'|' -f2 /tmp/mdh_post.txt)")
+ol "izolasyon: kapsam dışı dönem düzenlenemez" "1" "$(echo "$HTML" | grep -c 'Mükellef bulunamadı' | awk '{print ($1>0)?1:0}')"
+ol "düzenleme sayfasında tarih seçici sınıfı (girdi)" "1" \
+   "$(sayfa $J $B/mukellefler/detay/$A | grep -c 'type="month" class="girdi"' | awk '{print ($1>0)?1:0}')"
+ol "Düzenle düğmesi var" "1" "$(sayfa $J $B/mukellefler/detay/$A | grep -c 'data-donem-ac' | awk '{print ($1>0)?1:0}')"
+post $J $B/mukellefler/donem/sil/$A/$VEL_D
+echo
 echo; echo "=== 9) MİGRATION İDEMPOTENT ==="
 $MDBR < "$KOK/database/migration_musavir_donem.sql" >/dev/null 2>/tmp/mdh_mig.err; M1=$?
 ILK=$(db "SELECT COUNT(*) FROM mukellef_musavir_donemleri;")

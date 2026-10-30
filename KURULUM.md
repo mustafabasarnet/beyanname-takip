@@ -1468,7 +1468,8 @@ Ahmet, Mart–Aralık Mahmut). Bu durumda:
   **"Geçerlilik ayı"** alanına yeni müşavirin başlangıç ayını seçin (varsayılan bu ay).
   Önceki müşavirin dönemi bir önceki ayın sonunda kapanır.
 - **Geçmiş dönem girişi:** Mükellef → Detay → **Mali Müşavir Dönemleri** kartı.
-  Başlangıç/bitiş ayı ile dönem ekleyin veya silin.
+  Başlangıç/bitiş ayı ile dönem ekleyin, **Düzenle** ile değiştirin veya silin.
+  Düzenleme çakışma ve gelecek ay kurallarına tabidir.
 
 **Kurallar:** Dönemler çakışamaz; gelecek bir ay başlatılamaz. Hiçbir dönemin
 kapsamadığı aylar "Atanmamış" sayılır ve detay sayfasında uyarı çıkar.
@@ -1480,7 +1481,7 @@ güncel müşavirinde tam yıl görünür.
 bugünkü müşaviriyle açık uçlu bir ilk dönem açar; eski makbuzlarda boş kalan
 kesen müşavir de mükellefin o anki müşaviriyle doldurulur. Dolu kayıtlara dokunmaz.
 
-Testler: `tests/musavir_donem_testi.php` (43), `tests/musavir_donem_http_testi.sh` (41).
+Testler: `tests/musavir_donem_testi.php` (56), `tests/musavir_donem_http_testi.sh` (49).
 
 
 Evraklar bir ay gecikmeli toplanır: **Ağustos'ta Temmuz'un** evraklarını
