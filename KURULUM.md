@@ -1,3 +1,152 @@
+# 🧭 DEVİR NOTU — Yeni Sohbet İçin
+
+> Bu bölüm projenin **devir anındaki durumunu** özetler. Ayrıntılı kurulum ve özellik belgeleri bu bölümün altındadır.
+
+## 1. Proje ve ortam
+
+| Konu | Değer |
+|---|---|
+| Uygulama | Mali müşavir beyanname takip programı (CodeIgniter 4.7.4) |
+| Ortam | PHP 8.4, MariaDB 11.8 |
+| Çalışma dizini | `/home/user/beyanname-takip` |
+| Uzak depo | `https://github.com/mustafabasarnet/beyanname-takip` (dal: `main`) |
+| Kullanıcı dili | **Türkçe**; kısa, net yanıt, özet tablo tercih ediliyor |
+
+**Ortamı kurmak** (≈30 sn; veritabanını sıfırlar, tüm `database/migration_*.sql` dosyalarını alfabetik çalıştırır):
+```bash
+bash /home/user/ortam_kur.sh
+```
+
+**Test sunucusu** (ortam yenilemesinde kapanabilir, gerekirse yeniden başlatın):
+```bash
+php -S 0.0.0.0:8099 -t /home/user/beyanname-takip/public
+```
+
+**Tam test süiti:** `bash /home/user/test_kos.sh` → sonuçlar `/home/user/test_sonuclari.txt`.
+
+**UI (jsdom) testleri** için: `mkdir -p /tmp/jsdom && npm install --prefix /tmp/jsdom jsdom` (`/tmp` kalıcı değildir).
+
+**Geliştirme kullanıcıları** (yalnız test ortamı): `admin`, `personel`, `musavir`, `fatma` — şifre `Test1234`.
+
+**GitHub erişimi:** Push için kişisel erişim belirteci (PAT) gerekir. Belirteç **bu belgeye, koda ya da depoya yazılmaz**; yeni sohbette kullanıcıdan istenmelidir. Commit kimliği: `git -c user.name="arena-agent" -c user.email="agent@arena.ai" commit`.
+
+## 2. Git durumu (devir anında)
+
+**Uzak `main` geçmişi (son commit'ler, yeniden eskiye):**
+
+| Commit | Açıklama |
+|---|---|
+| `2e6c979` | Revert: mali müşavir dönemi **düzenleme** özelliği geri alındı |
+| `3d544ab` | (geri alındı) Dönem düzenleme + tarih seçici stili |
+| `c35279e` | Makbuz Takip: mali müşavir sözleşme dönemleri |
+| `4a6cd08` | Ödeme listesi: SGK ödemesi hafta sonu kaydırmasında yanlış aya düşüyordu |
+| `2256bca` / `9d8360b` | Yapışkan Notlar Faz 2 / Faz 1 |
+| `258d5f9` | Firma kimliği: logo ve firma adı |
+| `31af5a6` | Karanlık tema: rozet ve satır okunabilirliği |
+| `00aeaea` | Tema migration v2 (`information_schema` kaldırıldı) |
+
+**Yerel depo durumu — dikkat:**
+- Yerel `HEAD` eski (`00aeaea`) ve yerel `origin` tanımlı değil.
+- Çalışma ağacında **commit edilmemiş ~65 değişiklik/yeni dosya** var (42 değişen, 23 yeni). Bunların birçoğu uzak `main`'deki commit'lerle içerik olarak aynıdır; ancak eski `HEAD` yüzünden `git diff` yanıltıcı olabilir.
+- Yeni sohbette önerilen yol: uzak `main`'i çekin (token ile URL), her dosyayı `git show origin/main:<dosya>` ile karşılaştırıp **yalnızca gerçek farkları** ayırın. Yedek almadan `git reset --hard` veya `git stash` **kullanmayın**.
+- Commit yaparken **yalnızca istenen özelliğin hunk'ları** eklenir; ortak dosyalarda (`KURULUM.md`, `Routes.php`, `stil.css`, makbuz ve mükellef görünümleri) başka oturumların değişiklikleri bulunabilir.
+- Geçmişi yeniden yazmak yerine **`git revert`** tercih edilir (bu oturumda da öyle yapıldı).
+
+## 3. Yapılanlar (özellik özeti)
+
+| Özellik | Durum | Not |
+|---|---|---|
+| **Yapışkan Notlar** (Faz 1 + 2) | Uzakta | `kisisel_sticky_notlar`; hatırlatma, arşiv, kısayollar. Migration sırası: `migration_sticky_not.sql` → `migration_sticky_not_faz2.sql` |
+| **Ödeme listesi SGK ay ataması** | Uzakta | `odeme_yasal_tarih` kolonu; `migration_odeme_yasal.sql`. Ay, kanuni tarihe göre belirlenir |
+| **Firma kimliği + logo** | Uzakta | `migration_logo.sql`; yalnız yönetici; SVG kabul edilmez |
+| **Karanlık tema okunabilirliği** | Uzakta | `tests/tema_kontrast_testi.php` (WCAG AA) |
+| **Renkli tema, KDV2 belirteci, Sicil rozeti, ajanda rozeti, kişisel rozet/uyarı, güncelleme logları** | Uzakta | Önceki turlarda tamamlandı |
+| **Makbuz Takip — mali müşavir sözleşme dönemleri** | Uzakta (`c35279e`) | Aşağıda ayrıntı |
+| **Dönem düzenleme + tarih seçici stili** | **Kaldırıldı** (`2e6c979` revert) | Bkz. aşağıdaki "Kaldırılanlar" |
+| **Boş Dönem (düzensiz beyanname)** | Yapılmadı | Kullanıcı kapattı |
+
+### Makbuz Takip — mali müşavir sözleşme dönemleri
+
+**Sorun:** Mükellef yıl içinde müşavir değiştiriyordu (örn. Atikay Ltd.: Ocak–Şubat Ahmet, Mart–Aralık Mahmut). Müşavir değişince geçmiş makbuz ve ücretler yeni müşavire kayıyordu.
+
+**Kararlar (kullanıcı onaylı):**
+- **Hasılat (makbuz):** makbuzu **kesen** müşavirde kalır.
+- **Yıllık ücret (hedef):** sözleşme dönemlerine **ay bazında** bölünür (ör. 12.000 TL: Ahmet 2 ay → 2.000; Mahmut 10 ay → 10.000).
+- **Kesen müşavir:** makbuz formunda **zorunlu**. Makbuz tarihindeki dönem müşavirinden farklıysa kayıt yapılır, bir **not** gösterilir (engellemez).
+- **Mevcut makbuzlar:** dokunulmadı; yalnızca boş kesen müşavir alanları mükellefin o anki müşaviriyle dolduruldu.
+- **Geçiş ayı** yeni müşavirin sayılır. Dönemler **çakışamaz**; **gelecek ay** başlatılamaz.
+
+**Uygulama:**
+- Tablo `mukellef_musavir_donemleri`; model `app/Models/MusavirDonemModel.php`; migration `database/migration_musavir_donem.sql` (idempotent: ilk dönem backfill + boş kesen müşavirleri doldurma).
+- Dönemi olmayan mükellef → güncel müşavir tüm yıl geçerli. Hiçbir dönemin kapsamadığı aylar → "Atanmamış".
+- Mükellef **düzenle** ekranında müşavir değişince "geçerlilik ayı" sorulur; önceki dönem bir önceki ayın sonunda kapanır.
+- Mükellef **detay** ekranında "Mali Müşavir Dönemleri" kartı: dönem **ekle** ve **sil**.
+- Makbuz özetleri, müşavir filtreli liste, aylık dağılım, ücret kopyalama, makbuz içe aktarma → dönem payına/kesen müşavire göre.
+- Gelir Vergisi: `makbuzToplami` ve `aylikDagilim` **kesen** müşavire göre (önceden güncel müşavire göre çalışıyordu — düzeltildi); `ucretToplami` **pay** bazlı.
+- Müşavir kapsamı: yalnızca dönem payı olan mükellefler listelenir. Makbuz kesmek kapsam genişletmez (veri sızıntısını önlemek için).
+- Testler: `tests/musavir_donem_testi.php` (**43**), `tests/musavir_donem_http_testi.sh` (**41**); `makbuz_form_testi.sh` kesen müşavir zorunluluğuna göre güncellendi (40/40).
+
+**Kaldırılanlar (bu oturumun son özelliği):** Dönem **düzenleme** (Düzenle düğmesi, `donemGuncelle` metodu, `POST mukellefler/donem/guncelle/...` rotası, düzenleme formu ve JS), tarih/ay seçicileri için eklenen stil bloğu ve ilgili testler. Uzakta `2e6c979` revert commit'i ile geri alındı; yerel çalışma ağacı da aynı içeriğe getirildi. Tekrar eklenmek istenirse: `git revert 2e6c979` ya da `3d544ab` içeriğini yeniden uygulamak yeterli.
+
+## 4. Kullanıcı tercihleri ve çalışma kuralları
+
+- **Dil ve üslup:** Türkçe; kısa ve net yanıt, özet tablo.
+- **"Önce sor / tasarımı göster"** denince kod yazılmaz; tasarım + taslak sunulur, onay beklenir. "Uygula" denince kod yazılır.
+- **Commit ve push ayrı istenir.** İstenen yalnızca o özelliğin değişiklikleri commit edilir; diğer değişiklikler dokunulmadan kalır.
+- **Kişisel notlar** (Kişisel Notlar, Yapışkan Notlar, kişisel ajanda) **yönetici dâhil kimseye görünmez**; her sorgu `kullanici_id` ile süzülür.
+- **Yetki:** admin tümünü görür; müşavir/personel yalnızca erişebildiği müşavir kapsamını görür.
+- **Ayar/süre değerleri** koda sabit yazılmaz; ayar tablosundan okunur.
+- **UI:** mevcut sınıflar kullanılır (`.kart`, `.form-grid`, `.girdi`, `.btn`, `.uyari`, `.tablo`, `.rozet`, `.filtre-bar`, `.modal`); yeni UI framework ya da bağımlılık eklenmez. Renkler CSS değişkenleriyle (`--yuzey`, `--cizgi`, `--gri-*`, `--ana`) verilir.
+- **Güvenlik:** CSRF, yabancı anahtar (FK), indeks, mükerrer koruma ve transaction korunur.
+
+## 5. Teknik kurallar
+
+- **Migration kalıbı:** `information_schema`, `PREPARE/EXECUTE` ve `@değişken` **kullanılmaz** (phpMyAdmin'de `#1044 Access denied ... information_schema` hatası verir). `ADD COLUMN IF NOT EXISTS` / `CREATE TABLE IF NOT EXISTS` kullanılır; dosyalar tekrar çalıştırılabilir olur. Dosya adları alfabetik sırada doğru kurulumu sağlamalıdır.
+- **Test kalıbı:** `tests/*.sh` (HTTP, `curl`, `ol()` fonksiyonu, `SONUÇ: X geçti, Y hata`), `tests/*.php` (`bootConsole`), `js_ui_testi/*.js` (jsdom). Her özellik için test yazılır ve `test_kos.sh`'a eklenir.
+- **Önizleme HTML'leri:** `/home/user/*.html`; `present_file` ile gösterilir.
+- **Çalışma kopyası için yazılabilir dizinler:** `writable/` altında `cache logs session uploads/logo uploads/sicil` olmalı. Eksikse: `mkdir -p writable/{cache,logs,session,uploads/logo,uploads/sicil} && chmod -R 775 writable`.
+
+## 6. Bilinen ilgisiz durumlar (değiştirilmedi)
+
+| Test | Durum | Not |
+|---|---|---|
+| `evrak_testi.sh` | 3 HATA (55/58) | Tek başına 58/58; test sırası kirliliği |
+| `evrak_muafiyet_testi.sh` | 2 HATA | Bilinen |
+| `tekrar_yazdirma_testi.sh` | 2 HATA | Bilinen |
+| `odeme_mukerrer_testi.sh` | 1 HATA | Bilinen |
+| `gelir_vergisi_http_testi.sh` | 207 geçti / **60 KALAN** | Test, varsayılan hesap kipinin `makbuz` olmasını bekliyor; ayar `ucret` (`migration_gv_ucret_modu.sql`). Test–ayar uyuşmazlığı |
+| `makbuz_testi.sh` | Tek başına hata verebilir | `test_kos`'taki `bridge2` ön koşulu (müşavir kullanıcısını müşavir 2'ye bağlar) gerekir |
+| `sayfalama_testi.sh` | Veri bağımlı | Takip sayfası için ≥100 kayıt bekler; `test_kos` sırasında çalıştırılmalı |
+| `filtre_testi.php` | Çıktı boş | Eski test |
+
+## 7. Açık işler
+
+1. **Canlı veritabanında (phpMyAdmin) çalıştırılacak migration'lar** (sırayla, hepsi idempotent): `migration_sticky_not.sql` → `migration_sticky_not_faz2.sql`; `migration_odeme_yasal.sql`; `migration_logo.sql` (varsa); `migration_musavir_donem.sql`.
+2. **Ödeme listesi:** migration sonrası "🔄 Toplu Dönem Üret" çalıştırılmalı.
+3. **Geçmişte müşavir değişmiş mükellefler:** eski dönemleri elle girilmeli (Mükellef → Detay → Mali Müşavir Dönemleri). Örnek: Atikay için Ahmet Ocak–Şubat dönemi. Girilene kadar hedef, güncel müşavirde tam yıl görünür.
+4. **E-Defter ve Özel Ödemeler** için ay kayması kontrolü: kullanıcıya teklif edildi, yanıt beklenmiyor.
+5. **Yerel çalışma ağacının uzak `main` ile eşitlenmesi** (bkz. Bölüm 2). Yapılmadan commit atılmamalı.
+6. **Dönem düzenleme** isteğe bağlı olarak yeniden eklenebilir (Bölüm 3).
+
+## 8. Yeni sohbet başlangıç kontrol listesi
+
+```bash
+cd /home/user/beyanname-takip
+# Uzak main'i çekmek için (token'ı kullanıcıdan isteyin; belgeye yazmayın):
+#   git fetch "https://x-access-token:<TOKEN>@github.com/mustafabasarnet/beyanname-takip.git" main:refs/remotes/origin/main
+git log --oneline -3 origin/main          # beklenen: 2e6c979 üstte
+bash /home/user/ortam_kur.sh               # ortamı kur
+php -S 0.0.0.0:8099 -t /home/user/beyanname-takip/public   # ayrı süreç
+php tests/musavir_donem_testi.php          # beklenen: 43/43
+bash tests/musavir_donem_http_testi.sh     # beklenen: 41/41
+```
+
+---
+
+*Aşağıdaki bölümler projenin kurulum ve özellik referansıdır.*
+
+---
+
 # 📋 Mükellef Beyanname & Evrak Takip Programı
 
 CodeIgniter 4.7 · PHP 8.1+ · MySQL/MariaDB · Modern responsive arayüz
