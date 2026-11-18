@@ -38,9 +38,16 @@ $mg_ara = site_url('mukellefler/ara');
 /* Açılır liste */
 .mk-panel{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:200;
   background:var(--yuzey);border:1px solid var(--cizgi-koyu);border-radius:10px;
-  box-shadow:0 14px 34px rgba(0,0,0,.16);overflow:hidden;display:none}
-.mk-gecis.acik .mk-panel{display:block}
-.mk-liste{max-height:322px;overflow-y:auto;padding:4px}
+  box-shadow:0 14px 34px rgba(0,0,0,.16);overflow:hidden;display:none;
+  flex-direction:column}
+.mk-gecis.acik .mk-panel{display:flex}
+.mk-liste{max-height:min(62vh,520px);overflow-y:auto;padding:4px;
+  overscroll-behavior:contain;scrollbar-width:thin}
+/* İnce, temaya uyumlu kaydırma çubuğu (koyu temada da görünür) */
+.mk-liste::-webkit-scrollbar{width:10px}
+.mk-liste::-webkit-scrollbar-thumb{background:var(--gri-300);border-radius:99px;
+  border:2px solid var(--yuzey)}
+.mk-liste::-webkit-scrollbar-thumb:hover{background:var(--gri-400)}
 .mk-oge{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;
   padding:8px 9px;border-radius:7px;cursor:pointer;text-decoration:none;color:inherit}
 .mk-oge:hover,.mk-oge.secili{background:var(--ana-acik)}
@@ -98,6 +105,21 @@ $mg_ara = site_url('mukellefler/ara');
   var istek  = 0;       // yarış koşulu: geç gelen yanıt yenisini ezmesin
   var ogeIdx = -1;
 
+  /*
+   * SONSUZ KAYDIRMA
+   *
+   * Liste başta 50 kayıtla açılır; kullanıcı listenin sonuna gelince
+   * sonraki 50'lik blok AJAX ile eklenir. Böylece 25/50 gibi bir sınır
+   * kalmaz, portföyün TAMAMI kaydırarak görülebilir. Arama metni
+   * değişince ofset sıfırlanır ve liste baştan çizilir.
+   */
+  var LIMIT   = 50;
+  var ofset   = 0;      // bu aramada çizilmiş kayıt sayısı
+  var toplam  = 0;      // eşleşen toplam mükellef (uçtan gelir)
+  var dahaVar = false;  // devamı var mı
+  var yukleniyor = false;
+  var sonQ    = null;   // son çizilen arama metni
+
   function ac() {
     kok.classList.add('acik');
     giris.setAttribute('aria-expanded', 'true');
@@ -126,13 +148,8 @@ $mg_ara = site_url('mukellefler/ara');
     }
   }
 
-  /* Sonuçları çiz. veri: {durum, sonuclar:[{id,unvan,vkn,tip,etiket}], toplam, gosterilen} */
-  function ciz(veri) {
-    liste.innerHTML = '';
-
-    var sonuclar = (veri && veri.sonuclar) || [];
-
-    sonuclar.forEach(function (m, i) {
+  /* Tek satır üret (liste başına ve sonsuz kaydırma eklemelerinde ortak) */
+  function ogeYap(m, i) {
       var a = document.createElement('a');
       a.className = 'mk-oge';
       a.id = 'mk-oge-' + i;
@@ -147,10 +164,29 @@ $mg_ara = site_url('mukellefler/ara');
       rz.classList.add(m.tip === 'tuzel' ? 'mor' : 'mavi');
       a.addEventListener('click', function (e) { e.preventDefault(); sec(a); });
       a.addEventListener('mouseenter', function () { vurgula(i); });
-      liste.appendChild(a);
+
+      return a;
+  }
+
+  /* Sonuçları çiz. veri: {durum, sonuclar:[...], toplam, gosterilen, offset, daha_var}
+     ekle=true → mevcut listenin altına ekle (sonsuz kaydırma) */
+  function ciz(veri, ekle) {
+    var sonuclar = (veri && veri.sonuclar) || [];
+    var bas = 0;
+
+    if (ekle) {
+      bas = liste.querySelectorAll('.mk-oge').length;
+      var bosluk = liste.querySelector('.mk-bos');
+      if (bosluk) { bosluk.remove(); }
+    } else {
+      liste.innerHTML = '';
+    }
+
+    sonuclar.forEach(function (m, j) {
+      liste.appendChild(ogeYap(m, bas + j));
     });
 
-    if (!sonuclar.length) {
+    if (!liste.querySelector('.mk-oge')) {
       var bos = document.createElement('div');
       bos.className = 'mk-bos';
       bos.textContent = giris.value.trim() === ''
@@ -159,17 +195,59 @@ $mg_ara = site_url('mukellefler/ara');
       liste.appendChild(bos);
     }
 
-    var toplam   = veri && veri.toplam ? veri.toplam : sonuclar.length;
-    var gosteren = sonuclar.length;
-    sayac.innerHTML = gosteren + ' / <b>' + toplam + '</b> mükellef'
-      + (toplam > gosteren ? ' · devamı için aşağı kaydırın' : '');
+    toplam  = (veri && typeof veri.toplam === 'number') ? veri.toplam : 0;
+    dahaVar = !!(veri && veri.daha_var);
+    ofset   = liste.querySelectorAll('.mk-oge').length;
+
+    // Sayaç: çizilen / toplam. Devamı varsa "kaydırın" bilgisi verilir;
+    // hepsi yüklendiyse "tümü listelendi" yazar.
+    var kalan = Math.max(0, toplam - ofset);
+    sayac.innerHTML = ofset + ' / <b>' + toplam + '</b> mükellef'
+      + (dahaVar && kalan > 0
+          ? ' · <b>' + kalan + '</b> kayıt daha — kaydırın'
+          : (toplam > 0 ? ' · tümü listelendi' : ''));
+  }
+
+  /* Listenin sonuna gelindi → sonraki bloğu ekle */
+  function devam() {
+    if (yukleniyor || !dahaVar) { return; }
+
+    yukleniyor = true;
+    var benim  = ++istek;
+
+    fetch(url + '?limit=' + LIMIT + '&offset=' + ofset + '&q=' + encodeURIComponent(giris.value.trim()), {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin'
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (benim !== istek) { return; }
+        ciz(d, true);
+      })
+      .catch(function () { /* sessiz: ağ hatasında liste olduğu gibi kalır */ })
+      .then(function () { yukleniyor = false; });
+  }
+
+  /* Kaydırma dinleyicisi: sona 40px kalınca devam() */
+  liste.addEventListener('scroll', function () {
+    if (liste.scrollTop + liste.clientHeight >= liste.scrollHeight - 40) { devam(); }
+  });
+
+  /* Sonuç azsa (kaydırma çubuğu yoksa) yine de devamını getir */
+  function boslukVarsaDoldur() {
+    if (dahaVar && !yukleniyor && liste.scrollHeight <= liste.clientHeight + 4) { devam(); }
   }
 
   function ara() {
     var q = giris.value.trim();
+
+    // Metin değişti → liste baştan: ofset sıfırlanır
+    if (q !== sonQ) { ofset = 0; dahaVar = false; }
+    sonQ = q;
+
     var benim = ++istek;
 
-    fetch(url + '?limit=25&q=' + encodeURIComponent(q), {
+    fetch(url + '?limit=' + LIMIT + '&offset=0&q=' + encodeURIComponent(q), {
       headers: { 'X-Requested-With': 'XMLHttpRequest' },
       credentials: 'same-origin'
     })
@@ -178,7 +256,9 @@ $mg_ara = site_url('mukellefler/ara');
         if (benim !== istek) { return; }   // daha yeni bir istek var
         ciz(d);
         ogeIdx = -1;
+        liste.scrollTop = 0;
         ac();
+        boslukVarsaDoldur();               // kısa listede devamı hemen gelir
       })
       .catch(function () { /* sessiz: ağ hatasında liste kapalı kalır */ });
   }

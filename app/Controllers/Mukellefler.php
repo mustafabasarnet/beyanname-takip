@@ -318,6 +318,9 @@ class Mukellefler extends BaseController
         $limit = (int) ($this->request->getGet('limit') ?? 10);
         $limit = max(1, min(50, $limit));
 
+        // Sonsuz kaydırma: liste sonuna gelince sonraki blok istenir.
+        $ofset = max(0, (int) ($this->request->getGet('offset') ?? 0));
+
         $satirlar = $this->model->listele([
             'q'          => $q,
             'durum'      => 'hepsi',
@@ -328,7 +331,7 @@ class Mukellefler extends BaseController
         $toplam   = count($satirlar);
         $sonuclar = [];
 
-        foreach (array_slice($satirlar, 0, $limit) as $m) {
+        foreach (array_slice($satirlar, $ofset, $limit) as $m) {
             $vkn = $m['vergi_kimlik_no'] ?: $m['tc_kimlik_no'];
 
             $sonuclar[] = [
@@ -344,11 +347,15 @@ class Mukellefler extends BaseController
             ];
         }
 
+        $gosterilen = $ofset + count($sonuclar);
+
         return $this->response->setJSON([
             'durum'     => true,
             'sonuclar'  => $sonuclar,
             'toplam'    => $toplam,
-            'gosterilen'=> count($sonuclar),
+            'gosterilen'=> $gosterilen,
+            'offset'    => $ofset,
+            'daha_var'  => $gosterilen < $toplam,   // kaydırınca devamı var
         ]);
     }
 
