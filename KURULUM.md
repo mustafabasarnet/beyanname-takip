@@ -65,6 +65,27 @@ php -S 0.0.0.0:8099 -t /home/user/beyanname-takip/public
 | **Dönem düzenleme + tarih seçici stili** | **Kaldırıldı** (`2e6c979` revert) | Bkz. aşağıdaki "Kaldırılanlar" |
 | **Boş Dönem (düzensiz beyanname)** | Yapılmadı | Kullanıcı kapattı |
 
+### Beyanname Takip — defter tipi filtresi çoklu seçim
+
+**Sorun:** Defter Tipi filtresi tekli açılır listeydi; "Bilanço + İşletme" gibi iki defteri
+birlikte görmek isteyen kullanıcı iki kez filtre uygulamak zorundaydı.
+
+**Çözüm:** Beyanname Türü ve Durum ile aynı ortak parça (`_coklu_secim.php`): arama,
+Tümünü Seç / Temizle, onay kutuları, **Uygula**; kapalı hâlde "2 defter tipi seçili".
+
+| Konu | Davranış |
+|---|---|
+| Parametre | Tek değer `defter_tipi=bilanco` (eski bağlantılar) veya çoklu `defter_tipi=bilanco,isletme` |
+| Hepsi / hiçbiri | URL'ye yazılmaz → "Tümü" |
+| Hatırlama | Son seçim `bt_f_defter_tipi` çerezinde; "Temizle" çerezi siler |
+| Excel / Yazdır | Ekrandaki süzgecin aynısı; Yazdır'da tipler " / " ile listelenir |
+| Sayaç kartları | Seçili tiplerle hesaplanır |
+
+**Dosyalar:** `app/Views/takip/index.php`, `app/Controllers/Takip.php` (`filtreAl` →
+`cokluHatirla('defter_tipi')`), `app/Models/BeyannameTakipModel.php` (`whereIn`),
+`app/Views/takip/yazdir.php`. Test: `tests/defter_coklu_testi.sh` (**28/28**).
+**Commit:** `2addd19`.
+
 ### Makbuz Takip — mali müşavir sözleşme dönemleri
 
 **Sorun:** Mükellef yıl içinde müşavir değiştiriyordu (örn. Atikay Ltd.: Ocak–Şubat Ahmet, Mart–Aralık Mahmut). Müşavir değişince geçmiş makbuz ve ücretler yeni müşavire kayıyordu.
