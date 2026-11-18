@@ -51,8 +51,17 @@ if (! empty($filtre['durum'])) {
     $suzgec[] = implode(' / ', $durSec);
 }
 
+// Defter tipi çoklu seçilebilir: seçili tüm tipler " / " ile yazılır
+// (ekrandaki bilgi şeridiyle aynı kalıp).
 if (! empty($filtre['defter_tipi'])) {
-    $suzgec[] = defterTipiAdi($filtre['defter_tipi']);
+    $defSec = array_values(array_filter(
+        (array) $filtre['defter_tipi'],
+        static fn ($d) => $d !== '' && $d !== null
+    ));
+
+    if ($defSec !== []) {
+        $suzgec[] = implode(' / ', array_map('defterTipiAdi', $defSec));
+    }
 }
 
 if (! empty($filtre['gecikmis'])) {

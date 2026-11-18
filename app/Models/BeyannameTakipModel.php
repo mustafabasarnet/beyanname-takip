@@ -665,8 +665,26 @@ class BeyannameTakipModel extends Model
             $b->whereIn('beyanname_takip.durum', $f['durum_liste']);
         }
 
+        // -------------------------------------------------------------
+        //  DEFTER TİPİ — tekil ya da ÇOKLU seçim
+        //
+        // Filtre ekranından birden fazla defter tipi seçilebiliyor
+        // ("Bilanço + İşletme"). Eski bağlantılar tek değer gönderir;
+        // ikisi de aynı yerden geçsin diye diziye normalize edilir.
+        // -------------------------------------------------------------
         if (! empty($f['defter_tipi'])) {
-            $b->where('m.defter_tipi', $f['defter_tipi']);
+            $tipler = array_values(array_filter(
+                array_map('strval', (array) $f['defter_tipi']),
+                static fn ($t) => $t !== ''
+            ));
+
+            $tipler = array_values(array_intersect($tipler, array_keys(defterTipleri())));
+
+            if (count($tipler) === 1) {
+                $b->where('m.defter_tipi', $tipler[0]);
+            } elseif ($tipler !== []) {
+                $b->whereIn('m.defter_tipi', $tipler);
+            }
         }
 
         if (! empty($f['q'])) {

@@ -587,7 +587,10 @@ class Takip extends BaseController
             // Adreste hiç yoksa kullanıcının son seçimi çerezden okunur.
             'tur_id'      => $this->cokluHatirla('tur_id'),
             'durum'       => $this->cokluHatirla('durum', array_keys(BeyannameTakipModel::DURUMLAR)),
-            'defter_tipi' => $this->request->getGet('defter_tipi'),
+            // Çoklu seçim (bkz. defter_coklu_testi.sh): defter_tipi[]=bilanco&defter_tipi[]=isletme
+            // ya da tek değer (defter_tipi=bilanco) kabul edilir; adreste yoksa son
+            // seçim çerezden (bt_f_defter_tipi) okunur. Yalnız geçerli tipler alınır.
+            'defter_tipi' => $this->cokluHatirla('defter_tipi', array_keys(defterTipleri())),
             'q'           => $this->request->getGet('q'),
             'gecikmis'    => $this->request->getGet('gecikmis'),
         ];

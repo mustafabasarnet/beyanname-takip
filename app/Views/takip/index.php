@@ -66,17 +66,25 @@
   include APPPATH . 'Views/parcalar/_coklu_secim.php';
   ?>
 
-  <div class="form-grup">
-    <label>Defter Tipi</label>
-    <select name="defter_tipi" data-oto-filtre>
-      <option value="">Tümü</option>
-      <?php foreach (defterTipleri() as $dk => $dv): ?>
-        <option value="<?= $dk ?>" <?= ($filtre['defter_tipi'] ?? '') === $dk ? 'selected' : '' ?>>
-          <?= esc($dv) ?>
-        </option>
-      <?php endforeach; ?>
-    </select>
-  </div>
+  <?php
+  /*
+   * DEFTER TİPİ — ÇOKLU SEÇİM
+   *
+   * Önceden tekli <select> idi; büro çoğu zaman "Bilanço + İşletme" gibi
+   * iki defter tipini birlikte görmek istiyordu. Beyanname Türü ve Durum
+   * ile aynı ortak parça kullanılır (aynı davranış, aynı görünüm).
+   *
+   * Eski bağlantılar (defter_tipi=bilanco) bozulmasın diye denetleyici
+   * tek değeri de kabul eder — bkz. Takip::filtreAl().
+   */
+  $cs_ad       = 'defter_tipi';
+  $cs_etiket   = 'Defter Tipi';
+  $cs_ogeler   = defterTipleri();
+  $cs_secili   = array_filter((array) ($filtre['defter_tipi'] ?? []), static fn ($v) => $v !== '' && $v !== null);
+  $cs_tekil    = 'defter tipi';
+  $cs_genislik = '200px';
+  include APPPATH . 'Views/parcalar/_coklu_secim.php';
+  ?>
 
   <?php
   /*
@@ -131,12 +139,23 @@
   </div>
 </form>
 
-<?php if (! empty($filtre['defter_tipi'])): ?>
+<?php
+/*
+ * DEFTER TİPİ BİLGİ ŞERİDİ
+ *
+ * Çoklu seçimde kullanıcı hangi tiplerin süzgeçte olduğunu tek bakışta
+ * görmeli; bu yüzden tek tip yerine seçili tiplerin adları " / " ile
+ * yazılır (Yazdır ve Excel çıktısındaki süzgeç metniyle aynı kalıp).
+ */
+$defSecili = array_values(array_filter((array) ($filtre['defter_tipi'] ?? []), static fn ($v) => $v !== '' && $v !== null));
+?>
+<?php if ($defSecili !== [] && count($defSecili) < count(defterTipleri())): ?>
   <div class="uyari bilgi" style="padding:9px 14px;font-size:13px">
     <span class="ik">📒</span>
     <div>
-      Yalnızca <b><?= esc(defterTipiAdi($filtre['defter_tipi'])) ?></b> tutan
-      mükelleflerin beyannameleri listeleniyor.
+      Yalnızca
+      <b><?= esc(implode(' / ', array_map('defterTipiAdi', $defSecili))) ?></b>
+      tutan mükelleflerin beyannameleri listeleniyor.
       <a href="<?= site_url('takip?' . filtreSorgusu($filtre, ['defter_tipi', 'tarih_modu'], ['mod' => $mod])) ?>">Filtreyi kaldır</a>
     </div>
   </div>
