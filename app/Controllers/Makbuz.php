@@ -4,7 +4,6 @@ namespace App\Controllers;
 
 use App\Libraries\MakbuzIceAktar;
 use App\Models\MakbuzModel;
-use App\Models\MusavirDonemModel;
 use App\Models\MukellefModel;
 use App\Models\MusavirModel;
 
@@ -174,14 +173,11 @@ class Makbuz extends BaseController
             'kaydeden_id'   => (int) ($this->aktifKullanici['id'] ?? 0) ?: null,
         ];
 
-        // Kesen müşavir ZORUNLU ve kullanıcının yetkili olduğu müşavirlerden olmalı.
-        // (Portföy sahibi varsayımı kaldırıldı: sözleşme değişen mükelleflerde
-        // geçmiş makbuz yanlış müşavire yazılmasın.)
-        if (empty($veri['musavir_id']) || ! array_key_exists((int) $veri['musavir_id'], $this->secilebilirMusavirler())) {
-            return redirect()->back()->withInput()->with('hata', 'Kesen mali müşavir seçiniz.');
+        // Müşavir seçilmemişse mükellefin portföy sahibi varsayılır
+        if (empty($veri['musavir_id'])) {
+            $muk = (new MukellefModel())->find($mid);
+            $veri['musavir_id'] = $muk['musavir_id'] ?? null;
         }
-
-        $veri['musavir_id'] = (int) $veri['musavir_id'];
 
         // Listeden gelen kayıtta filtre korunarak listeye dönülür
         $donusListe = $this->request->getPost('donus') === 'liste';
@@ -212,34 +208,13 @@ class Makbuz extends BaseController
 
         $mesaj = $id > 0 ? 'Makbuz güncellendi.' : 'Makbuz kaydedildi.';
 
-        // Makbuz tarihinde mükellefin müşaviri farklıysa bilgi ver (engellemez)
-        $bilgi = $this->donemUyarisi($mid, (string) $veri['tarih'], (int) $veri['musavir_id']);
-
         if ($donusListe) {
-            $yanit = redirect()->to(site_url('makbuz?yil=' . $veri['yil']))
+            return redirect()->to(site_url('makbuz?yil=' . $veri['yil']))
                 ->with('basari', $mesaj . ' Mükellef bazında döküm için satırdaki "Makbuz" bağlantısını kullanın.');
-        } else {
-            $yanit = redirect()->to(site_url('makbuz/detay/' . $mid . '?yil=' . $veri['yil']))
-                ->with('basari', $mesaj);
         }
 
-        return $bilgi !== null ? $yanit->with('bilgi', $bilgi) : $yanit;
-    }
-
-    /** Makbuz tarihindeki dönem müşaviri ≠ seçilen kesen müşavir ise uyarı metni */
-    protected function donemUyarisi(int $mukellefId, string $tarih, int $kesen): ?string
-    {
-        $donemMusavir = (new MusavirDonemModel())->musavirAt($mukellefId, $tarih);
-
-        if ($donemMusavir === null || $donemMusavir === $kesen) {
-            return null;
-        }
-
-        $mus   = (new MusavirModel())->find($donemMusavir);
-        $kesMu = (new MusavirModel())->find($kesen);
-
-        return 'Not: ' . date('d.m.Y', strtotime($tarih)) . ' tarihinde bu mükellefin müşaviri '
-            . ($mus['ad_soyad'] ?? '-') . ' idi; makbuz ' . ($kesMu['ad_soyad'] ?? '-') . ' adına kaydedildi.';
+        return redirect()->to(site_url('makbuz/detay/' . $mid . '?yil=' . $veri['yil']))
+            ->with('basari', $mesaj);
     }
 
     public function sil(int $id)
@@ -258,21 +233,6 @@ class Makbuz extends BaseController
 
         return redirect()->to(site_url('makbuz/detay/' . $m['mukellef_id'] . '?yil=' . $m['yil']))
             ->with('basari', 'Makbuz silindi.');
-    }
-
-    /** AJAX: mükellefin verilen tarihteki müşaviri (makbuz formu varsayılanı) */
-    public function donemMusaviri()
-    {
-        $mid   = (int) $this->request->getGet('mukellef_id');
-        $tarih = (string) $this->request->getGet('tarih');
-
-        if (! $this->mukellefErisilebilirMi($mid) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $tarih)) {
-            return $this->response->setJSON(['musavir_id' => null]);
-        }
-
-        return $this->response->setJSON([
-            'musavir_id' => (new MusavirDonemModel())->musavirAt($mid, $tarih),
-        ]);
     }
 
     /** AJAX: tahsil edildi işareti */

@@ -3,7 +3,6 @@
 namespace App\Libraries;
 
 use App\Models\MakbuzModel;
-use App\Models\MusavirDonemModel;
 use App\Models\MukellefModel;
 
 /**
@@ -353,9 +352,8 @@ class MakbuzIceAktar
         $satir['veri'] = [
             'mukellef_id' => (int) $mukellef['id'],
             'unvan'       => $mukellef['unvan'],
-            // Kesen müşavir: makbuz tarihindeki dönem müşaviri (yoksa güncel)
-            'musavir_id'  => (new MusavirDonemModel())->musavirAt((int) $mukellef['id'], $tarih)
-                ?? ($mukellef['musavir_id'] ? (int) $mukellef['musavir_id'] : null),
+            // Kesen müşavir: mükellefin bağlı olduğu portföy sahibi
+            'musavir_id'  => $mukellef['musavir_id'] ? (int) $mukellef['musavir_id'] : null,
             'yil'         => $yil,
             'ay'          => (int) date('n', strtotime($tarih)),
             'makbuz_no'   => $makbuzNo ?: null,
@@ -492,14 +490,12 @@ class MakbuzIceAktar
     }
 
     /**
-     * Müşavir kapsamı: o yılda sözleşme dönemi payı olan (ya da o müşavirin
-     * kestiği makbuzu bulunan) mükellefler. Sözleşmesi değişen mükellefin
-     * geçmiş makbuzları eski müşavirin içe aktarımında da eşleşir.
+     * Müşavir kapsamı: mükellefin bağlı olduğu portföy sahibi.
+     * (İçe aktarımda eşleşme mükellefin güncel müşavirine göre yapılır.)
      */
     protected function musavirKapsamiKosulu($b, int $musavirId, int $yil): void
     {
-        $mids = (new MusavirDonemModel())->mukellefKapsami([$musavirId], $yil);
-        $b->whereIn('id', $mids !== [] ? $mids : [0]);
+        $b->where('musavir_id', $musavirId);
     }
 
     /** Sadeleştirilmiş ünvan → mükellef (çakışma varsa 'COKLU') */
