@@ -57,7 +57,12 @@ class Sicil extends BaseController
     {
         // Migration çalıştırılmamış kurulumda tablo yok → sayfa 500 yerine
         // anlaşılır bir uyarı gösterilir (bkz. helper tabloVar()).
-        if (! tabloVar(['sicil_degisiklikleri', 'sicil_gorevleri'])) {
+        //
+        // DİKKAT: gerçek tablo adı `sicil_bildirim_gorevleri`'dir. Bir süre
+        // burada `sicil_gorevleri` (var olmayan ad) kontrol edildiği için,
+        // tabloları ve kayıtları SAĞLAM olan kurulumlarda bile "tablolar yok"
+        // uyarısı çıkıyor ve kullanıcı verisini kaybetmiş sanıyordu.
+        if (! tabloVar(['sicil_degisiklikleri', 'sicil_bildirim_gorevleri'])) {
             return $this->goster('sicil/migration_gerekli', [], 'Sicil İşlemleri');
         }
 
