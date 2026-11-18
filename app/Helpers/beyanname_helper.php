@@ -864,3 +864,38 @@ if (! function_exists('firmaBilgisi')) {
         }
     }
 }
+
+if (! function_exists('tabloVar')) {
+    /**
+     * Veritabanında tablo var mı? (sonuç istek başına önbelleklenir)
+     *
+     * NEDEN: Eski bir kurulumda bazı tablolar (ör. mukellef_aylik_not,
+     * sicil_degisiklikleri) henüz oluşmamış olabilir — migration
+     * çalıştırılmamıştır. Model doğrudan sorgu atınca sayfa 500 veriyordu.
+     * Ekranlar bu yardımcıyla "tablo yoksa bölümü atla" davranışı gösterir.
+     *
+     * @param string|string[] $tablolar
+     */
+    function tabloVar(string|array $tablolar): bool
+    {
+        static $onbellek = [];
+
+        $db = db_connect();
+
+        foreach ((array) $tablolar as $t) {
+            if (! array_key_exists($t, $onbellek)) {
+                try {
+                    $onbellek[$t] = $db->tableExists($t);
+                } catch (\Throwable $e) {
+                    $onbellek[$t] = false;
+                }
+            }
+
+            if (! $onbellek[$t]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}

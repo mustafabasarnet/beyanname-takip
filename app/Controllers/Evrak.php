@@ -39,12 +39,16 @@ class Evrak extends BaseController
 
         $cizelge = $this->model->cizelge($yil, $ay, $sayfaFiltre);
 
-        // Aylık notlar (yalnızca gösterilen mükellefler için)
-        $notModel = new AylikNotModel();
-        $notlar   = [];
+        // Aylık notlar (yalnızca gösterilen mükellefler için).
+        // Tablo yoksa (migration çalışmamış) notlar boş kalır, sayfa açılır.
+        $notlar = [];
 
-        foreach ($cizelge['mukellefler'] as $m) {
-            $notlar[(int) $m['id']] = $notModel->notAl((int) $m['id'], $yil, $ay);
+        if (tabloVar('mukellef_aylik_not')) {
+            $notModel = new AylikNotModel();
+
+            foreach ($cizelge['mukellefler'] as $m) {
+                $notlar[(int) $m['id']] = $notModel->notAl((int) $m['id'], $yil, $ay);
+            }
         }
 
         // Sayaçlar: filtreye uyan TÜM faal küme üzerinden (sayfa dilimi değil).
@@ -108,11 +112,14 @@ class Evrak extends BaseController
 
         $cizelge = $this->model->cizelge($yil, $ay, $sayfaFiltre);
 
-        $notModel = new AylikNotModel();
-        $notlar   = [];
+        $notlar = [];
 
-        foreach ($cizelge['mukellefler'] as $m) {
-            $notlar[(int) $m['id']] = $notModel->notAl((int) $m['id'], $yil, $ay);
+        if (tabloVar('mukellef_aylik_not')) {
+            $notModel = new AylikNotModel();
+
+            foreach ($cizelge['mukellefler'] as $m) {
+                $notlar[(int) $m['id']] = $notModel->notAl((int) $m['id'], $yil, $ay);
+            }
         }
 
         $html = view('evrak/_satirlar', [

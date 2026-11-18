@@ -55,6 +55,12 @@ class Sicil extends BaseController
     // =================================================================
     public function index()
     {
+        // Migration çalıştırılmamış kurulumda tablo yok → sayfa 500 yerine
+        // anlaşılır bir uyarı gösterilir (bkz. helper tabloVar()).
+        if (! tabloVar(['sicil_degisiklikleri', 'sicil_gorevleri'])) {
+            return $this->goster('sicil/migration_gerekli', [], 'Sicil İşlemleri');
+        }
+
         $aralik = (string) $this->request->getGet('aralik');
 
         if (! in_array($aralik, self::ARALIKLAR, true)) {
