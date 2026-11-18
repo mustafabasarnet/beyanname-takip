@@ -357,7 +357,8 @@ class BeyannameTakipModel extends Model
             $gorulen[] = $key;
 
             if (! isset($mevcut[$key])) {
-                $this->insert($h);
+                // Kolon yoksa (eksik migration) o alan gönderilmez -> #1054 olmaz
+                $this->insert(kolonlaraSuz($this->table, $h));
                 $eklenen++;
 
                 continue;
@@ -373,7 +374,7 @@ class BeyannameTakipModel extends Model
                 || $eski['donem_adi'] !== $h['donem_adi'];
 
             if ($degisti) {
-                $this->update($eski['id'], [
+                $this->update($eski['id'], kolonlaraSuz($this->table, [
                     'donem_adi'       => $h['donem_adi'],
                     'donem_baslangic' => $h['donem_baslangic'],
                     'donem_bitis'     => $h['donem_bitis'],
@@ -382,7 +383,7 @@ class BeyannameTakipModel extends Model
                     'odeme_son_tarih' => $h['odeme_son_tarih'],
                     'odeme_yasal_tarih' => $h['odeme_yasal_tarih'] ?? null,
                     'kaydirma_nedeni' => $h['kaydirma_nedeni'],
-                ]);
+                ]));
                 $guncellenen++;
             } else {
                 $korunan++;
@@ -998,7 +999,10 @@ class BeyannameTakipModel extends Model
         // Hafta sonu/tatil kaydırması AYI DEĞİŞTİRMEZ: örneğin SGK ödemesi
         // 31 Ekim Cumartesi ise (2 Kasım'a kayar) yine EKİM listesinde görünür.
         // Ekranda gösterilen son tarih ise kaydırılmış gerçek tarihtir.
-        $ayTarihi = 'COALESCE(beyanname_takip.odeme_yasal_tarih, beyanname_takip.yasal_son_tarih, beyanname_takip.son_tarih)';
+        // odeme_yasal_tarih kolonu yoksa (migration çalışmamış) o ifade atlanır
+        $ayTarihi = kolonVar('beyanname_takip', 'odeme_yasal_tarih')
+            ? 'COALESCE(beyanname_takip.odeme_yasal_tarih, beyanname_takip.yasal_son_tarih, beyanname_takip.son_tarih)'
+            : 'COALESCE(beyanname_takip.yasal_son_tarih, beyanname_takip.son_tarih)';
 
         if (! empty($f['yil'])) {
             $b->where("YEAR({$ayTarihi})", (int) $f['yil']);

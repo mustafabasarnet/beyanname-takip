@@ -876,6 +876,67 @@ if (! function_exists('tabloVar')) {
      *
      * @param string|string[] $tablolar
      */
+    /**
+     * Tabloda kolon var mı? (eksik migration'lı kurulumlar için)
+     *
+     * MySQL'de `ADD COLUMN IF NOT EXISTS` desteklense de canlıda migration
+     * atlanabiliyor; kolonu SELECT/INSERT listesine koyan kod o zaman
+     * "Unknown column ... in 'field list'" (#1054) ile tümden düşer.
+     * Bu yardımcı istek başına önbellekler.
+     */
+    function kolonVar(string $tablo, string $kolon): bool
+    {
+        static $onbellek = [];
+
+        $anahtar = $tablo . '.' . $kolon;
+
+        if (! array_key_exists($anahtar, $onbellek)) {
+            try {
+                $db = db_connect();
+                // Kolon yoksa getFieldData() null/boş dizi döner; tablo yoksa
+                // istisna fırlatır — ikisi de "yok" sayılır.
+                $alanlar = $db->getFieldData($tablo);
+                $onbellek[$anahtar] = false;
+
+                foreach ((array) $alanlar as $alan) {
+                    if (($alan->name ?? null) === $kolon) {
+                        $onbellek[$anahtar] = true;
+                        break;
+                    }
+                }
+            } catch (\Throwable $e) {
+                $onbellek[$anahtar] = false;
+            }
+        }
+
+        return $onbellek[$anahtar];
+    }
+
+    /**
+     * Model verisini tabloda GERÇEKTEN var olan kolonlara indirger.
+     * Eksik migration'lı kurulumda insert/update'in patlamasını önler.
+     *
+     * @param array<string,mixed> $veri
+     *
+     * @return array<string,mixed>
+     */
+    function kolonlaraSuz(string $tablo, array $veri): array
+    {
+        try {
+            $alanlar = db_connect()->getFieldData($tablo);
+
+            if (empty($alanlar)) {
+                return $veri;
+            }
+
+            $var = array_map(static fn ($a) => $a->name, (array) $alanlar);
+
+            return array_intersect_key($veri, array_flip($var));
+        } catch (\Throwable $e) {
+            return $veri;
+        }
+    }
+
     function tabloVar(string|array $tablolar): bool
     {
         static $onbellek = [];

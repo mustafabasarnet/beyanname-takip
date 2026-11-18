@@ -170,11 +170,8 @@ class Mukellefler extends BaseController
         // Tarih/tür değişmiş olabilir -> dönemleri yeniden senkronize et
         $this->donemleriOtomatikUret($id);
 
-        $mesaj = $musavirDegisti
-            ? 'Mükellef güncellendi. Müşavir değişikliği dönem olarak kaydedildi; dönemler yeniden hesaplandı.'
-            : 'Mükellef güncellendi, dönemler yeniden hesaplandı.';
-
-        return redirect()->to(site_url('mukellefler/detay/' . $id))->with('basari', $mesaj);
+        return redirect()->to(site_url('mukellefler/detay/' . $id))
+            ->with('basari', 'Mükellef güncellendi, dönemler yeniden hesaplandı.');
     }
 
     // -----------------------------------------------------------------

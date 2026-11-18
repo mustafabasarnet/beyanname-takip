@@ -131,7 +131,7 @@ class DonemUretici
                     $odemeSon = $this->tatil->kaydir($odemeYasal);
                 }
 
-                $satirlar[] = [
+                $satir = [
                     'mukellef_id'       => (int) $mukellef['id'],
                     'beyanname_turu_id' => (int) $tur['id'],
                     'yil'               => $yil,
@@ -142,10 +142,19 @@ class DonemUretici
                     'yasal_son_tarih'   => $yasal,
                     'son_tarih'         => $kaydirma['tarih'],
                     'odeme_son_tarih'   => $odemeSon,
-                    'odeme_yasal_tarih' => $odemeYasal,
                     'kaydirma_nedeni'   => $kaydirma['kaydirildi'] ? $kaydirma['neden'] : null,
                     'durum'             => 'BEKLIYOR',
                 ];
+
+                // odeme_yasal_tarih yalnız kolon varsa yazılır. Migration
+                // (migration_odeme_yasal.sql) çalışmamış kurulumda bu alan
+                // gönderilirse MySQL "Unknown column" (#1054) verir ve
+                // mükellef güncelleme tümden düşerdi.
+                if (tabloVar('beyanname_takip') && kolonVar('beyanname_takip', 'odeme_yasal_tarih')) {
+                    $satir['odeme_yasal_tarih'] = $odemeYasal;
+                }
+
+                $satirlar[] = $satir;
             }
         }
 
