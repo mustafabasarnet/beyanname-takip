@@ -65,6 +65,32 @@ php -S 0.0.0.0:8099 -t /home/user/beyanname-takip/public
 | **Dönem düzenleme + tarih seçici stili** | **Kaldırıldı** (`2e6c979` revert) | Bkz. aşağıdaki "Kaldırılanlar" |
 | **Boş Dönem (düzensiz beyanname)** | Yapılmadı | Kullanıcı kapattı |
 
+### Üst bar — mükellefe hızlı geçiş
+
+**Sorun:** Hangi ekranda olunursa olunsun "falanca mükellefin kartını aç" işi için önce
+Mükellefler listesine gidip aramak gerekiyordu.
+
+**Çözüm:** Her ekranın **üst barında** mükellef arama kutusu (`parcalar/_mukellef_gecis.php`).
+
+| Konu | Davranış |
+|---|---|
+| Arama | Ünvan (Türkçe karakter), VKN, TCKN, mükellef kodu — 180 ms debounce |
+| Boş kutu | Alfabetik **ilk 25** mükellef listelenir; "10 / 35 mükellef" sayacı |
+| Satır | Ünvan · VKN/TCKN · **FİRMA** (mor) / **ŞAHIS** (mavi) rozeti → karta gider |
+| Klavye | ↓/↑ gez · **Enter** aç · **Esc** kapat · dışına tıkla → kapanır |
+| Kapsam | Sunucuda süzülür: müşavir/personel yalnız kendi mükelleflerini görür |
+| Uç | `GET /mukellefler/ara?q=&limit=25` → `{durum, sonuclar[{id,unvan,vkn,tip,etiket,href}], toplam, gosterilen}` |
+| Geriye uyum | `limit` göndermeyen eski çağrılar (sicil/makbuz formu) 10 sonuç + eski alanlar |
+| Görünüm | 1100px altında daralır, 900px altında gizlenir (mobilde yer kaplamasın) |
+
+**Ek düzeltme:** `MukellefModel::listeKosullari()` içinde `durum='hepsi'` artık tanımlı —
+hiçbir koşul eklemediği için **soft-delete edilmiş** mükellefler arama sonuçlarına
+sızabiliyordu; artık yalnız `deleted_at IS NULL` kayıtlar döner.
+
+**Dosyalar:** `app/Views/parcalar/_mukellef_gecis.php` (yeni), `app/Views/layouts/ana.php`,
+`app/Controllers/Mukellefler.php` (`ara`), `app/Models/MukellefModel.php`.
+Test: `tests/mukellef_gecis_testi.sh` (**37/37**). **Commit:** `dc1f6b4`.
+
 ### Beyanname Takip — defter tipi filtresi çoklu seçim
 
 **Sorun:** Defter Tipi filtresi tekli açılır listeydi; "Bilanço + İşletme" gibi iki defteri
