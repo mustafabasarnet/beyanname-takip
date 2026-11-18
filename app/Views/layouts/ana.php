@@ -332,6 +332,17 @@ $firma = $firma ?? ['ad' => 'Beyanname Takip', 'logo_var' => false];
   <header class="ust-bar">
     <button class="menu-ac" type="button" aria-label="Menü">☰</button>
     <h1><?= esc($sayfaBasligi ?? '') ?></h1>
+
+    <?php
+    /*
+     * MÜKELLEFE HIZLI GEÇİŞ — üst barda arama kutusu.
+     *
+     * Hangi ekranda olursa olsun mükellef ünvanı / VKN / TCK / kod yazıp
+     * Enter'a basarak kartına geçilir. Kapsam sunucuda süzülür.
+     * Parça kendi stilini ve betiğini taşır (tek yerden yönetim).
+     */
+    echo view('parcalar/_mukellef_gecis');
+    ?>
     <div class="bugun">
       <span>📅</span>
       <span><?= trTarihUzun(date('Y-m-d')) ?></span>

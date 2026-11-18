@@ -375,14 +375,25 @@ class Mukellefler extends BaseController
         return redirect()->to(site_url('mukellefler'))->with('basari', 'Mükellef silindi.');
     }
 
-    /** AJAX: Sicil formu için hızlı mükellef arama (yetki kapsamlı) */
+    /**
+     * AJAX: hızlı mükellef arama (yetki kapsamlı).
+     *
+     * İki tüketicisi var:
+     *   1) Sicil ve Makbuz formlarındaki mükellef seçimi (q + 10 sonuç)
+     *   2) Üst bardaki "mükellefe hızlı geçiş" kutusu (q boş olabilir,
+     *      25 sonuç, her satırda karta giden hazır bağlantı)
+     *
+     * q boşken TÜM mükellefler alfabetik ilk N tanesi döner; böylece kutuya
+     * tıklayan kullanıcı hiçbir şey yazmadan listeden seçebilir.
+     * Kapsam süzgeci sunucuda uygulanır (müşavir/personel kendi listesi).
+     */
     public function ara()
     {
         $q = trim((string) $this->request->getGet('q'));
 
-        if ($q === '') {
-            return $this->response->setJSON(['durum' => false, 'sonuclar' => []]);
-        }
+        // Üst bar kutusu "limit" gönderir (en fazla 50); formlar göndermez.
+        $limit = (int) ($this->request->getGet('limit') ?? 10);
+        $limit = max(1, min(50, $limit));
 
         $satirlar = $this->model->listele([
             'q'          => $q,
@@ -391,18 +402,31 @@ class Mukellefler extends BaseController
             'harf'       => '',
         ]);
 
+        $toplam   = count($satirlar);
         $sonuclar = [];
 
-        foreach (array_slice($satirlar, 0, 10) as $m) {
+        foreach (array_slice($satirlar, 0, $limit) as $m) {
+            $vkn = $m['vergi_kimlik_no'] ?: $m['tc_kimlik_no'];
+
             $sonuclar[] = [
-                'id'             => (int) $m['id'],
-                'unvan'          => $m['unvan'],
-                'vergi_kimlik_no'=> $m['vergi_kimlik_no'],
-                'tc_kimlik_no'   => $m['tc_kimlik_no'],
+                'id'              => (int) $m['id'],
+                'unvan'           => $m['unvan'],
+                'vergi_kimlik_no' => $m['vergi_kimlik_no'],
+                'tc_kimlik_no'    => $m['tc_kimlik_no'],
+                // --- üst bar kutusu için hazır alanlar ---
+                'vkn'     => $vkn,
+                'tip'     => $m['mukellef_tipi'],                       // tuzel | gercek
+                'etiket'  => $m['mukellef_tipi'] === 'tuzel' ? 'FİRMA' : 'ŞAHIS',
+                'href'    => site_url('mukellefler/detay/' . (int) $m['id']),
             ];
         }
 
-        return $this->response->setJSON(['durum' => true, 'sonuclar' => $sonuclar]);
+        return $this->response->setJSON([
+            'durum'     => true,
+            'sonuclar'  => $sonuclar,
+            'toplam'    => $toplam,
+            'gosterilen'=> count($sonuclar),
+        ]);
     }
 
     /**

@@ -273,9 +273,20 @@ class MukellefModel extends Model
               ->groupEnd();
         }
 
+        /*
+         * 'hepsi' = durum süzgeci YOK.
+         *
+         * Hızlı arama uçları (üst bardaki mükellefe geçiş kutusu, sicil ve
+         * makbuz formları) 'hepsi' gönderir: kullanıcı pasif veya terk etmiş
+         * bir mükellefi de arayıp kartını açabilmelidir. Eski kod bu değeri
+         * tanımıyordu ve hiçbir koşul eklemiyordu; bu da soft-delete
+         * edilmiş kayıtların da listeye sızması demekti.
+         */
         $durum = $filtre['durum'] ?? 'aktif';
 
-        if ($durum === 'aktif') {
+        if ($durum === 'hepsi') {
+            $b->where('mukellefler.deleted_at', null);
+        } elseif ($durum === 'aktif') {
             $b->where('mukellefler.aktif', 1)
               ->groupStart()->where('mukellefler.terk_tarihi', null)
               ->orWhere('mukellefler.terk_tarihi >=', date('Y-m-d'))->groupEnd();
